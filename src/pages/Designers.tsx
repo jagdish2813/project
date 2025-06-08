@@ -11,9 +11,10 @@ const Designers = () => {
   const [selectedExperience, setSelectedExperience] = useState('');
   const [designers, setDesigners] = useState<Designer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const cities = ['Mumbai', 'Delhi', 'Bangalore', 'Gurgaon', 'Hyderabad', 'Pune', 'Chennai', 'Kolkata', 'Ahmedabad', 'Jaipur'];
-  const specializations = ['Modern & Contemporary', 'Traditional Indian', 'Minimalist Design', 'Luxury & High-End', 'Eco-Friendly Design', 'Industrial & Loft'];
+  const specializations = ['Modern & Contemporary', 'Traditional Indian', 'Minimalist Design', 'Luxury & High-End', 'Eco-Friendly Design', 'Industrial & Loft', 'Scandinavian'];
   const experienceRanges = ['0-5 years', '5-10 years', '10+ years'];
 
   useEffect(() => {
@@ -22,16 +23,25 @@ const Designers = () => {
 
   const fetchDesigners = async () => {
     try {
+      setLoading(true);
+      setError(null);
+      
       const { data, error } = await supabase
         .from('designers')
         .select('*')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Fetched designers:', data);
       setDesigners(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching designers:', error);
+      setError(error.message || 'Failed to load designers');
     } finally {
       setLoading(false);
     }
@@ -74,6 +84,25 @@ const Designers = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading designers...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-lg mb-4">
+            <p className="font-medium">Error loading designers</p>
+            <p className="text-sm">{error}</p>
+          </div>
+          <button
+            onClick={fetchDesigners}
+            className="btn-primary"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
@@ -185,94 +214,105 @@ const Designers = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredDesigners.map((designer) => (
-                <div key={designer.id} className="card overflow-hidden">
-                  <div className="flex">
-                    <div className="w-1/3">
-                      <img
-                        src={designer.profile_image || 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=400'}
-                        alt={`${designer.name}'s work`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="w-2/3 p-6">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center">
-                            <span className="text-white font-semibold">
-                              {designer.name.charAt(0)}
+            {designers.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-lg mb-4">
+                  No designers found in the database.
+                </p>
+                <p className="text-gray-400 text-sm">
+                  Please check back later or contact support.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {filteredDesigners.map((designer) => (
+                  <div key={designer.id} className="card overflow-hidden">
+                    <div className="flex">
+                      <div className="w-1/3">
+                        <img
+                          src={designer.profile_image || 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                          alt={`${designer.name}'s profile`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="w-2/3 p-6">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center">
+                              <span className="text-white font-semibold">
+                                {designer.name.charAt(0)}
+                              </span>
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-secondary-800">
+                                {designer.name}
+                              </h3>
+                              <p className="text-primary-600 font-medium text-sm">
+                                {designer.specialization}
+                              </p>
+                            </div>
+                          </div>
+                          {designer.is_verified && (
+                            <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                              Verified
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                          {designer.bio || 'Professional interior designer with expertise in creating beautiful spaces.'}
+                        </p>
+
+                        <div className="flex items-center space-x-4 mb-4 text-sm text-gray-600">
+                          <div className="flex items-center space-x-1">
+                            <MapPin className="w-4 h-4" />
+                            <span>{designer.location}</span>
+                          </div>
+                          <span>•</span>
+                          <span>{designer.experience} years exp</span>
+                          <span>•</span>
+                          <span>{designer.total_projects} projects</span>
+                        </div>
+
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-2">
+                            <div className="flex items-center">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`w-4 h-4 ${
+                                    i < Math.floor(designer.rating)
+                                      ? 'text-yellow-400 fill-current'
+                                      : 'text-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-sm text-gray-600">
+                              {designer.rating.toFixed(1)} ({designer.total_reviews})
                             </span>
                           </div>
-                          <div>
-                            <h3 className="text-lg font-semibold text-secondary-800">
-                              {designer.name}
-                            </h3>
-                            <p className="text-primary-600 font-medium text-sm">
-                              {designer.specialization}
-                            </p>
-                          </div>
+                          {designer.starting_price && (
+                            <div className="text-lg font-semibold text-secondary-800">
+                              {designer.starting_price}
+                            </div>
+                          )}
                         </div>
-                        {designer.is_verified && (
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                            Verified
-                          </span>
-                        )}
+
+                        <Link
+                          to={`/designers/${designer.id}`}
+                          className="block w-full bg-primary-500 hover:bg-primary-600 text-white text-center py-2 rounded-lg font-medium transition-colors"
+                        >
+                          View Profile
+                        </Link>
                       </div>
-
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                        {designer.bio || 'Professional interior designer with expertise in creating beautiful spaces.'}
-                      </p>
-
-                      <div className="flex items-center space-x-4 mb-4 text-sm text-gray-600">
-                        <div className="flex items-center space-x-1">
-                          <MapPin className="w-4 h-4" />
-                          <span>{designer.location}</span>
-                        </div>
-                        <span>•</span>
-                        <span>{designer.experience} years exp</span>
-                        <span>•</span>
-                        <span>{designer.total_projects} projects</span>
-                      </div>
-
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-2">
-                          <div className="flex items-center">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-4 h-4 ${
-                                  i < Math.floor(designer.rating)
-                                    ? 'text-yellow-400 fill-current'
-                                    : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-sm text-gray-600">
-                            {designer.rating.toFixed(1)} ({designer.total_reviews})
-                          </span>
-                        </div>
-                        {designer.starting_price && (
-                          <div className="text-lg font-semibold text-secondary-800">
-                            {designer.starting_price}
-                          </div>
-                        )}
-                      </div>
-
-                      <Link
-                        to={`/designers/${designer.id}`}
-                        className="block w-full bg-primary-500 hover:bg-primary-600 text-white text-center py-2 rounded-lg font-medium transition-colors"
-                      >
-                        View Profile
-                      </Link>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
-            {filteredDesigners.length === 0 && (
+            {filteredDesigners.length === 0 && designers.length > 0 && (
               <div className="text-center py-12">
                 <p className="text-gray-500 text-lg">
                   No designers found matching your criteria. Try adjusting your filters.
