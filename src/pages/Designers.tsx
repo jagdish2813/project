@@ -38,15 +38,32 @@ const Designers = () => {
   };
 
   const filteredDesigners = designers.filter(designer => {
-    const matchesSearch = designer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         designer.specialization.toLowerCase().includes(searchTerm.toLowerCase());
+    // Search filter
+    const matchesSearch = !searchTerm || 
+      designer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      designer.specialization.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      designer.location.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // City filter
     const matchesCity = !selectedCity || designer.location === selectedCity;
+
+    // Specialization filter
     const matchesSpecialization = !selectedSpecialization || designer.specialization === selectedSpecialization;
-    const matchesExperience = !selectedExperience || (
-      (selectedExperience === '0-5 years' && designer.experience <= 5) ||
-      (selectedExperience === '5-10 years' && designer.experience > 5 && designer.experience <= 10) ||
-      (selectedExperience === '10+ years' && designer.experience > 10)
-    );
+
+    // Experience filter - fixed logic
+    const matchesExperience = !selectedExperience || (() => {
+      const experience = designer.experience;
+      switch (selectedExperience) {
+        case '0-5 years':
+          return experience >= 0 && experience <= 5;
+        case '5-10 years':
+          return experience > 5 && experience <= 10;
+        case '10+ years':
+          return experience > 10;
+        default:
+          return true;
+      }
+    })();
 
     return matchesSearch && matchesCity && matchesSpecialization && matchesExperience;
   });
@@ -164,7 +181,7 @@ const Designers = () => {
           <div className="lg:w-3/4">
             <div className="mb-6 flex justify-between items-center">
               <p className="text-gray-600">
-                Showing {filteredDesigners.length} designers
+                Showing {filteredDesigners.length} of {designers.length} designers
               </p>
             </div>
 
