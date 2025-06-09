@@ -27,8 +27,14 @@ if (!hasValidCredentials) {
   // Create a comprehensive mock client to prevent errors during development
   supabase = {
     auth: {
-      signUp: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
-      signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+      signUp: () => Promise.resolve({ 
+        data: { user: null, session: null }, 
+        error: { message: 'Please connect to Supabase to enable authentication. Click "Connect to Supabase" in the top right.' } 
+      }),
+      signInWithPassword: () => Promise.resolve({ 
+        data: { user: null, session: null }, 
+        error: { message: 'Please connect to Supabase to enable authentication. Click "Connect to Supabase" in the top right.' } 
+      }),
       signOut: () => Promise.resolve({ error: null }),
       getSession: () => Promise.resolve({ data: { session: null }, error: null }),
       getUser: () => Promise.resolve({ data: { user: null }, error: null }),
@@ -43,12 +49,21 @@ if (!hasValidCredentials) {
         order: (column: string, options?: any) => Promise.resolve({ data: [], error: null }),
         single: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
       }),
-      insert: (data: any) => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+      insert: (data: any) => Promise.resolve({ 
+        data: null, 
+        error: { message: 'Please connect to Supabase to enable database operations. Click "Connect to Supabase" in the top right.' } 
+      }),
       update: (data: any) => ({
-        eq: (column: string, value: any) => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
+        eq: (column: string, value: any) => Promise.resolve({ 
+          data: null, 
+          error: { message: 'Please connect to Supabase to enable database operations. Click "Connect to Supabase" in the top right.' } 
+        })
       }),
       delete: () => ({
-        eq: (column: string, value: any) => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
+        eq: (column: string, value: any) => Promise.resolve({ 
+          data: null, 
+          error: { message: 'Please connect to Supabase to enable database operations. Click "Connect to Supabase" in the top right.' } 
+        })
       })
     })
   };

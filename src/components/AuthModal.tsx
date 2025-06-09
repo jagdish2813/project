@@ -16,15 +16,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess('');
 
     try {
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -33,21 +35,57 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
             }
           }
         });
+        
         if (error) throw error;
-        alert('Check your email for the confirmation link!');
+        
+        if (data.user) {
+          setSuccess('Account created successfully! You can now sign in.');
+          // Switch to login mode after successful signup
+          setTimeout(() => {
+            onModeChange('login');
+            setSuccess('');
+          }, 2000);
+        }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
+        
         if (error) throw error;
+        
+        if (data.user) {
+          setSuccess('Signed in successfully!');
+          setTimeout(() => {
+            onClose();
+          }, 1000);
+        }
       }
-      onClose();
     } catch (error: any) {
-      setError(error.message);
+      console.error('Auth error:', error);
+      setError(error.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setEmail('');
+    setPassword('');
+    setName('');
+    setError('');
+    setSuccess('');
+    setShowPassword(false);
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
+  const handleModeChange = (newMode: 'login' | 'signup') => {
+    resetForm();
+    onModeChange(newMode);
   };
 
   if (!isOpen) return null;
@@ -60,7 +98,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
             {mode === 'login' ? 'Sign In' : 'Create Account'}
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
@@ -117,6 +155,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
                 className="pl-10 pr-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 placeholder="Enter your password"
                 required
+                minLength={6}
               />
               <button
                 type="button"
@@ -126,11 +165,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
+            {mode === 'signup' && (
+              <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters long</p>
+            )}
           </div>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg text-sm">
+              {success}
             </div>
           )}
 
@@ -147,7 +195,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
           <p className="text-gray-600">
             {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
             <button
-              onClick={() => onModeChange(mode === 'login' ? 'signup' : 'login')}
+              onClick={() => handleModeChange(mode === 'login' ? 'signup' : 'login')}
               className="ml-2 text-primary-600 hover:text-primary-700 font-medium"
             >
               {mode === 'login' ? 'Sign up' : 'Sign in'}
