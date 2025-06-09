@@ -19,11 +19,13 @@ const hasValidCredentials = supabaseUrl &&
   supabaseAnonKey !== 'your_supabase_anon_key_here' &&
   isValidUrl(supabaseUrl);
 
+let supabase: any;
+
 if (!hasValidCredentials) {
   console.warn('Supabase credentials not configured. Please click "Connect to Supabase" to set up your project.');
   
   // Create a mock client to prevent errors during development
-  export const supabase = {
+  supabase = {
     auth: {
       signUp: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
       signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
@@ -37,10 +39,12 @@ if (!hasValidCredentials) {
       update: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
       delete: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
     })
-  } as any;
+  };
 } else {
-  export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  supabase = createClient(supabaseUrl, supabaseAnonKey);
 }
+
+export { supabase };
 
 export type Designer = {
   id: string;
