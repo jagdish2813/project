@@ -1,83 +1,105 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Star, MapPin, Calendar, Award, Phone, Mail, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Star, MapPin, Calendar, Award, Phone, Mail, ArrowLeft, ExternalLink, User } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import type { Designer } from '../lib/supabase';
 
 const DesignerDetail = () => {
   const { id } = useParams();
+  const [designer, setDesigner] = useState<Designer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - in real app, fetch by id
-  const designer = {
-    id: 1,
-    name: 'Priya Sharma',
-    specialization: 'Modern & Contemporary',
-    experience: 8,
-    rating: 4.9,
-    reviews: 127,
-    location: 'Mumbai',
-    projects: 45,
-    startingPrice: '₹50,000',
-    image: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
-    bio: 'Priya Sharma is a renowned interior designer with over 8 years of experience in creating modern and contemporary living spaces. She specializes in clean lines, functional design, and creating spaces that reflect her clients\' personalities. Her work has been featured in leading home design magazines and she has won several awards for her innovative approach to residential design.',
-    phone: '+91 98765 43210',
-    email: 'priya@interiorcraft.com',
-    website: 'www.priyasharmadesigns.com',
-    services: [
-      '3D Visualization',
-      'Space Planning',
-      'Furniture Selection',
-      'Color Consultation',
-      'Project Management',
-      'Lighting Design'
-    ],
-    portfolio: [
-      {
-        id: 1,
-        title: 'Modern Mumbai Apartment',
-        image: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=400',
-        category: 'Residential'
-      },
-      {
-        id: 2,
-        title: 'Contemporary Office Space',
-        image: 'https://images.pexels.com/photos/1571468/pexels-photo-1571468.jpeg?auto=compress&cs=tinysrgb&w=400',
-        category: 'Commercial'
-      },
-      {
-        id: 3,
-        title: 'Minimalist Living Room',
-        image: 'https://images.pexels.com/photos/1643383/pexels-photo-1643383.jpeg?auto=compress&cs=tinysrgb&w=400',
-        category: 'Residential'
+  useEffect(() => {
+    if (id) {
+      fetchDesigner(id);
+    }
+  }, [id]);
+
+  const fetchDesigner = async (designerId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data, error } = await supabase
+        .from('designers')
+        .select('*')
+        .eq('id', designerId)
+        .eq('is_active', true)
+        .single();
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
       }
-    ],
-    testimonials: [
-      {
-        id: 1,
-        name: 'Rohit Malhotra',
-        rating: 5,
-        text: 'Priya transformed our apartment into a modern masterpiece. Her attention to detail and understanding of our needs was exceptional.',
-        project: 'Modern Mumbai Apartment'
-      },
-      {
-        id: 2,
-        name: 'Sneha Kapoor',
-        rating: 5,
-        text: 'Working with Priya was a dream. She delivered exactly what we envisioned and more. Highly recommended!',
-        project: 'Contemporary Villa'
-      },
-      {
-        id: 3,
-        name: 'Amit Sharma',
-        rating: 5,
-        text: 'Professional, creative, and efficient. Priya exceeded our expectations in every aspect of the project.',
-        project: 'Office Renovation'
-      }
-    ],
-    awards: [
-      'Best Residential Design 2023 - Mumbai Design Awards',
-      'Excellence in Interior Design 2022 - Indian Design Council',
-      'Rising Designer of the Year 2021 - Design India Magazine'
-    ]
+      
+      setDesigner(data);
+    } catch (error: any) {
+      console.error('Error fetching designer:', error);
+      setError(error.message || 'Failed to load designer details');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading designer details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !designer) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-lg mb-4">
+            <p className="font-medium">Error loading designer details</p>
+            <p className="text-sm">{error || 'Designer not found'}</p>
+          </div>
+          <Link to="/designers" className="btn-primary">
+            Back to Designers
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Mock testimonials and portfolio for now - these would come from separate tables in a real app
+  const mockTestimonials = [
+    {
+      id: 1,
+      name: 'Rohit Malhotra',
+      rating: 5,
+      text: `${designer.name} transformed our space into a beautiful home. Their attention to detail and understanding of our needs was exceptional.`,
+      project: 'Modern Home Design'
+    },
+    {
+      id: 2,
+      name: 'Sneha Kapoor',
+      rating: 5,
+      text: `Working with ${designer.name} was a dream. They delivered exactly what we envisioned and more. Highly recommended!`,
+      project: 'Contemporary Villa'
+    },
+    {
+      id: 3,
+      name: 'Amit Sharma',
+      rating: 5,
+      text: `Professional, creative, and efficient. ${designer.name} exceeded our expectations in every aspect of the project.`,
+      project: 'Office Renovation'
+    }
+  ];
+
+  const mockPortfolio = designer.portfolio_images.map((image, index) => ({
+    id: index + 1,
+    title: `Project ${index + 1}`,
+    image: image,
+    category: 'Residential'
+  }));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -98,16 +120,31 @@ const DesignerDetail = () => {
             {/* Designer Info */}
             <div className="bg-white rounded-xl shadow-lg p-8">
               <div className="flex flex-col md:flex-row items-start space-y-6 md:space-y-0 md:space-x-8">
-                <img
-                  src={designer.image}
-                  alt={designer.name}
-                  className="w-32 h-32 rounded-full object-cover mx-auto md:mx-0"
-                />
+                <div className="w-32 h-32 mx-auto md:mx-0 flex-shrink-0">
+                  {designer.profile_image ? (
+                    <img
+                      src={designer.profile_image}
+                      alt={designer.name}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-primary-500 rounded-full flex items-center justify-center">
+                      <User className="w-16 h-16 text-white" />
+                    </div>
+                  )}
+                </div>
                 
                 <div className="flex-1 text-center md:text-left">
-                  <h1 className="text-3xl font-bold text-secondary-800 mb-2">
-                    {designer.name}
-                  </h1>
+                  <div className="flex items-center justify-center md:justify-start space-x-3 mb-2">
+                    <h1 className="text-3xl font-bold text-secondary-800">
+                      {designer.name}
+                    </h1>
+                    {designer.is_verified && (
+                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                        Verified
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xl text-primary-600 font-medium mb-4">
                     {designer.specialization}
                   </p>
@@ -123,7 +160,7 @@ const DesignerDetail = () => {
                     </div>
                     <div className="flex items-center space-x-1">
                       <Award className="w-4 h-4" />
-                      <span>{designer.projects} projects completed</span>
+                      <span>{designer.total_projects} projects completed</span>
                     </div>
                   </div>
 
@@ -142,59 +179,79 @@ const DesignerDetail = () => {
                         ))}
                       </div>
                       <span className="font-semibold">{designer.rating}</span>
-                      <span className="text-gray-600">({designer.reviews} reviews)</span>
+                      <span className="text-gray-600">({designer.total_reviews} reviews)</span>
                     </div>
                   </div>
 
-                  <p className="text-gray-600 leading-relaxed">
-                    {designer.bio}
-                  </p>
+                  {designer.bio && (
+                    <p className="text-gray-600 leading-relaxed">
+                      {designer.bio}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Services */}
-            <div className="bg-white rounded-xl shadow-lg p-8">
-              <h2 className="text-2xl font-bold text-secondary-800 mb-6">Services Offered</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {designer.services.map((service, index) => (
-                  <div key={index} className="bg-primary-50 text-primary-800 px-4 py-3 rounded-lg text-center font-medium">
-                    {service}
-                  </div>
-                ))}
+            {designer.services && designer.services.length > 0 && (
+              <div className="bg-white rounded-xl shadow-lg p-8">
+                <h2 className="text-2xl font-bold text-secondary-800 mb-6">Services Offered</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {designer.services.map((service, index) => (
+                    <div key={index} className="bg-primary-50 text-primary-800 px-4 py-3 rounded-lg text-center font-medium">
+                      {service}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Portfolio */}
-            <div className="bg-white rounded-xl shadow-lg p-8">
-              <h2 className="text-2xl font-bold text-secondary-800 mb-6">Portfolio</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {designer.portfolio.map((project) => (
-                  <Link key={project.id} to={`/projects/${project.id}`} className="group">
-                    <div className="relative overflow-hidden rounded-lg">
-                      <img
-                        src={project.image}
-                        alt={project.title}
-                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                        <ExternalLink className="w-8 h-8 text-white" />
+            {mockPortfolio.length > 0 && (
+              <div className="bg-white rounded-xl shadow-lg p-8">
+                <h2 className="text-2xl font-bold text-secondary-800 mb-6">Portfolio</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {mockPortfolio.map((project) => (
+                    <div key={project.id} className="group relative">
+                      <div className="relative overflow-hidden rounded-lg">
+                        <img
+                          src={project.image}
+                          alt={project.title}
+                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                          <ExternalLink className="w-8 h-8 text-white" />
+                        </div>
                       </div>
+                      <h3 className="text-lg font-semibold text-secondary-800 mt-3 group-hover:text-primary-600 transition-colors">
+                        {project.title}
+                      </h3>
+                      <p className="text-gray-600">{project.category}</p>
                     </div>
-                    <h3 className="text-lg font-semibold text-secondary-800 mt-3 group-hover:text-primary-600 transition-colors">
-                      {project.title}
-                    </h3>
-                    <p className="text-gray-600">{project.category}</p>
-                  </Link>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Materials Expertise */}
+            {designer.materials_expertise && designer.materials_expertise.length > 0 && (
+              <div className="bg-white rounded-xl shadow-lg p-8">
+                <h2 className="text-2xl font-bold text-secondary-800 mb-6">Materials Expertise</h2>
+                <div className="flex flex-wrap gap-3">
+                  {designer.materials_expertise.map((material, index) => (
+                    <span key={index} className="bg-accent-100 text-accent-800 px-4 py-2 rounded-full text-sm font-medium">
+                      {material}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Testimonials */}
             <div className="bg-white rounded-xl shadow-lg p-8">
               <h2 className="text-2xl font-bold text-secondary-800 mb-6">Client Testimonials</h2>
               <div className="space-y-6">
-                {designer.testimonials.map((testimonial) => (
+                {mockTestimonials.map((testimonial) => (
                   <div key={testimonial.id} className="border-l-4 border-primary-500 pl-6">
                     <div className="flex items-center space-x-2 mb-2">
                       <div className="flex items-center">
@@ -225,21 +282,25 @@ const DesignerDetail = () => {
             <div className="bg-white rounded-xl shadow-lg p-6 sticky top-24">
               <h3 className="text-xl font-bold text-secondary-800 mb-4">Contact Designer</h3>
               
-              <div className="space-y-4 mb-6">
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-1">Starting from</p>
-                  <p className="text-2xl font-bold text-primary-600">{designer.startingPrice}</p>
+              {designer.starting_price && (
+                <div className="space-y-4 mb-6">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600 mb-1">Starting from</p>
+                    <p className="text-2xl font-bold text-primary-600">{designer.starting_price}</p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="space-y-3 mb-6">
-                <a
-                  href={`tel:${designer.phone}`}
-                  className="flex items-center space-x-3 text-gray-600 hover:text-primary-600 transition-colors"
-                >
-                  <Phone className="w-5 h-5" />
-                  <span>{designer.phone}</span>
-                </a>
+                {designer.phone && (
+                  <a
+                    href={`tel:${designer.phone}`}
+                    className="flex items-center space-x-3 text-gray-600 hover:text-primary-600 transition-colors"
+                  >
+                    <Phone className="w-5 h-5" />
+                    <span>{designer.phone}</span>
+                  </a>
+                )}
                 <a
                   href={`mailto:${designer.email}`}
                   className="flex items-center space-x-3 text-gray-600 hover:text-primary-600 transition-colors"
@@ -247,15 +308,17 @@ const DesignerDetail = () => {
                   <Mail className="w-5 h-5" />
                   <span>{designer.email}</span>
                 </a>
-                <a
-                  href={`https://${designer.website}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center space-x-3 text-gray-600 hover:text-primary-600 transition-colors"
-                >
-                  <ExternalLink className="w-5 h-5" />
-                  <span>{designer.website}</span>
-                </a>
+                {designer.website && (
+                  <a
+                    href={designer.website.startsWith('http') ? designer.website : `https://${designer.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-3 text-gray-600 hover:text-primary-600 transition-colors"
+                  >
+                    <ExternalLink className="w-5 h-5" />
+                    <span>{designer.website}</span>
+                  </a>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -269,17 +332,19 @@ const DesignerDetail = () => {
             </div>
 
             {/* Awards */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-xl font-bold text-secondary-800 mb-4">Awards & Recognition</h3>
-              <div className="space-y-3">
-                {designer.awards.map((award, index) => (
-                  <div key={index} className="flex items-start space-x-3">
-                    <Award className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-gray-600 text-sm">{award}</p>
-                  </div>
-                ))}
+            {designer.awards && designer.awards.length > 0 && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-xl font-bold text-secondary-800 mb-4">Awards & Recognition</h3>
+                <div className="space-y-3">
+                  {designer.awards.map((award, index) => (
+                    <div key={index} className="flex items-start space-x-3">
+                      <Award className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-gray-600 text-sm">{award}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
