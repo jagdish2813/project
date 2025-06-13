@@ -98,3 +98,26 @@ export type Designer = {
   created_at: string;
   updated_at: string;
 };
+
+export type Customer = {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  project_name: string;
+  property_type: string;
+  project_area?: string;
+  budget_range: string;
+  timeline: string;
+  requirements: string;
+  preferred_designer?: string;
+  layout_image_url?: string;
+  inspiration_links: string[];
+  room_types: string[];
+  special_requirements?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};

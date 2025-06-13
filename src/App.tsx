@@ -9,6 +9,7 @@ import Gallery from './pages/Gallery';
 import DesignerDetail from './pages/DesignerDetail';
 import ProjectDetail from './pages/ProjectDetail';
 import DesignerRegistration from './pages/DesignerRegistration';
+import CustomerRegistration from './pages/CustomerRegistration';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             <Route path="/projects/:id" element={<ProjectDetail />} />
             <Route path="/gallery" element={<Gallery />} />
             <Route path="/register-designer" element={<DesignerRegistration />} />
+            <Route path="/register-customer" element={<CustomerRegistration />} />
           </Routes>
         </main>
         <Footer />
