@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Mail, Phone, MapPin, Briefcase, Globe, IndianRupee, FileText, Award, Plus, X, Upload } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
 
 const DesignerRegistration = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -44,21 +45,22 @@ const DesignerRegistration = () => {
   ];
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/');
-        return;
-      }
-      setUser(user);
-      setFormData(prev => ({
-        ...prev,
-        email: user.email || '',
-        name: user.user_metadata?.name || ''
-      }));
-    };
-    getUser();
-  }, [navigate]);
+    // Wait for auth to load
+    if (authLoading) return;
+    
+    // If no user is authenticated, redirect to home
+    if (!user) {
+      navigate('/');
+      return;
+    }
+    
+    // Set user data in form
+    setFormData(prev => ({
+      ...prev,
+      email: user.email || '',
+      name: user.user_metadata?.name || ''
+    }));
+  }, [user, authLoading, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -120,6 +122,19 @@ const DesignerRegistration = () => {
     }
   };
 
+  // Show loading while auth is being determined
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If no user after auth loading is complete, show sign-in message
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

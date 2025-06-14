@@ -1,8 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Star, Award, Users, ArrowRight, Play, Palette, UserPlus } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import VideoModal from '../components/VideoModal';
 
 const Home = () => {
+  const { user } = useAuth();
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
   const featuredDesigners = [
     {
       id: 1,
@@ -42,6 +48,24 @@ const Home = () => {
     { icon: Star, label: 'Happy Clients', value: '10,000+' },
   ];
 
+  const handleDesignerRegistration = () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    // User is authenticated, proceed to registration
+    window.location.href = '/register-designer';
+  };
+
+  const handleCustomerRegistration = () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    // User is authenticated, proceed to registration
+    window.location.href = '/register-customer';
+  };
+
   return (
     <div className="gradient-bg">
       {/* Hero Section */}
@@ -61,7 +85,10 @@ const Home = () => {
                   Find Designers
                   <ArrowRight className="inline-block ml-2 w-5 h-5" />
                 </Link>
-                <button className="btn-secondary flex items-center justify-center">
+                <button 
+                  onClick={() => setShowVideoModal(true)}
+                  className="btn-secondary flex items-center justify-center"
+                >
                   <Play className="w-5 h-5 mr-2" />
                   Watch Our Story
                 </button>
@@ -144,9 +171,12 @@ const Home = () => {
                   <span>Build your reputation</span>
                 </li>
               </ul>
-              <Link to="/register-designer" className="btn-primary w-full">
+              <button 
+                onClick={handleDesignerRegistration}
+                className="btn-primary w-full"
+              >
                 Register as Designer
-              </Link>
+              </button>
             </div>
 
             {/* Customer Registration */}
@@ -176,9 +206,12 @@ const Home = () => {
                   <span>Track project progress</span>
                 </li>
               </ul>
-              <Link to="/register-customer" className="bg-secondary-500 hover:bg-secondary-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl w-full block">
+              <button 
+                onClick={handleCustomerRegistration}
+                className="bg-secondary-500 hover:bg-secondary-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl w-full"
+              >
                 Register Your Project
-              </Link>
+              </button>
             </div>
           </div>
         </div>
@@ -288,6 +321,42 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* Video Modal */}
+      <VideoModal 
+        isOpen={showVideoModal} 
+        onClose={() => setShowVideoModal(false)} 
+      />
+
+      {/* Auth Modal - You'll need to import and use your existing AuthModal component */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold text-secondary-800 mb-4">Sign In Required</h2>
+            <p className="text-gray-600 mb-6">
+              Please sign in to your account to register as a designer or submit a project.
+            </p>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowAuthModal(false);
+                  // Trigger the auth modal from Header component
+                  // You might need to pass this up to App level or use a global state
+                }}
+                className="flex-1 btn-primary"
+              >
+                Sign In
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

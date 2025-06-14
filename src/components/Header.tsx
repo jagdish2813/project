@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import AuthModal from './AuthModal';
@@ -10,6 +10,7 @@ const Header = () => {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
 
   const navigation = [
@@ -23,6 +24,28 @@ const Header = () => {
 
   const handleSignOut = async () => {
     await signOut();
+    setShowUserMenu(false);
+  };
+
+  const handleDesignerRegistration = () => {
+    if (!user) {
+      setAuthMode('login');
+      setShowAuthModal(true);
+      setShowUserMenu(false);
+      return;
+    }
+    navigate('/register-designer');
+    setShowUserMenu(false);
+  };
+
+  const handleCustomerRegistration = () => {
+    if (!user) {
+      setAuthMode('login');
+      setShowAuthModal(true);
+      setShowUserMenu(false);
+      return;
+    }
+    navigate('/register-customer');
     setShowUserMenu(false);
   };
 
@@ -74,22 +97,20 @@ const Header = () => {
 
                   {showUserMenu && (
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
-                      <Link
-                        to="/register-designer"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-                        onClick={() => setShowUserMenu(false)}
+                      <button
+                        onClick={handleDesignerRegistration}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
                       >
                         <Palette className="w-4 h-4" />
                         <span>Register as Designer</span>
-                      </Link>
-                      <Link
-                        to="/register-customer"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-                        onClick={() => setShowUserMenu(false)}
+                      </button>
+                      <button
+                        onClick={handleCustomerRegistration}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
                       >
                         <UserPlus className="w-4 h-4" />
                         <span>Register Your Project</span>
-                      </Link>
+                      </button>
                       <hr className="my-2" />
                       <button
                         onClick={handleSignOut}
@@ -160,22 +181,26 @@ const Header = () => {
                     <div className="px-3 py-2 text-sm text-gray-500">
                       Signed in as {user.user_metadata?.name || user.email}
                     </div>
-                    <Link
-                      to="/register-designer"
-                      className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
-                      onClick={() => setIsMenuOpen(false)}
+                    <button
+                      onClick={() => {
+                        handleDesignerRegistration();
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
                     >
                       <Palette className="w-4 h-4" />
                       <span>Register as Designer</span>
-                    </Link>
-                    <Link
-                      to="/register-customer"
-                      className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
-                      onClick={() => setIsMenuOpen(false)}
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleCustomerRegistration();
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
                     >
                       <UserPlus className="w-4 h-4" />
                       <span>Register Your Project</span>
-                    </Link>
+                    </button>
                     <button
                       onClick={() => {
                         handleSignOut();
