@@ -25,6 +25,7 @@ function App() {
             <Route path="/projects/:id" element={<ProjectDetail />} />
             <Route path="/gallery" element={<Gallery />} />
             <Route path="/register-designer" element={<DesignerRegistration />} />
+            <Route path="/edit-designer-profile" element={<DesignerRegistration />} />
             <Route path="/register-customer" element={<CustomerRegistration />} />
           </Routes>
         </main>
