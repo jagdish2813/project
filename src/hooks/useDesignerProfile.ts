@@ -34,7 +34,7 @@ export const useDesignerProfile = () => {
         .from('designers')
         .select('*')
         .eq('user_id', user.id)
-        .maybeSingle(); // Use maybeSingle instead of limit(1)
+        .maybeSingle();
 
       if (error) {
         console.error('Supabase error:', error);
@@ -54,25 +54,52 @@ export const useDesignerProfile = () => {
   };
 
   const updateDesignerProfile = async (updates: Partial<Designer>) => {
-    if (!user || !designer) return { error: 'No designer profile found' };
+    if (!user || !designer) {
+      console.error('Cannot update: missing user or designer', { user: !!user, designer: !!designer });
+      return { error: 'No designer profile found or user not authenticated' };
+    }
 
     try {
       console.log('Updating designer profile with:', updates);
+      console.log('Current designer ID:', designer.id);
+      console.log('Current user ID:', user.id);
       
+      // First, let's verify the designer exists and belongs to the current user
+      const { data: existingDesigner, error: checkError } = await supabase
+        .from('designers')
+        .select('*')
+        .eq('id', designer.id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (checkError) {
+        console.error('Error verifying designer ownership:', checkError);
+        return { error: 'Cannot verify designer ownership: ' + checkError.message };
+      }
+
+      if (!existingDesigner) {
+        console.error('Designer not found or does not belong to current user');
+        return { error: 'Designer profile not found or access denied' };
+      }
+
+      // Perform the update using the designer ID (more reliable than user_id)
       const { data, error } = await supabase
         .from('designers')
         .update(updates)
-        .eq('user_id', user.id)
+        .eq('id', designer.id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
 
       console.log('Profile updated successfully:', data);
       
       // Update local state with new data
       setDesigner(data);
-      return { error: null };
+      return { error: null, data };
     } catch (error: any) {
       console.error('Error updating designer profile:', error);
       return { error: error.message };

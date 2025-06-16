@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Briefcase, Globe, IndianRupee, FileText, Award, Plus, X, Upload, ArrowLeft, Save } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Briefcase, Globe, IndianRupee, FileText, Award, Plus, X, Upload, ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
@@ -11,6 +11,8 @@ const DesignerRegistration = () => {
   const { user, loading: authLoading } = useAuth();
   const { designer, loading: designerLoading, updateDesignerProfile } = useDesignerProfile();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   
   // Check if we're in edit mode based on URL
   const isEditMode = location.pathname === '/edit-designer-profile';
@@ -71,6 +73,8 @@ const DesignerRegistration = () => {
         return;
       }
       
+      console.log('Populating form with designer data:', designer);
+      
       // Populate form with existing designer data
       setFormData({
         name: designer.name || '',
@@ -103,6 +107,10 @@ const DesignerRegistration = () => {
       ...prev,
       [name]: value
     }));
+    
+    // Clear errors when user starts typing
+    if (error) setError(null);
+    if (success) setSuccess(null);
   };
 
   const handleArrayChange = (field: 'services' | 'materials_expertise' | 'awards', index: number, value: string) => {
@@ -126,11 +134,45 @@ const DesignerRegistration = () => {
     }));
   };
 
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      setError('Name is required');
+      return false;
+    }
+    if (!formData.email.trim()) {
+      setError('Email is required');
+      return false;
+    }
+    if (!formData.specialization) {
+      setError('Specialization is required');
+      return false;
+    }
+    if (!formData.experience || parseInt(formData.experience) < 0) {
+      setError('Valid experience is required');
+      return false;
+    }
+    if (!formData.location) {
+      setError('Location is required');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
+    // Clear previous messages
+    setError(null);
+    setSuccess(null);
+
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
+    
     try {
       // Filter out empty strings from arrays
       const cleanedData = {
@@ -141,15 +183,26 @@ const DesignerRegistration = () => {
         awards: formData.awards.filter(a => a.trim() !== '')
       };
 
+      console.log('Submitting form data:', cleanedData);
+
       if (isEditMode && designer) {
         // Update existing designer profile
-        const { error } = await updateDesignerProfile(cleanedData);
-        if (error) throw new Error(error);
+        console.log('Updating existing designer profile...');
+        const result = await updateDesignerProfile(cleanedData);
         
-        alert('Profile updated successfully!');
-        navigate(`/designers/${designer.id}`);
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        
+        setSuccess('Profile updated successfully!');
+        
+        // Navigate to profile after a short delay
+        setTimeout(() => {
+          navigate(`/designers/${designer.id}`);
+        }, 1500);
       } else {
         // Create new designer profile
+        console.log('Creating new designer profile...');
         const dataToInsert = {
           ...cleanedData,
           user_id: user.id
@@ -161,11 +214,16 @@ const DesignerRegistration = () => {
 
         if (error) throw error;
 
-        alert('Registration successful! Your profile is now live.');
-        navigate('/designers');
+        setSuccess('Registration successful! Your profile is now live.');
+        
+        // Navigate to designers page after a short delay
+        setTimeout(() => {
+          navigate('/designers');
+        }, 1500);
       }
     } catch (error: any) {
-      alert('Error: ' + error.message);
+      console.error('Form submission error:', error);
+      setError(error.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -245,6 +303,20 @@ const DesignerRegistration = () => {
             </p>
           </div>
 
+          {/* Error/Success Messages */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2">
+              <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6">
+              {success}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
             <div className="bg-gray-50 rounded-lg p-6">
@@ -279,7 +351,7 @@ const DesignerRegistration = () => {
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-100"
                       placeholder="Enter your email"
                       required
                       disabled
