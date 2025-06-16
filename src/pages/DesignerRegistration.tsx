@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Briefcase, Globe, IndianRupee, FileText, Award, Plus, X, Upload } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { User, Mail, Phone, MapPin, Briefcase, Globe, IndianRupee, FileText, Award, Plus, X, Upload, ArrowLeft, Save } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useDesignerProfile } from '../hooks/useDesignerProfile';
 
 const DesignerRegistration = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
+  const { designer, loading: designerLoading, updateDesignerProfile } = useDesignerProfile();
   const [loading, setLoading] = useState(false);
+  
+  // Check if we're in edit mode based on URL or state
+  const isEditMode = location.pathname === '/edit-designer-profile' || location.state?.editMode;
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -54,13 +61,41 @@ const DesignerRegistration = () => {
       return;
     }
     
-    // Set user data in form
-    setFormData(prev => ({
-      ...prev,
-      email: user.email || '',
-      name: user.user_metadata?.name || ''
-    }));
-  }, [user, authLoading, navigate]);
+    // If in edit mode, wait for designer data and populate form
+    if (isEditMode) {
+      if (designerLoading) return;
+      
+      if (!designer) {
+        // User is not a designer, redirect to home
+        navigate('/');
+        return;
+      }
+      
+      // Populate form with existing designer data
+      setFormData({
+        name: designer.name || '',
+        email: designer.email || '',
+        phone: designer.phone || '',
+        specialization: designer.specialization || '',
+        experience: designer.experience?.toString() || '',
+        location: designer.location || '',
+        bio: designer.bio || '',
+        website: designer.website || '',
+        starting_price: designer.starting_price || '',
+        profile_image: designer.profile_image || '',
+        services: designer.services && designer.services.length > 0 ? designer.services : [''],
+        materials_expertise: designer.materials_expertise && designer.materials_expertise.length > 0 ? designer.materials_expertise : [''],
+        awards: designer.awards && designer.awards.length > 0 ? designer.awards : ['']
+      });
+    } else {
+      // Registration mode - set user data in form
+      setFormData(prev => ({
+        ...prev,
+        email: user.email || '',
+        name: user.user_metadata?.name || ''
+      }));
+    }
+  }, [user, designer, authLoading, designerLoading, navigate, isEditMode]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -100,21 +135,35 @@ const DesignerRegistration = () => {
       // Filter out empty strings from arrays
       const cleanedData = {
         ...formData,
-        user_id: user.id,
         experience: parseInt(formData.experience),
         services: formData.services.filter(s => s.trim() !== ''),
         materials_expertise: formData.materials_expertise.filter(m => m.trim() !== ''),
         awards: formData.awards.filter(a => a.trim() !== '')
       };
 
-      const { error } = await supabase
-        .from('designers')
-        .insert([cleanedData]);
+      if (isEditMode && designer) {
+        // Update existing designer profile
+        const { error } = await updateDesignerProfile(cleanedData);
+        if (error) throw new Error(error);
+        
+        alert('Profile updated successfully!');
+        navigate(`/designers/${designer.id}`);
+      } else {
+        // Create new designer profile
+        const dataToInsert = {
+          ...cleanedData,
+          user_id: user.id
+        };
 
-      if (error) throw error;
+        const { error } = await supabase
+          .from('designers')
+          .insert([dataToInsert]);
 
-      alert('Registration successful! Your profile is now live.');
-      navigate('/designers');
+        if (error) throw error;
+
+        alert('Registration successful! Your profile is now live.');
+        navigate('/designers');
+      }
     } catch (error: any) {
       alert('Error: ' + error.message);
     } finally {
@@ -123,7 +172,7 @@ const DesignerRegistration = () => {
   };
 
   // Show loading while auth is being determined
-  if (authLoading) {
+  if (authLoading || (isEditMode && designerLoading)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -139,7 +188,27 @@ const DesignerRegistration = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Please sign in to register as a designer</h2>
+          <h2 className="text-2xl font-bold text-secondary-800 mb-4">
+            Please sign in to {isEditMode ? 'edit your profile' : 'register as a designer'}
+          </h2>
+          <button
+            onClick={() => navigate('/')}
+            className="btn-primary"
+          >
+            Go to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // If in edit mode but user is not a designer
+  if (isEditMode && !designer) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Access Denied</h2>
+          <p className="text-gray-600 mb-4">You need to be a registered designer to edit your profile.</p>
           <button
             onClick={() => navigate('/')}
             className="btn-primary"
@@ -156,11 +225,23 @@ const DesignerRegistration = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
+            {isEditMode && (
+              <button
+                onClick={() => navigate(`/designers/${designer?.id}`)}
+                className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Profile
+              </button>
+            )}
             <h1 className="text-3xl font-bold text-secondary-800 mb-4">
-              Register as Interior Designer
+              {isEditMode ? 'Edit Designer Profile' : 'Register as Interior Designer'}
             </h1>
             <p className="text-lg text-gray-600">
-              Join our platform and showcase your interior design expertise to thousands of potential clients
+              {isEditMode 
+                ? 'Update your professional information and portfolio details'
+                : 'Join our platform and showcase your interior design expertise to thousands of potential clients'
+              }
             </p>
           </div>
 
@@ -242,6 +323,26 @@ const DesignerRegistration = () => {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Profile Image URL
+                  </label>
+                  <div className="relative">
+                    <Upload className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="url"
+                      name="profile_image"
+                      value={formData.profile_image}
+                      onChange={handleInputChange}
+                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="https://example.com/your-photo.jpg"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Upload your professional photo to a cloud service and paste the URL here.
+                  </p>
                 </div>
               </div>
             </div>
@@ -442,13 +543,28 @@ const DesignerRegistration = () => {
             </div>
 
             {/* Submit Button */}
-            <div className="flex justify-center">
+            <div className="flex justify-center space-x-4">
+              {isEditMode && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/designers/${designer?.id}`)}
+                  className="px-8 py-3 text-lg border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
               <button
                 type="submit"
                 disabled={loading}
-                className="btn-primary px-12 py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary px-12 py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
-                {loading ? 'Registering...' : 'Register as Designer'}
+                {isEditMode ? <Save className="w-5 h-5" /> : null}
+                <span>
+                  {loading 
+                    ? (isEditMode ? 'Saving...' : 'Registering...') 
+                    : (isEditMode ? 'Save Changes' : 'Register as Designer')
+                  }
+                </span>
               </button>
             </div>
           </form>
