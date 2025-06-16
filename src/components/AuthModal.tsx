@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Mail, Lock, User, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AuthModalProps {
@@ -9,34 +9,178 @@ interface AuthModalProps {
   onModeChange: (mode: 'login' | 'signup') => void;
 }
 
+interface ValidationErrors {
+  name?: string;
+  email?: string;
+  password?: string;
+  general?: string;
+}
+
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChange }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<ValidationErrors>({});
   const [success, setSuccess] = useState('');
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup function to restore scroll when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
+  const validateName = (name: string): string | undefined => {
+    if (!name.trim()) {
+      return 'Full name is required';
+    }
+    if (name.trim().length < 2) {
+      return 'Name must be at least 2 characters long';
+    }
+    if (name.trim().length > 50) {
+      return 'Name must be less than 50 characters';
+    }
+    if (!/^[a-zA-Z\s]+$/.test(name.trim())) {
+      return 'Name can only contain letters and spaces';
+    }
+    return undefined;
+  };
+
+  const validateEmail = (email: string): string | undefined => {
+    if (!email.trim()) {
+      return 'Email address is required';
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return 'Please enter a valid email address';
+    }
+    if (email.length > 254) {
+      return 'Email address is too long';
+    }
+    return undefined;
+  };
+
+  const validatePassword = (password: string): string | undefined => {
+    if (!password) {
+      return 'Password is required';
+    }
+    if (password.length < 6) {
+      return 'Password must be at least 6 characters long';
+    }
+    if (password.length > 128) {
+      return 'Password must be less than 128 characters';
+    }
+    if (!/(?=.*[a-z])/.test(password)) {
+      return 'Password must contain at least one lowercase letter';
+    }
+    if (!/(?=.*[A-Z])/.test(password)) {
+      return 'Password must contain at least one uppercase letter';
+    }
+    if (!/(?=.*\d)/.test(password)) {
+      return 'Password must contain at least one number';
+    }
+    return undefined;
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: ValidationErrors = {};
+
+    // Validate email
+    const emailError = validateEmail(email);
+    if (emailError) {
+      newErrors.email = emailError;
+    }
+
+    // Validate password
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      newErrors.password = passwordError;
+    }
+
+    // Validate name for signup
+    if (mode === 'signup') {
+      const nameError = validateName(name);
+      if (nameError) {
+        newErrors.name = nameError;
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (field: 'name' | 'email' | 'password', value: string) => {
+    // Clear specific field error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+    
+    // Clear general error
+    if (errors.general) {
+      setErrors(prev => ({ ...prev, general: undefined }));
+    }
+
+    switch (field) {
+      case 'name':
+        setName(value);
+        break;
+      case 'email':
+        setEmail(value.toLowerCase().trim());
+        break;
+      case 'password':
+        setPassword(value);
+        break;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
+    
+    // Clear previous errors and success messages
+    setErrors({});
     setSuccess('');
+
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
 
     try {
       if (mode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: email.trim(),
           password,
           options: {
             data: {
-              name: name,
+              name: name.trim(),
             }
           }
         });
         
-        if (error) throw error;
+        if (error) {
+          // Handle specific Supabase errors
+          if (error.message.includes('User already registered')) {
+            setErrors({ email: 'An account with this email already exists' });
+          } else if (error.message.includes('Invalid email')) {
+            setErrors({ email: 'Please enter a valid email address' });
+          } else if (error.message.includes('Password')) {
+            setErrors({ password: error.message });
+          } else {
+            setErrors({ general: error.message });
+          }
+          return;
+        }
         
         if (data.user) {
           setSuccess('Account created successfully! You can now sign in.');
@@ -44,15 +188,30 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
           setTimeout(() => {
             onModeChange('login');
             setSuccess('');
+            setEmail(email); // Keep email for convenience
+            setPassword('');
+            setName('');
           }, 2000);
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
-          email,
+          email: email.trim(),
           password,
         });
         
-        if (error) throw error;
+        if (error) {
+          // Handle specific Supabase errors
+          if (error.message.includes('Invalid login credentials')) {
+            setErrors({ general: 'Invalid email or password. Please check your credentials and try again.' });
+          } else if (error.message.includes('Email not confirmed')) {
+            setErrors({ general: 'Please check your email and click the confirmation link before signing in.' });
+          } else if (error.message.includes('Too many requests')) {
+            setErrors({ general: 'Too many login attempts. Please wait a moment before trying again.' });
+          } else {
+            setErrors({ general: error.message });
+          }
+          return;
+        }
         
         if (data.user) {
           setSuccess('Signed in successfully!');
@@ -63,7 +222,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
       }
     } catch (error: any) {
       console.error('Auth error:', error);
-      setError(error.message || 'An unexpected error occurred');
+      setErrors({ general: 'An unexpected error occurred. Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -73,7 +232,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
     setEmail('');
     setPassword('');
     setName('');
-    setError('');
+    setErrors({});
     setSuccess('');
     setShowPassword(false);
   };
@@ -92,7 +251,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl max-w-md w-full p-6">
+      <div className="bg-white rounded-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-secondary-800">
             {mode === 'login' ? 'Sign In' : 'Create Account'}
@@ -109,53 +268,70 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
           {mode === 'signup' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Full Name
+                Full Name *
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  className={`pl-10 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                    errors.name ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Enter your full name"
                   required
                 />
               </div>
+              {errors.name && (
+                <div className="flex items-center space-x-1 mt-1">
+                  <AlertCircle className="w-4 h-4 text-red-500" />
+                  <p className="text-sm text-red-600">{errors.name}</p>
+                </div>
+              )}
             </div>
           )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address
+              Email Address *
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                className={`pl-10 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                  errors.email ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter your email"
                 required
               />
             </div>
+            {errors.email && (
+              <div className="flex items-center space-x-1 mt-1">
+                <AlertCircle className="w-4 h-4 text-red-500" />
+                <p className="text-sm text-red-600">{errors.email}</p>
+              </div>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password
+              Password *
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-10 pr-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                onChange={(e) => handleInputChange('password', e.target.value)}
+                className={`pl-10 pr-10 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                  errors.password ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter your password"
                 required
-                minLength={6}
               />
               <button
                 type="button"
@@ -165,14 +341,25 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-            {mode === 'signup' && (
-              <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters long</p>
+            {errors.password && (
+              <div className="flex items-center space-x-1 mt-1">
+                <AlertCircle className="w-4 h-4 text-red-500" />
+                <p className="text-sm text-red-600">{errors.password}</p>
+              </div>
+            )}
+            {mode === 'signup' && !errors.password && (
+              <div className="mt-1">
+                <p className="text-xs text-gray-500">
+                  Password must contain at least 6 characters with uppercase, lowercase, and numbers
+                </p>
+              </div>
             )}
           </div>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
-              {error}
+          {errors.general && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>{errors.general}</span>
             </div>
           )}
 
