@@ -24,6 +24,7 @@ export const useDesignerProfile = () => {
       
       console.log('Fetching designer profile for user:', user.id, user.email);
       
+      // Only fetch designer data - no customers call needed here
       const { data, error } = await supabase
         .from('designers')
         .select('*')
