@@ -12,8 +12,8 @@ const DesignerRegistration = () => {
   const { designer, loading: designerLoading, updateDesignerProfile } = useDesignerProfile();
   const [loading, setLoading] = useState(false);
   
-  // Check if we're in edit mode based on URL or state
-  const isEditMode = location.pathname === '/edit-designer-profile' || location.state?.editMode;
+  // Check if we're in edit mode based on URL
+  const isEditMode = location.pathname === '/edit-designer-profile';
   
   const [formData, setFormData] = useState({
     name: '',
@@ -203,7 +203,7 @@ const DesignerRegistration = () => {
   }
 
   // If in edit mode but user is not a designer
-  if (isEditMode && !designer) {
+  if (isEditMode && !designerLoading && !designer) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -225,9 +225,9 @@ const DesignerRegistration = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
-            {isEditMode && (
+            {isEditMode && designer && (
               <button
-                onClick={() => navigate(`/designers/${designer?.id}`)}
+                onClick={() => navigate(`/designers/${designer.id}`)}
                 className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />

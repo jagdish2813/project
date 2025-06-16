@@ -19,7 +19,10 @@ export const useDesignerProfile = () => {
   }, [user]);
 
   const fetchDesignerProfile = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -36,7 +39,8 @@ export const useDesignerProfile = () => {
           // No designer profile found - this is expected for non-designers
           setDesigner(null);
         } else {
-          throw error;
+          console.error('Supabase error:', error);
+          setError(error.message);
         }
       } else {
         setDesigner(data);
@@ -44,6 +48,7 @@ export const useDesignerProfile = () => {
     } catch (error: any) {
       console.error('Error fetching designer profile:', error);
       setError(error.message);
+      setDesigner(null);
     } finally {
       setLoading(false);
     }
