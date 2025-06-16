@@ -28,24 +28,21 @@ export const useDesignerProfile = () => {
       setLoading(true);
       setError(null);
       
+      console.log('Fetching designer profile for user:', user.id, user.email);
+      
       const { data, error } = await supabase
         .from('designers')
         .select('*')
         .eq('user_id', user.id)
-        .limit(1);
+        .maybeSingle(); // Use maybeSingle instead of limit(1)
 
       if (error) {
         console.error('Supabase error:', error);
         setError(error.message);
         setDesigner(null);
       } else {
-        // Check if data array contains any elements
-        if (data && data.length > 0) {
-          setDesigner(data[0]);
-        } else {
-          // No designer profile found - this is expected for non-designers
-          setDesigner(null);
-        }
+        console.log('Designer profile data:', data);
+        setDesigner(data);
       }
     } catch (error: any) {
       console.error('Error fetching designer profile:', error);
@@ -60,15 +57,21 @@ export const useDesignerProfile = () => {
     if (!user || !designer) return { error: 'No designer profile found' };
 
     try {
-      const { error } = await supabase
+      console.log('Updating designer profile with:', updates);
+      
+      const { data, error } = await supabase
         .from('designers')
         .update(updates)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select()
+        .single();
 
       if (error) throw error;
 
-      // Refresh the profile data
-      await fetchDesignerProfile();
+      console.log('Profile updated successfully:', data);
+      
+      // Update local state with new data
+      setDesigner(data);
       return { error: null };
     } catch (error: any) {
       console.error('Error updating designer profile:', error);
