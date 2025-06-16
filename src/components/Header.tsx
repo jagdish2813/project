@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus } from 'lucide-react';
+import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus, Edit } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import AuthModal from './AuthModal';
 
 const Header = () => {
@@ -12,6 +13,7 @@ const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { designer, isDesigner, loading: designerLoading } = useDesignerProfile();
 
   const navigation = [
     { name: 'Home', href: '/', icon: HomeIcon },
@@ -46,6 +48,20 @@ const Header = () => {
       return;
     }
     navigate('/register-customer');
+    setShowUserMenu(false);
+  };
+
+  const handleViewProfile = () => {
+    if (designer) {
+      navigate(`/designers/${designer.id}`);
+    }
+    setShowUserMenu(false);
+  };
+
+  const handleEditProfile = () => {
+    if (designer) {
+      navigate('/edit-designer-profile');
+    }
     setShowUserMenu(false);
   };
 
@@ -97,13 +113,36 @@ const Header = () => {
 
                   {showUserMenu && (
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
-                      <button
-                        onClick={handleDesignerRegistration}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-                      >
-                        <Palette className="w-4 h-4" />
-                        <span>Register as Designer</span>
-                      </button>
+                      {!designerLoading && (
+                        <>
+                          {isDesigner ? (
+                            <>
+                              <button
+                                onClick={handleViewProfile}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                              >
+                                <User className="w-4 h-4" />
+                                <span>View Profile</span>
+                              </button>
+                              <button
+                                onClick={handleEditProfile}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                              >
+                                <Edit className="w-4 h-4" />
+                                <span>Edit Profile</span>
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={handleDesignerRegistration}
+                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                            >
+                              <Palette className="w-4 h-4" />
+                              <span>Register as Designer</span>
+                            </button>
+                          )}
+                        </>
+                      )}
                       <button
                         onClick={handleCustomerRegistration}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
@@ -181,16 +220,45 @@ const Header = () => {
                     <div className="px-3 py-2 text-sm text-gray-500">
                       Signed in as {user.user_metadata?.name || user.email}
                     </div>
-                    <button
-                      onClick={() => {
-                        handleDesignerRegistration();
-                        setIsMenuOpen(false);
-                      }}
-                      className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
-                    >
-                      <Palette className="w-4 h-4" />
-                      <span>Register as Designer</span>
-                    </button>
+                    {!designerLoading && (
+                      <>
+                        {isDesigner ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                handleViewProfile();
+                                setIsMenuOpen(false);
+                              }}
+                              className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                            >
+                              <User className="w-4 h-4" />
+                              <span>View Profile</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleEditProfile();
+                                setIsMenuOpen(false);
+                              }}
+                              className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                            >
+                              <Edit className="w-4 h-4" />
+                              <span>Edit Profile</span>
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              handleDesignerRegistration();
+                              setIsMenuOpen(false);
+                            }}
+                            className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                          >
+                            <Palette className="w-4 h-4" />
+                            <span>Register as Designer</span>
+                          </button>
+                        )}
+                      </>
+                    )}
                     <button
                       onClick={() => {
                         handleCustomerRegistration();
