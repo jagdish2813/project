@@ -119,12 +119,59 @@ export const useDesignerProfile = () => {
     }
   };
 
+  const createDesignerProfile = async (profileData: Omit<Designer, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    if (!user) {
+      return { error: 'User not authenticated' };
+    }
+
+    try {
+      console.log('Creating new designer profile for user:', user.id);
+      
+      // Check if designer profile already exists
+      const { data: existingDesigner } = await supabase
+        .from('designers')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existingDesigner) {
+        return { error: 'Designer profile already exists for this user' };
+      }
+
+      const dataToInsert = {
+        ...profileData,
+        user_id: user.id
+      };
+
+      const { data, error } = await supabase
+        .from('designers')
+        .insert([dataToInsert])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Create error:', error);
+        throw error;
+      }
+
+      console.log('Designer profile created successfully:', data);
+      
+      // Update local state with new data
+      setDesigner(data);
+      return { error: null, data };
+    } catch (error: any) {
+      console.error('Error creating designer profile:', error);
+      return { error: error.message };
+    }
+  };
+
   return {
     designer,
     loading,
     error,
     isDesigner: !!designer,
     updateDesignerProfile,
+    createDesignerProfile,
     refreshProfile: fetchDesignerProfile
   };
 };

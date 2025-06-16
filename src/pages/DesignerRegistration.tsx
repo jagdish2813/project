@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Mail, Phone, MapPin, Briefcase, Globe, IndianRupee, FileText, Award, Plus, X, Upload, ArrowLeft, Save, AlertCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 
@@ -9,7 +8,7 @@ const DesignerRegistration = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
-  const { designer, loading: designerLoading, updateDesignerProfile } = useDesignerProfile();
+  const { designer, loading: designerLoading, updateDesignerProfile, createDesignerProfile } = useDesignerProfile();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -219,16 +218,11 @@ const DesignerRegistration = () => {
       } else {
         // Create new designer profile
         console.log('Creating new designer profile...');
-        const dataToInsert = {
-          ...cleanedData,
-          user_id: user.id
-        };
+        const result = await createDesignerProfile(cleanedData);
 
-        const { error } = await supabase
-          .from('designers')
-          .insert([dataToInsert]);
-
-        if (error) throw error;
+        if (result.error) {
+          throw new Error(result.error);
+        }
 
         setSuccess('Registration successful! Your profile is now live.');
         
@@ -653,8 +647,8 @@ const DesignerRegistration = () => {
                 {isEditMode ? <Save className="w-5 h-5" /> : null}
                 <span>
                   {loading 
-                    ? (isEditMode ? 'Saving...' : 'Registering...') 
-                    : (isEditMode ? 'Save Changes' : 'Register as Designer')
+                    ? (isEditMode ? 'Updating Profile...' : 'Registering...') 
+                    : (isEditMode ? 'Update Profile' : 'Register as Designer')
                   }
                 </span>
               </button>
