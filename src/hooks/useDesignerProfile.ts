@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import type { Designer } from '../lib/supabase';
@@ -9,18 +9,12 @@ export const useDesignerProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      fetchDesignerProfile();
-    } else {
+  const fetchDesignerProfile = useCallback(async () => {
+    if (!user) {
+      console.log('No user found, resetting designer state');
       setDesigner(null);
       setLoading(false);
-    }
-  }, [user]);
-
-  const fetchDesignerProfile = async () => {
-    if (!user) {
-      setLoading(false);
+      setError(null);
       return;
     }
 
@@ -43,6 +37,19 @@ export const useDesignerProfile = () => {
       } else {
         console.log('Designer profile data:', data);
         setDesigner(data);
+        
+        // Additional logging for debugging
+        if (data) {
+          console.log('Designer found:', {
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            user_id: data.user_id,
+            is_active: data.is_active
+          });
+        } else {
+          console.log('No designer profile found for user');
+        }
       }
     } catch (error: any) {
       console.error('Error fetching designer profile:', error);
@@ -51,7 +58,11 @@ export const useDesignerProfile = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchDesignerProfile();
+  }, [fetchDesignerProfile]);
 
   const updateDesignerProfile = async (updates: Partial<Designer>) => {
     if (!user || !designer) {
@@ -81,6 +92,8 @@ export const useDesignerProfile = () => {
         console.error('Designer not found or does not belong to current user');
         return { error: 'Designer profile not found or access denied' };
       }
+
+      console.log('Designer ownership verified, proceeding with update');
 
       // Perform the update using the designer ID (more reliable than user_id)
       const { data, error } = await supabase

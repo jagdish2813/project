@@ -13,6 +13,7 @@ const DesignerRegistration = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [formInitialized, setFormInitialized] = useState(false);
   
   // Check if we're in edit mode based on URL
   const isEditMode = location.pathname === '/edit-designer-profile';
@@ -55,19 +56,31 @@ const DesignerRegistration = () => {
 
   useEffect(() => {
     // Wait for auth to load
-    if (authLoading) return;
+    if (authLoading) {
+      console.log('Auth still loading...');
+      return;
+    }
     
     // If no user is authenticated, redirect to home
     if (!user) {
+      console.log('No user found, redirecting to home');
       navigate('/');
       return;
     }
     
+    console.log('User found:', user.email);
+    
     // If in edit mode, wait for designer data and populate form
     if (isEditMode) {
-      if (designerLoading) return;
+      console.log('Edit mode detected, designer loading:', designerLoading);
+      
+      if (designerLoading) {
+        console.log('Designer data still loading...');
+        return;
+      }
       
       if (!designer) {
+        console.log('No designer profile found, redirecting to home');
         // User is not a designer, redirect to home
         navigate('/');
         return;
@@ -91,13 +104,16 @@ const DesignerRegistration = () => {
         materials_expertise: designer.materials_expertise && designer.materials_expertise.length > 0 ? designer.materials_expertise : [''],
         awards: designer.awards && designer.awards.length > 0 ? designer.awards : ['']
       });
+      setFormInitialized(true);
     } else {
+      console.log('Registration mode - setting user data');
       // Registration mode - set user data in form
       setFormData(prev => ({
         ...prev,
         email: user.email || '',
         name: user.user_metadata?.name || ''
       }));
+      setFormInitialized(true);
     }
   }, [user, designer, authLoading, designerLoading, navigate, isEditMode]);
 
@@ -229,13 +245,17 @@ const DesignerRegistration = () => {
     }
   };
 
-  // Show loading while auth is being determined
-  if (authLoading || (isEditMode && designerLoading)) {
+  // Show loading while auth or designer data is being determined
+  if (authLoading || (isEditMode && designerLoading) || !formInitialized) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">
+            {authLoading ? 'Loading user...' : 
+             designerLoading ? 'Loading designer profile...' : 
+             'Initializing form...'}
+          </p>
         </div>
       </div>
     );
