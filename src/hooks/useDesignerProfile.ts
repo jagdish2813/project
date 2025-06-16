@@ -32,18 +32,20 @@ export const useDesignerProfile = () => {
         .from('designers')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .limit(1);
 
       if (error) {
-        if (error.code === 'PGRST116') {
+        console.error('Supabase error:', error);
+        setError(error.message);
+        setDesigner(null);
+      } else {
+        // Check if data array contains any elements
+        if (data && data.length > 0) {
+          setDesigner(data[0]);
+        } else {
           // No designer profile found - this is expected for non-designers
           setDesigner(null);
-        } else {
-          console.error('Supabase error:', error);
-          setError(error.message);
         }
-      } else {
-        setDesigner(data);
       }
     } catch (error: any) {
       console.error('Error fetching designer profile:', error);
