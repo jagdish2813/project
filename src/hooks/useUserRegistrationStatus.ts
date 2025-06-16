@@ -31,19 +31,26 @@ export const useUserRegistrationStatus = () => {
           console.error('Error checking designer profile:', designerError);
         }
 
-        // Check if user has submitted a customer project
-        const { data: customerData, error: customerError } = await supabase
-          .from('customers')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (customerError && customerError.code !== 'PGRST116') {
-          console.error('Error checking customer projects:', customerError);
-        }
-
         setHasDesignerProfile(!!designerData);
-        setHasCustomerProject(!!customerData);
+
+        // Only check customer projects if user is NOT a designer
+        // This prevents unnecessary calls when designers are editing their profiles
+        if (!designerData) {
+          const { data: customerData, error: customerError } = await supabase
+            .from('customers')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (customerError && customerError.code !== 'PGRST116') {
+            console.error('Error checking customer projects:', customerError);
+          }
+
+          setHasCustomerProject(!!customerData);
+        } else {
+          // User is a designer, so we don't need to check customer projects
+          setHasCustomerProject(false);
+        }
       } catch (error) {
         console.error('Error checking registration status:', error);
       } finally {
