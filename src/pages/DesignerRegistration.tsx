@@ -324,26 +324,6 @@ const DesignerRegistration = () => {
                     </select>
                   </div>
                 </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Profile Image URL
-                  </label>
-                  <div className="relative">
-                    <Upload className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="url"
-                      name="profile_image"
-                      value={formData.profile_image}
-                      onChange={handleInputChange}
-                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="https://example.com/your-photo.jpg"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Upload your professional photo to a cloud service and paste the URL here.
-                  </p>
-                </div>
               </div>
             </div>
 
@@ -421,6 +401,26 @@ const DesignerRegistration = () => {
                       placeholder="₹50,000"
                     />
                   </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Profile Image URL
+                  </label>
+                  <div className="relative">
+                    <Upload className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="url"
+                      name="profile_image"
+                      value={formData.profile_image}
+                      onChange={handleInputChange}
+                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="https://example.com/your-photo.jpg"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Upload your professional photo to a cloud service and paste the URL here.
+                  </p>
                 </div>
               </div>
 
