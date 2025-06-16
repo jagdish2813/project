@@ -56,7 +56,10 @@ export const useDesignerProfile = () => {
       setError(error.message);
       setDesigner(null);
     } finally {
-      setLoading(false);
+      // Add 100ms delay before setting loading to false
+      setTimeout(() => {
+        setLoading(false);
+      }, 100);
     }
   }, [user]);
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus, Edit } from 'lucide-react';
+import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus, Edit, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import AuthModal from './AuthModal';
@@ -10,6 +10,7 @@ const Header = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [editProfileLoading, setEditProfileLoading] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -60,9 +61,14 @@ const Header = () => {
 
   const handleEditProfile = () => {
     if (designer) {
-      navigate('/edit-designer-profile');
+      setEditProfileLoading(true);
+      // Show loading indicator for a brief moment before navigation
+      setTimeout(() => {
+        navigate('/edit-designer-profile');
+        setEditProfileLoading(false);
+        setShowUserMenu(false);
+      }, 200);
     }
-    setShowUserMenu(false);
   };
 
   return (
@@ -113,7 +119,12 @@ const Header = () => {
 
                   {showUserMenu && (
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
-                      {!designerLoading && (
+                      {designerLoading ? (
+                        <div className="px-4 py-2 text-sm text-gray-500 flex items-center space-x-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Loading profile...</span>
+                        </div>
+                      ) : (
                         <>
                           {isDesigner ? (
                             <>
@@ -126,10 +137,15 @@ const Header = () => {
                               </button>
                               <button
                                 onClick={handleEditProfile}
-                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                                disabled={editProfileLoading}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2 disabled:opacity-50"
                               >
-                                <Edit className="w-4 h-4" />
-                                <span>Edit Profile</span>
+                                {editProfileLoading ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Edit className="w-4 h-4" />
+                                )}
+                                <span>{editProfileLoading ? 'Loading...' : 'Edit Profile'}</span>
                               </button>
                             </>
                           ) : (
@@ -220,7 +236,12 @@ const Header = () => {
                     <div className="px-3 py-2 text-sm text-gray-500">
                       Signed in as {user.user_metadata?.name || user.email}
                     </div>
-                    {!designerLoading && (
+                    {designerLoading ? (
+                      <div className="px-3 py-2 text-sm text-gray-500 flex items-center space-x-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Loading profile...</span>
+                      </div>
+                    ) : (
                       <>
                         {isDesigner ? (
                           <>
@@ -236,13 +257,22 @@ const Header = () => {
                             </button>
                             <button
                               onClick={() => {
-                                handleEditProfile();
-                                setIsMenuOpen(false);
+                                setEditProfileLoading(true);
+                                setTimeout(() => {
+                                  handleEditProfile();
+                                  setIsMenuOpen(false);
+                                  setEditProfileLoading(false);
+                                }, 200);
                               }}
-                              className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                              disabled={editProfileLoading}
+                              className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2 disabled:opacity-50"
                             >
-                              <Edit className="w-4 h-4" />
-                              <span>Edit Profile</span>
+                              {editProfileLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Edit className="w-4 h-4" />
+                              )}
+                              <span>{editProfileLoading ? 'Loading...' : 'Edit Profile'}</span>
                             </button>
                           </>
                         ) : (
@@ -274,7 +304,7 @@ const Header = () => {
                         handleSignOut();
                         setIsMenuOpen(false);
                       }}
-                      className="w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50"
+                      className="w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-primary-50"
                     >
                       Sign Out
                     </button>
