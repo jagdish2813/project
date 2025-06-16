@@ -35,7 +35,7 @@ export const useUserRegistrationStatus = () => {
 
         // Only check customer projects if user is NOT a designer
         // This prevents unnecessary calls when designers are editing their profiles
-        if (!designerData) {
+ /*       if (!designerData) {
           const { data: customerData, error: customerError } = await supabase
             .from('customers')
             .select('id')
@@ -47,10 +47,10 @@ export const useUserRegistrationStatus = () => {
           }
 
           setHasCustomerProject(!!customerData);
-        } else {
+        } else { */
           // User is a designer, so we don't need to check customer projects
           setHasCustomerProject(false);
-        }
+      //  }
       } catch (error) {
         console.error('Error checking registration status:', error);
       } finally {
