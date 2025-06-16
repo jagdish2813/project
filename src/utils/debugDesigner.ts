@@ -1,27 +1,29 @@
 // Debug utility to check designer profile status
 import { supabase } from '../lib/supabase';
 
-export const debugDesignerProfile = async (email: string) => {
+export const debugDesignerProfile = async (email?: string) => {
   try {
-    console.log(`Debugging designer profile for email: ${email}`);
+    // Get the currently authenticated user instead of using admin functions
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    // First, check if user exists in auth
-    const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
-    
-    if (usersError) {
-      console.error('Error fetching users:', usersError);
-      return;
+    if (userError) {
+      console.error('Error getting current user:', userError);
+      return { error: 'Error getting current user: ' + userError.message };
     }
     
-    const user = users?.find(u => u.email === email);
     if (!user) {
-      console.log('User not found in auth system');
-      return;
+      console.log('No authenticated user found');
+      return { error: 'No authenticated user found. Please log in first.' };
     }
     
-    console.log('User found:', { id: user.id, email: user.email, name: user.user_metadata?.name });
+    console.log('Current user:', { id: user.id, email: user.email, name: user.user_metadata?.name });
     
-    // Check if designer profile exists
+    // If email is provided and doesn't match current user, show warning
+    if (email && email !== user.email) {
+      console.warn(`Email ${email} provided but current user is ${user.email}. Debugging current user instead.`);
+    }
+    
+    // Check if designer profile exists for current user
     const { data: designers, error: designersError } = await supabase
       .from('designers')
       .select('*')
@@ -29,27 +31,50 @@ export const debugDesignerProfile = async (email: string) => {
     
     if (designersError) {
       console.error('Error fetching designer profile:', designersError);
-      return;
+      return { error: 'Error fetching designer profile: ' + designersError.message };
     }
     
     if (designers && designers.length > 0) {
       console.log('Designer profile found:', designers[0]);
+      return { user, designer: designers[0], message: 'Designer profile found' };
     } else {
       console.log('No designer profile found for this user');
+      return { user, designer: null, message: 'No designer profile found for current user' };
     }
-    
-    return { user, designers };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Debug error:', error);
+    return { error: 'Debug error: ' + error.message };
   }
 };
 
-export const createDesignerProfile = async (userId: string, email: string, name: string) => {
+export const createDesignerProfile = async () => {
   try {
+    // Get the currently authenticated user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      return { error: 'No authenticated user found. Please log in first.' };
+    }
+
+    // Check if designer profile already exists
+    const { data: existingDesigner, error: checkError } = await supabase
+      .from('designers')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      return { error: 'Error checking existing profile: ' + checkError.message };
+    }
+
+    if (existingDesigner) {
+      return { error: 'Designer profile already exists', designer: existingDesigner };
+    }
+
     const designerData = {
-      user_id: userId,
-      name: name || 'Jagdish Apte',
-      email: email,
+      user_id: user.id,
+      name: user.user_metadata?.name || user.email?.split('@')[0] || 'Designer',
+      email: user.email!,
       phone: '+91 98765 43218',
       specialization: 'Modern & Contemporary',
       experience: 5,
@@ -77,13 +102,13 @@ export const createDesignerProfile = async (userId: string, email: string, name:
 
     if (error) {
       console.error('Error creating designer profile:', error);
-      return { error };
+      return { error: 'Error creating designer profile: ' + error.message };
     }
 
     console.log('Designer profile created successfully:', data);
-    return { data, error: null };
+    return { data, error: null, message: 'Designer profile created successfully!' };
   } catch (error: any) {
     console.error('Error in createDesignerProfile:', error);
-    return { error: error.message };
+    return { error: 'Unexpected error: ' + error.message };
   }
 };

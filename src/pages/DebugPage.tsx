@@ -1,20 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { debugDesignerProfile, createDesignerProfile } from '../utils/debugDesigner';
 import { supabase } from '../lib/supabase';
 
 const DebugPage = () => {
-  const [email, setEmail] = useState('som2813@gmail.com');
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Get current user on component mount
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+    getCurrentUser();
+  }, []);
 
   const handleDebug = async () => {
     setLoading(true);
     try {
-      const result = await debugDesignerProfile(email);
+      const result = await debugDesignerProfile();
       setResult(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Debug error:', error);
-      setResult({ error: error });
+      setResult({ error: error.message || 'Unknown error occurred' });
     } finally {
       setLoading(false);
     }
@@ -23,100 +32,11 @@ const DebugPage = () => {
   const handleCreateProfile = async () => {
     setLoading(true);
     try {
-      // First get the user
-      const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
-      
-      if (usersError) {
-        setResult({ error: 'Cannot access users - admin privileges required' });
-        setLoading(false);
-        return;
-      }
-      
-      const user = users?.find(u => u.email === email);
-      if (!user) {
-        setResult({ error: 'User not found' });
-        setLoading(false);
-        return;
-      }
-
-      const createResult = await createDesignerProfile(user.id, user.email!, user.user_metadata?.name || 'Jagdish Apte');
+      const createResult = await createDesignerProfile();
       setResult(createResult);
-    } catch (error) {
-      console.error('Create profile error:', error);
-      setResult({ error: error });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDirectInsert = async () => {
-    setLoading(true);
-    try {
-      // Get current user (assuming Jagdish is logged in)
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        setResult({ error: 'No authenticated user found. Please make sure Jagdish is logged in.' });
-        setLoading(false);
-        return;
-      }
-
-      // Check if designer profile already exists
-      const { data: existingDesigner, error: checkError } = await supabase
-        .from('designers')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        setResult({ error: 'Error checking existing profile: ' + checkError.message });
-        setLoading(false);
-        return;
-      }
-
-      if (existingDesigner) {
-        setResult({ message: 'Designer profile already exists', designer: existingDesigner });
-        setLoading(false);
-        return;
-      }
-
-      // Create designer profile for current user
-      const designerData = {
-        user_id: user.id,
-        name: user.user_metadata?.name || 'Jagdish Apte',
-        email: user.email!,
-        phone: '+91 98765 43218',
-        specialization: 'Modern & Contemporary',
-        experience: 5,
-        location: 'Mumbai',
-        bio: 'Experienced interior designer with a passion for creating beautiful and functional spaces.',
-        website: '',
-        starting_price: '₹40,000',
-        profile_image: '',
-        portfolio_images: [],
-        services: ['Space Planning', 'Interior Design', 'Furniture Selection'],
-        materials_expertise: ['Wood', 'Glass', 'Metal'],
-        awards: [],
-        rating: 4.5,
-        total_reviews: 0,
-        total_projects: 0,
-        is_verified: true,
-        is_active: true
-      };
-
-      const { data, error } = await supabase
-        .from('designers')
-        .insert([designerData])
-        .select()
-        .single();
-
-      if (error) {
-        setResult({ error: 'Error creating designer profile: ' + error.message });
-      } else {
-        setResult({ message: 'Designer profile created successfully!', designer: data });
-      }
     } catch (error: any) {
-      setResult({ error: 'Unexpected error: ' + error.message });
+      console.error('Create profile error:', error);
+      setResult({ error: error.message || 'Unknown error occurred' });
     } finally {
       setLoading(false);
     }
@@ -128,45 +48,65 @@ const DebugPage = () => {
         <div className="bg-white rounded-xl shadow-lg p-8">
           <h1 className="text-3xl font-bold text-secondary-800 mb-6">Debug Designer Profile</h1>
           
-          <div className="space-y-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email to Debug
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="Enter email address"
-              />
+          <div className="mb-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <h3 className="text-lg font-semibold text-blue-800 mb-2">Current User Status</h3>
+              {currentUser ? (
+                <div className="text-sm text-blue-700">
+                  <p><strong>Email:</strong> {currentUser.email}</p>
+                  <p><strong>ID:</strong> {currentUser.id}</p>
+                  <p><strong>Name:</strong> {currentUser.user_metadata?.name || 'Not set'}</p>
+                </div>
+              ) : (
+                <p className="text-red-600">No user logged in. Please log in to use debug functions.</p>
+              )}
             </div>
             
             <div className="flex space-x-4">
               <button
                 onClick={handleDebug}
-                disabled={loading}
+                disabled={loading || !currentUser}
                 className="btn-primary disabled:opacity-50"
               >
-                {loading ? 'Debugging...' : 'Debug Profile'}
+                {loading ? 'Debugging...' : 'Debug Current User Profile'}
               </button>
               
               <button
-                onClick={handleDirectInsert}
-                disabled={loading}
+                onClick={handleCreateProfile}
+                disabled={loading || !currentUser}
                 className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
               >
-                {loading ? 'Creating...' : 'Create Profile for Current User'}
+                {loading ? 'Creating...' : 'Create Designer Profile'}
               </button>
             </div>
+            
+            {!currentUser && (
+              <p className="text-sm text-gray-600 mt-2">
+                Please log in first to use the debug functions.
+              </p>
+            )}
           </div>
 
           {result && (
             <div className="bg-gray-100 rounded-lg p-4">
               <h3 className="text-lg font-semibold mb-2">Debug Result:</h3>
-              <pre className="text-sm overflow-auto">
-                {JSON.stringify(result, null, 2)}
-              </pre>
+              <div className="text-sm overflow-auto">
+                {result.error && (
+                  <div className="bg-red-50 border border-red-200 rounded p-3 mb-3">
+                    <p className="text-red-800 font-medium">Error:</p>
+                    <p className="text-red-700">{result.error}</p>
+                  </div>
+                )}
+                {result.message && (
+                  <div className="bg-green-50 border border-green-200 rounded p-3 mb-3">
+                    <p className="text-green-800 font-medium">Message:</p>
+                    <p className="text-green-700">{result.message}</p>
+                  </div>
+                )}
+                <pre className="bg-white border rounded p-3 text-xs">
+                  {JSON.stringify(result, null, 2)}
+                </pre>
+              </div>
             </div>
           )}
         </div>
