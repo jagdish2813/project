@@ -10,6 +10,7 @@ import DesignerDetail from './pages/DesignerDetail';
 import ProjectDetail from './pages/ProjectDetail';
 import DesignerRegistration from './pages/DesignerRegistration';
 import CustomerRegistration from './pages/CustomerRegistration';
+import DebugPage from './pages/DebugPage';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
             <Route path="/register-designer" element={<DesignerRegistration />} />
             <Route path="/edit-designer-profile" element={<DesignerRegistration />} />
             <Route path="/register-customer" element={<CustomerRegistration />} />
+            <Route path="/debug" element={<DebugPage />} />
           </Routes>
         </main>
         <Footer />
