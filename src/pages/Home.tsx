@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Star, Award, Users, ArrowRight, Play, Palette, UserPlus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
 import VideoModal from '../components/VideoModal';
 
 const Home = () => {
   const { user } = useAuth();
+  const { hasAnyRegistration, loading: registrationLoading } = useUserRegistrationStatus();
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -65,6 +67,9 @@ const Home = () => {
     // User is authenticated, proceed to registration
     window.location.href = '/register-customer';
   };
+
+  // Determine if we should show the "Join our community" section
+  const shouldShowJoinCommunity = !user || (!registrationLoading && !hasAnyRegistration);
 
   return (
     <div className="gradient-bg">
@@ -131,91 +136,120 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Registration Options */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl lg:text-4xl font-bold text-secondary-800 mb-4">
-              Join Our Community
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Whether you're a talented designer or looking to transform your space, we have the perfect platform for you
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {/* Designer Registration */}
-            <div className="card p-8 text-center group hover:shadow-2xl transition-all duration-300">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-accent-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Palette className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-secondary-800 mb-4">For Designers</h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                Showcase your portfolio, connect with clients, and grow your interior design business on India's premier platform.
+      {/* Registration Options - Only show if user hasn't registered yet */}
+      {shouldShowJoinCommunity && (
+        <section className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl lg:text-4xl font-bold text-secondary-800 mb-4">
+                Join Our Community
+              </h2>
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                Whether you're a talented designer or looking to transform your space, we have the perfect platform for you
               </p>
-              <ul className="text-left text-gray-600 mb-8 space-y-2">
-                <li className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
-                  <span>Create stunning portfolio</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
-                  <span>Get matched with clients</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
-                  <span>Manage projects efficiently</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
-                  <span>Build your reputation</span>
-                </li>
-              </ul>
-              <button 
-                onClick={handleDesignerRegistration}
-                className="btn-primary w-full"
-              >
-                Register as Designer
-              </button>
             </div>
 
-            {/* Customer Registration */}
-            <div className="card p-8 text-center group hover:shadow-2xl transition-all duration-300">
-              <div className="w-16 h-16 bg-gradient-to-br from-secondary-500 to-primary-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                <UserPlus className="w-8 h-8 text-white" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+              {/* Designer Registration */}
+              <div className="card p-8 text-center group hover:shadow-2xl transition-all duration-300">
+                <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-accent-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <Palette className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-secondary-800 mb-4">For Designers</h3>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Showcase your portfolio, connect with clients, and grow your interior design business on India's premier platform.
+                </p>
+                <ul className="text-left text-gray-600 mb-8 space-y-2">
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
+                    <span>Create stunning portfolio</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
+                    <span>Get matched with clients</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
+                    <span>Manage projects efficiently</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
+                    <span>Build your reputation</span>
+                  </li>
+                </ul>
+                <button 
+                  onClick={handleDesignerRegistration}
+                  className="btn-primary w-full"
+                >
+                  Register as Designer
+                </button>
               </div>
-              <h3 className="text-2xl font-bold text-secondary-800 mb-4">For Homeowners</h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                Share your vision and get connected with the perfect interior designer to bring your dream home to life.
-              </p>
-              <ul className="text-left text-gray-600 mb-8 space-y-2">
-                <li className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-secondary-500 rounded-full"></div>
-                  <span>Share your project details</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-secondary-500 rounded-full"></div>
-                  <span>Get matched with designers</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-secondary-500 rounded-full"></div>
-                  <span>Compare proposals</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-secondary-500 rounded-full"></div>
-                  <span>Track project progress</span>
-                </li>
-              </ul>
-              <button 
-                onClick={handleCustomerRegistration}
-                className="bg-secondary-500 hover:bg-secondary-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl w-full"
-              >
-                Register Your Project
-              </button>
+
+              {/* Customer Registration */}
+              <div className="card p-8 text-center group hover:shadow-2xl transition-all duration-300">
+                <div className="w-16 h-16 bg-gradient-to-br from-secondary-500 to-primary-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <UserPlus className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-secondary-800 mb-4">For Homeowners</h3>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Share your vision and get connected with the perfect interior designer to bring your dream home to life.
+                </p>
+                <ul className="text-left text-gray-600 mb-8 space-y-2">
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-secondary-500 rounded-full"></div>
+                    <span>Share your project details</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-secondary-500 rounded-full"></div>
+                    <span>Get matched with designers</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-secondary-500 rounded-full"></div>
+                    <span>Compare proposals</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-secondary-500 rounded-full"></div>
+                    <span>Track project progress</span>
+                  </li>
+                </ul>
+                <button 
+                  onClick={handleCustomerRegistration}
+                  className="bg-secondary-500 hover:bg-secondary-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl w-full"
+                >
+                  Register Your Project
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
+
+      {/* Thank You Section - Show if user has registered */}
+      {user && !registrationLoading && hasAnyRegistration && (
+        <section className="py-16 bg-gradient-to-r from-green-50 to-blue-50">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div className="bg-white rounded-xl shadow-lg p-8">
+              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Star className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold text-secondary-800 mb-4">
+                Welcome to Our Community!
+              </h2>
+              <p className="text-xl text-gray-600 mb-6">
+                Thank you for joining HomeDesigners. You're now part of India's premier interior design platform.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link to="/designers" className="btn-primary">
+                  Explore Designers
+                </Link>
+                <Link to="/projects" className="btn-secondary">
+                  View Projects
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Stats Section */}
       <section className="py-16 bg-gray-50">
