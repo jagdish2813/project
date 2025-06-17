@@ -11,9 +11,6 @@ const Header = () => {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [editProfileLoading, setEditProfileLoading] = useState(false);
-  const [showEditProfileLoader, setShowEditProfileLoader] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingTimeoutId, setLoadingTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -65,54 +62,17 @@ const Header = () => {
   const handleEditProfile = () => {
     if (designer) {
       setEditProfileLoading(true);
-      setShowEditProfileLoader(true);
       setShowUserMenu(false);
-      setLoadingProgress(0);
       
-      // Start progress animation
-      const progressInterval = setInterval(() => {
-        setLoadingProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(progressInterval);
-            return 100;
-          }
-          return prev + (100 / 120); // 120 seconds = 2 minutes, increment every second
-        });
-      }, 1000);
-
-      // Set 2-minute timeout
-      const timeoutId = setTimeout(() => {
-        clearInterval(progressInterval);
+      // Navigate to edit profile with a loading state
+      navigate('/edit-designer-profile');
+      
+      // Reset loading state after navigation
+      setTimeout(() => {
         setEditProfileLoading(false);
-        setShowEditProfileLoader(false);
-        setLoadingProgress(0);
-        navigate('/edit-designer-profile');
-      }, 120000); // 2 minutes = 120,000 milliseconds
-
-      setLoadingTimeoutId(timeoutId);
+      }, 500);
     }
   };
-
-  // Effect to watch for designer data loading completion
-  useEffect(() => {
-    if (showEditProfileLoader && !designerLoading && designer && loadingTimeoutId) {
-      // Data has loaded before timeout, navigate immediately
-      clearTimeout(loadingTimeoutId);
-      setEditProfileLoading(false);
-      setShowEditProfileLoader(false);
-      setLoadingProgress(0);
-      navigate('/edit-designer-profile');
-    }
-  }, [showEditProfileLoader, designerLoading, designer, loadingTimeoutId, navigate]);
-
-  // Cleanup timeout on component unmount
-  useEffect(() => {
-    return () => {
-      if (loadingTimeoutId) {
-        clearTimeout(loadingTimeoutId);
-      }
-    };
-  }, [loadingTimeoutId]);
 
   return (
     <>
@@ -300,32 +260,8 @@ const Header = () => {
                             </button>
                             <button
                               onClick={() => {
-                                setEditProfileLoading(true);
-                                setShowEditProfileLoader(true);
+                                handleEditProfile();
                                 setIsMenuOpen(false);
-                                setLoadingProgress(0);
-                                
-                                // Start progress animation
-                                const progressInterval = setInterval(() => {
-                                  setLoadingProgress(prev => {
-                                    if (prev >= 100) {
-                                      clearInterval(progressInterval);
-                                      return 100;
-                                    }
-                                    return prev + (100 / 120); // 120 seconds = 2 minutes
-                                  });
-                                }, 1000);
-
-                                // Set 2-minute timeout
-                                const timeoutId = setTimeout(() => {
-                                  clearInterval(progressInterval);
-                                  setEditProfileLoading(false);
-                                  setShowEditProfileLoader(false);
-                                  setLoadingProgress(0);
-                                  navigate('/edit-designer-profile');
-                                }, 120000);
-
-                                setLoadingTimeoutId(timeoutId);
                               }}
                               disabled={editProfileLoading}
                               className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2 disabled:opacity-50"
@@ -401,35 +337,6 @@ const Header = () => {
           )}
         </div>
       </header>
-
-      {/* Edit Profile Loading Overlay */}
-      {showEditProfileLoader && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-500 mx-auto mb-6"></div>
-            <h2 className="text-2xl font-bold text-secondary-800 mb-4">Loading Profile Data</h2>
-            <p className="text-gray-600 mb-4">
-              Please wait while we fetch your designer profile information. This may take up to 2 minutes.
-            </p>
-            <div className="bg-gray-100 rounded-full h-3 mb-4">
-              <div 
-                className="bg-primary-500 h-3 rounded-full transition-all duration-1000 ease-out" 
-                style={{ width: `${loadingProgress}%` }}
-              ></div>
-            </div>
-            <p className="text-sm text-gray-500 mb-2">
-              {loadingProgress < 25 && "Connecting to database..."}
-              {loadingProgress >= 25 && loadingProgress < 50 && "Retrieving profile details..."}
-              {loadingProgress >= 50 && loadingProgress < 75 && "Loading portfolio images..."}
-              {loadingProgress >= 75 && loadingProgress < 95 && "Fetching service information..."}
-              {loadingProgress >= 95 && "Almost ready..."}
-            </p>
-            <p className="text-xs text-gray-400">
-              {Math.round(loadingProgress)}% complete
-            </p>
-          </div>
-        </div>
-      )}
 
       <AuthModal
         isOpen={showAuthModal}
