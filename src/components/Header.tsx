@@ -11,6 +11,7 @@ const Header = () => {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [editProfileLoading, setEditProfileLoading] = useState(false);
+  const [showEditProfileLoader, setShowEditProfileLoader] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -62,12 +63,15 @@ const Header = () => {
   const handleEditProfile = () => {
     if (designer) {
       setEditProfileLoading(true);
-      // Show loading indicator for a brief moment before navigation
+      setShowEditProfileLoader(true);
+      setShowUserMenu(false);
+      
+      // Wait for 30 seconds to simulate data loading
       setTimeout(() => {
-        navigate('/edit-designer-profile');
         setEditProfileLoading(false);
-        setShowUserMenu(false);
-      }, 200);
+        setShowEditProfileLoader(false);
+        navigate('/edit-designer-profile');
+      }, 30000); // 30 seconds
     }
   };
 
@@ -258,11 +262,13 @@ const Header = () => {
                             <button
                               onClick={() => {
                                 setEditProfileLoading(true);
+                                setShowEditProfileLoader(true);
+                                setIsMenuOpen(false);
                                 setTimeout(() => {
-                                  handleEditProfile();
-                                  setIsMenuOpen(false);
                                   setEditProfileLoading(false);
-                                }, 200);
+                                  setShowEditProfileLoader(false);
+                                  navigate('/edit-designer-profile');
+                                }, 30000);
                               }}
                               disabled={editProfileLoading}
                               className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2 disabled:opacity-50"
@@ -338,6 +344,25 @@ const Header = () => {
           )}
         </div>
       </header>
+
+      {/* Edit Profile Loading Overlay */}
+      {showEditProfileLoader && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-500 mx-auto mb-6"></div>
+            <h2 className="text-2xl font-bold text-secondary-800 mb-4">Loading Profile Data</h2>
+            <p className="text-gray-600 mb-4">
+              Please wait while we fetch your designer profile information. This may take up to 30 seconds.
+            </p>
+            <div className="bg-gray-100 rounded-full h-2 mb-4">
+              <div className="bg-primary-500 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+            </div>
+            <p className="text-sm text-gray-500">
+              Retrieving profile details, portfolio images, and service information...
+            </p>
+          </div>
+        </div>
+      )}
 
       <AuthModal
         isOpen={showAuthModal}
