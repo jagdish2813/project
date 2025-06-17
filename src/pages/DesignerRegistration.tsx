@@ -73,37 +73,40 @@ const DesignerRegistration = () => {
     if (isEditMode) {
       console.log('Edit mode detected, designer loading:', designerLoading);
       
+      // Keep waiting if designer data is still loading
       if (designerLoading) {
         console.log('Designer data still loading...');
         return;
       }
       
-      if (!designer) {
-        console.log('No designer profile found, redirecting to home');
-        // User is not a designer, redirect to home
+      // Only redirect if designer loading is complete AND no designer found
+      if (!designerLoading && !designer) {
+        console.log('No designer profile found after loading complete, redirecting to home');
         navigate('/');
         return;
       }
       
-      console.log('Populating form with designer data:', designer);
-      
-      // Populate form with existing designer data
-      setFormData({
-        name: designer.name || '',
-        email: designer.email || '',
-        phone: designer.phone || '',
-        specialization: designer.specialization || '',
-        experience: designer.experience?.toString() || '',
-        location: designer.location || '',
-        bio: designer.bio || '',
-        website: designer.website || '',
-        starting_price: designer.starting_price || '',
-        profile_image: designer.profile_image || '',
-        services: designer.services && designer.services.length > 0 ? designer.services : [''],
-        materials_expertise: designer.materials_expertise && designer.materials_expertise.length > 0 ? designer.materials_expertise : [''],
-        awards: designer.awards && designer.awards.length > 0 ? designer.awards : ['']
-      });
-      setFormInitialized(true);
+      // If we have designer data, populate the form
+      if (designer) {
+        console.log('Populating form with designer data:', designer);
+        
+        setFormData({
+          name: designer.name || '',
+          email: designer.email || '',
+          phone: designer.phone || '',
+          specialization: designer.specialization || '',
+          experience: designer.experience?.toString() || '',
+          location: designer.location || '',
+          bio: designer.bio || '',
+          website: designer.website || '',
+          starting_price: designer.starting_price || '',
+          profile_image: designer.profile_image || '',
+          services: designer.services && designer.services.length > 0 ? designer.services : [''],
+          materials_expertise: designer.materials_expertise && designer.materials_expertise.length > 0 ? designer.materials_expertise : [''],
+          awards: designer.awards && designer.awards.length > 0 ? designer.awards : ['']
+        });
+        setFormInitialized(true);
+      }
     } else {
       console.log('Registration mode - setting user data');
       // Registration mode - set user data in form
@@ -239,17 +242,38 @@ const DesignerRegistration = () => {
     }
   };
 
-  // Show loading while auth or designer data is being determined
-  if (authLoading || (isEditMode && designerLoading) || !formInitialized) {
+  // Show loading while auth is being determined
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">
-            {authLoading ? 'Loading user...' : 
-             designerLoading ? 'Loading designer profile...' : 
-             'Initializing form...'}
-          </p>
+          <p className="text-gray-600">Loading user information...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while designer data is being loaded in edit mode
+  if (isEditMode && designerLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading designer profile...</p>
+          <p className="text-sm text-gray-500 mt-2">Please wait while we fetch your profile details</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while form is being initialized
+  if (!formInitialized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Initializing form...</p>
         </div>
       </div>
     );
@@ -274,7 +298,7 @@ const DesignerRegistration = () => {
     );
   }
 
-  // If in edit mode but user is not a designer
+  // If in edit mode but user is not a designer (after loading is complete)
   if (isEditMode && !designerLoading && !designer) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
