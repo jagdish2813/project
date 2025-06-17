@@ -1,22 +1,15 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Search, Star, Award, Users, ArrowRight, Play, Palette, UserPlus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
 import VideoModal from '../components/VideoModal';
 
 const Home = () => {
   const { user } = useAuth();
-  const { designer, loading: designerLoading } = useDesignerProfile();
   const { hasAnyRegistration, loading: registrationLoading } = useUserRegistrationStatus();
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const location = useLocation();
-
-  // Check if we're coming from edit profile navigation and designer data is still loading
-  const isEditProfileRoute = location.pathname === '/' && location.state?.fromEditProfile;
-  const shouldShowEditProfileLoader = isEditProfileRoute && designerLoading;
 
   const featuredDesigners = [
     {
@@ -77,30 +70,6 @@ const Home = () => {
 
   // Determine if we should show the "Join our community" section
   const shouldShowJoinCommunity = !user || (!registrationLoading && !hasAnyRegistration);
-
-  // Show edit profile loader overlay if designer data is loading after edit profile click
-  if (shouldShowEditProfileLoader) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 text-center shadow-lg">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-500 mx-auto mb-6"></div>
-          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Loading Designer Profile</h2>
-          <p className="text-gray-600 mb-4">
-            Please wait while we fetch your designer profile information. This may take up to 2 minutes.
-          </p>
-          <div className="bg-gray-100 rounded-full h-3 mb-4">
-            <div className="bg-primary-500 h-3 rounded-full animate-pulse"></div>
-          </div>
-          <p className="text-sm text-gray-500 mb-2">
-            Retrieving your profile details...
-          </p>
-          <p className="text-xs text-gray-400">
-            We're connecting to our database to load your information
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="gradient-bg">

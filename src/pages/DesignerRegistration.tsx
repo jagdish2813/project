@@ -258,10 +258,21 @@ const DesignerRegistration = () => {
   if (isEditMode && designerLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading designer profile...</p>
-          <p className="text-sm text-gray-500 mt-2">Please wait while we fetch your profile details</p>
+        <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 text-center shadow-lg">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-500 mx-auto mb-6"></div>
+          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Loading Designer Profile</h2>
+          <p className="text-gray-600 mb-4">
+            Please wait while we fetch your designer profile information. This may take up to 2 minutes.
+          </p>
+          <div className="bg-gray-100 rounded-full h-3 mb-4">
+            <div className="bg-primary-500 h-3 rounded-full animate-pulse"></div>
+          </div>
+          <p className="text-sm text-gray-500 mb-2">
+            Retrieving your profile details...
+          </p>
+          <p className="text-xs text-gray-400">
+            We're connecting to our database to load your information
+          </p>
         </div>
       </div>
     );

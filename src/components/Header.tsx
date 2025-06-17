@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus, Edit, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -64,10 +64,10 @@ const Header = () => {
       setEditProfileLoading(true);
       setShowUserMenu(false);
       
-      // Navigate to edit profile with a loading state
+      // Navigate directly to edit profile
       navigate('/edit-designer-profile');
       
-      // Reset loading state after navigation
+      // Reset loading state
       setTimeout(() => {
         setEditProfileLoading(false);
       }, 500);
