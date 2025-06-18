@@ -54,6 +54,14 @@ const DesignerRegistration = () => {
   ];
 
   useEffect(() => {
+    console.log('DesignerRegistration useEffect triggered', {
+      authLoading,
+      user: user?.email,
+      isEditMode,
+      designerLoading,
+      designer: designer?.name
+    });
+
     // Wait for auth to load
     if (authLoading) {
       console.log('Auth still loading...');
@@ -76,13 +84,16 @@ const DesignerRegistration = () => {
       // Keep waiting if designer data is still loading
       if (designerLoading) {
         console.log('Designer data still loading...');
-        return;onCommitFiberUnmount
+        return;
       }
       
       // Only redirect if designer loading is complete AND no designer found
       if (!designerLoading && !designer) {
         console.log('No designer profile found after loading complete, redirecting to home');
-        navigate('/');
+        setError('No designer profile found. Please register as a designer first.');
+        setTimeout(() => {
+          navigate('/register-designer');
+        }, 2000);
         return;
       }
       
@@ -262,10 +273,10 @@ const DesignerRegistration = () => {
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-500 mx-auto mb-6"></div>
           <h2 className="text-2xl font-bold text-secondary-800 mb-4">Loading Designer Profile</h2>
           <p className="text-gray-600 mb-4">
-            Please wait while we fetch your designer profile information. This may take up to 2 minutes.
+            Please wait while we fetch your designer profile information.
           </p>
           <div className="bg-gray-100 rounded-full h-3 mb-4">
-            <div className="bg-primary-500 h-3 rounded-full animate-pulse"></div>
+            <div className="bg-primary-500 h-3 rounded-full animate-pulse w-3/4"></div>
           </div>
           <p className="text-sm text-gray-500 mb-2">
             Retrieving your profile details...
@@ -298,24 +309,6 @@ const DesignerRegistration = () => {
           <h2 className="text-2xl font-bold text-secondary-800 mb-4">
             Please sign in to {isEditMode ? 'edit your profile' : 'register as a designer'}
           </h2>
-          <button
-            onClick={() => navigate('/')}
-            className="btn-primary"
-          >
-            Go to Home
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // If in edit mode but user is not a designer (after loading is complete)
-  if (isEditMode && !designerLoading && !designer) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Access Denied</h2>
-          <p className="text-gray-600 mb-4">You need to be a registered designer to edit your profile.</p>
           <button
             onClick={() => navigate('/')}
             className="btn-primary"
