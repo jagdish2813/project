@@ -88,13 +88,10 @@ const DesignerRegistration = () => {
         return;
       }
       
-      // If designer loading is complete and no designer found, show error and redirect
+      // If designer loading is complete and no designer found, show error
       if (!designerLoading && !designer) {
         console.log('No designer profile found after loading complete');
         setError('No designer profile found. Please register as a designer first.');
-        setTimeout(() => {
-          navigate('/register-designer');
-        }, 2000);
         return;
       }
       
@@ -133,7 +130,7 @@ const DesignerRegistration = () => {
         console.log('Form initialized with user data');
       }
     }
-  }, [user, designer, authLoading, designerLoading, navigate, isEditMode, formInitialized]);
+  }, [user, designer, authLoading, designerLoading, navigate, isEditMode]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -320,6 +317,35 @@ const DesignerRegistration = () => {
           >
             Go to Home
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // If in edit mode but no designer found (and not loading), show error
+  if (isEditMode && !designerLoading && !designer && error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-lg">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Profile Not Found</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <div className="flex space-x-4">
+            <button
+              onClick={() => navigate('/')}
+              className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+            >
+              Go Home
+            </button>
+            <button
+              onClick={() => navigate('/register-designer')}
+              className="flex-1 btn-primary"
+            >
+              Register Now
+            </button>
+          </div>
         </div>
       </div>
     );
