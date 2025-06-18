@@ -78,7 +78,7 @@ const DesignerRegistration = () => {
     
     console.log('User found:', user.email);
     
-    // If in edit mode, wait for designer data and populate form
+    // Handle edit mode
     if (isEditMode) {
       console.log('Edit mode detected, designer loading:', designerLoading);
       
@@ -88,9 +88,9 @@ const DesignerRegistration = () => {
         return;
       }
       
-      // If designer loading is complete and no designer found, redirect to registration
+      // If designer loading is complete and no designer found, show error and redirect
       if (!designerLoading && !designer) {
-        console.log('No designer profile found after loading complete, redirecting to registration');
+        console.log('No designer profile found after loading complete');
         setError('No designer profile found. Please register as a designer first.');
         setTimeout(() => {
           navigate('/register-designer');
@@ -98,7 +98,7 @@ const DesignerRegistration = () => {
         return;
       }
       
-      // If we have designer data, populate the form
+      // If we have designer data and form is not initialized, populate the form
       if (designer && !formInitialized) {
         console.log('Populating form with designer data:', designer);
         
@@ -121,9 +121,9 @@ const DesignerRegistration = () => {
         console.log('Form initialized with designer data');
       }
     } else {
-      console.log('Registration mode - setting user data');
-      // Registration mode - set user data in form
+      // Registration mode - set user data in form only if not initialized
       if (!formInitialized) {
+        console.log('Registration mode - setting user data');
         setFormData(prev => ({
           ...prev,
           email: user.email || '',
