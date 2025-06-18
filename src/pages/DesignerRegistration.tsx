@@ -99,6 +99,9 @@ const DesignerRegistration = () => {
       if (designer && !formInitialized) {
         console.log('Populating form with designer data:', designer);
         
+        // Clear any existing errors since we found the designer
+        setError(null);
+        
         setFormData({
           name: designer.name || '',
           email: designer.email || '',
@@ -376,8 +379,8 @@ const DesignerRegistration = () => {
             </p>
           </div>
 
-          {/* Error/Success Messages */}
-          {error && (
+          {/* Error/Success Messages - Only show if not in successful edit mode */}
+          {error && !(isEditMode && designer && formInitialized) && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2">
               <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
               <span>{error}</span>
