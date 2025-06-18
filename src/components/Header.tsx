@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus, Edit, Loader2 } from 'lucide-react';
+import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus, Edit, Loader2, FolderOpen } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
@@ -51,6 +51,11 @@ const Header = () => {
       return;
     }
     navigate('/register-customer');
+    setShowUserMenu(false);
+  };
+
+  const handleViewProjects = () => {
+    navigate('/my-projects');
     setShowUserMenu(false);
   };
 
@@ -166,14 +171,24 @@ const Header = () => {
                                 </button>
                               )}
                               
-                              {/* Show "Register Your Project" only if user is not a designer */}
-                              <button
-                                onClick={handleCustomerRegistration}
-                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-                              >
-                                <UserPlus className="w-4 h-4" />
-                                <span>Register Your Project</span>
-                              </button>
+                              {/* Show project-related options for customers */}
+                              {hasCustomerProject ? (
+                                <button
+                                  onClick={handleViewProjects}
+                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                                >
+                                  <FolderOpen className="w-4 h-4" />
+                                  <span>View My Projects</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={handleCustomerRegistration}
+                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                                >
+                                  <UserPlus className="w-4 h-4" />
+                                  <span>Register Your Project</span>
+                                </button>
+                              )}
                             </>
                           )}
                         </>
@@ -299,17 +314,30 @@ const Header = () => {
                               </button>
                             )}
                             
-                            {/* Show "Register Your Project" only if user is not a designer */}
-                            <button
-                              onClick={() => {
-                                handleCustomerRegistration();
-                                setIsMenuOpen(false);
-                              }}
-                              className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
-                            >
-                              <UserPlus className="w-4 h-4" />
-                              <span>Register Your Project</span>
-                            </button>
+                            {/* Show project-related options for customers */}
+                            {hasCustomerProject ? (
+                              <button
+                                onClick={() => {
+                                  handleViewProjects();
+                                  setIsMenuOpen(false);
+                                }}
+                                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                              >
+                                <FolderOpen className="w-4 h-4" />
+                                <span>View My Projects</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  handleCustomerRegistration();
+                                  setIsMenuOpen(false);
+                                }}
+                                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                              >
+                                <UserPlus className="w-4 h-4" />
+                                <span>Register Your Project</span>
+                              </button>
+                            )}
                           </>
                         )}
                       </>

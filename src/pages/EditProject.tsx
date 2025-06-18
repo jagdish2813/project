@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Home, FileText, Upload, X, Plus, ExternalLink, Heart, CheckCircle } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { User, Mail, Phone, MapPin, Home, FileText, Upload, X, Plus, ExternalLink, ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import type { Customer } from '../lib/supabase';
 
-const CustomerRegistration = () => {
+const EditProject = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [project, setProject] = useState<Customer | null>(null);
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -79,22 +85,71 @@ const CustomerRegistration = () => {
   ];
 
   useEffect(() => {
-    // Wait for auth to load
     if (authLoading) return;
     
-    // If no user is authenticated, redirect to home
     if (!user) {
       navigate('/');
       return;
     }
     
-    // Set user data in form
-    setFormData(prev => ({
-      ...prev,
-      email: user.email || '',
-      name: user.user_metadata?.name || ''
-    }));
-  }, [user, authLoading, navigate]);
+    if (!id) {
+      navigate('/my-projects');
+      return;
+    }
+    
+    fetchProject();
+  }, [user, authLoading, id, navigate]);
+
+  const fetchProject = async () => {
+    if (!user || !id) return;
+    
+    try {
+      setFetchLoading(true);
+      setError(null);
+      
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', user.id) // Ensure user can only edit their own projects
+        .single();
+
+      if (error) {
+        console.error('Error fetching project:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        throw new Error('Project not found or access denied');
+      }
+      
+      setProject(data);
+      
+      // Populate form with project data
+      setFormData({
+        name: data.name || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        location: data.location || '',
+        project_name: data.project_name || '',
+        property_type: data.property_type || '',
+        project_area: data.project_area || '',
+        budget_range: data.budget_range || '',
+        timeline: data.timeline || '',
+        requirements: data.requirements || '',
+        preferred_designer: data.preferred_designer || '',
+        layout_image_url: data.layout_image_url || '',
+        inspiration_links: data.inspiration_links && data.inspiration_links.length > 0 ? data.inspiration_links : [''],
+        room_types: data.room_types && data.room_types.length > 0 ? data.room_types : [''],
+        special_requirements: data.special_requirements || ''
+      });
+    } catch (error: any) {
+      console.error('Error fetching project:', error);
+      setError(error.message || 'Failed to load project');
+    } finally {
+      setFetchLoading(false);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -102,6 +157,10 @@ const CustomerRegistration = () => {
       ...prev,
       [name]: value
     }));
+    
+    // Clear messages when user starts typing
+    if (error) setError(null);
+    if (success) setSuccess(null);
   };
 
   const handleArrayChange = (field: 'inspiration_links' | 'room_types', index: number, value: string) => {
@@ -125,41 +184,100 @@ const CustomerRegistration = () => {
     }));
   };
 
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      setError('Name is required');
+      return false;
+    }
+    if (!formData.email.trim()) {
+      setError('Email is required');
+      return false;
+    }
+    if (!formData.phone.trim()) {
+      setError('Phone number is required');
+      return false;
+    }
+    if (!formData.location) {
+      setError('Location is required');
+      return false;
+    }
+    if (!formData.project_name.trim()) {
+      setError('Project name is required');
+      return false;
+    }
+    if (!formData.property_type) {
+      setError('Property type is required');
+      return false;
+    }
+    if (!formData.budget_range) {
+      setError('Budget range is required');
+      return false;
+    }
+    if (!formData.timeline) {
+      setError('Timeline is required');
+      return false;
+    }
+    if (!formData.requirements.trim()) {
+      setError('Project requirements are required');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !project) return;
+
+    // Clear previous messages
+    setError(null);
+    setSuccess(null);
+
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
 
     setLoading(true);
+    
     try {
       // Filter out empty strings from arrays
       const cleanedData = {
         ...formData,
-        user_id: user.id,
         inspiration_links: formData.inspiration_links.filter(link => link.trim() !== ''),
         room_types: formData.room_types.filter(room => room.trim() !== '')
       };
 
       const { error } = await supabase
         .from('customers')
-        .insert([cleanedData]);
+        .update(cleanedData)
+        .eq('id', project.id)
+        .eq('user_id', user.id); // Extra security check
 
       if (error) throw error;
 
-      setSuccess(true);
+      setSuccess('Project updated successfully!');
+      
+      // Navigate back to projects after a short delay
+      setTimeout(() => {
+        navigate('/my-projects');
+      }, 1500);
     } catch (error: any) {
-      alert('Error: ' + error.message);
+      console.error('Error updating project:', error);
+      setError(error.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
   };
 
   // Show loading while auth is being determined
-  if (authLoading) {
+  if (authLoading || fetchLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">
+            {authLoading ? 'Loading user information...' : 'Loading project details...'}
+          </p>
         </div>
       </div>
     );
@@ -170,7 +288,7 @@ const CustomerRegistration = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Please sign in to register your project</h2>
+          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Please sign in to edit your project</h2>
           <button
             onClick={() => navigate('/')}
             className="btn-primary"
@@ -182,31 +300,28 @@ const CustomerRegistration = () => {
     );
   }
 
-  // Show success message
-  if (success) {
+  // If error loading project
+  if (error && !project) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center bg-white rounded-xl p-12 max-w-md w-full mx-4 shadow-lg">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-12 h-12 text-green-500" />
+        <div className="text-center bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-lg">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-8 h-8 text-red-500" />
           </div>
-          <h2 className="text-3xl font-bold text-secondary-800 mb-4">Project Registered!</h2>
-          <p className="text-gray-600 mb-8 leading-relaxed">
-            Your project has been successfully registered. Our expert designers will review your requirements and get in touch with you soon.
-          </p>
-          <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Project Not Found</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <div className="flex space-x-4">
             <button
               onClick={() => navigate('/my-projects')}
-              className="w-full btn-primary flex items-center justify-center space-x-2"
+              className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors"
             >
-              <Heart className="w-5 h-5" />
-              <span>View My Projects</span>
+              Back to Projects
             </button>
             <button
-              onClick={() => navigate('/designers')}
-              className="w-full btn-secondary"
+              onClick={fetchProject}
+              className="flex-1 btn-primary"
             >
-              Browse Designers
+              Try Again
             </button>
           </div>
         </div>
@@ -219,13 +334,34 @@ const CustomerRegistration = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
+            <button
+              onClick={() => navigate('/my-projects')}
+              className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to My Projects
+            </button>
             <h1 className="text-3xl font-bold text-secondary-800 mb-4">
-              Register Your Interior Design Project
+              Edit Project Details
             </h1>
             <p className="text-lg text-gray-600">
-              Tell us about your dream space and we'll connect you with the perfect interior designer
+              Update your project information and requirements
             </p>
           </div>
+
+          {/* Error/Success Messages */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2">
+              <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6">
+              {success}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Personal Information */}
@@ -264,7 +400,6 @@ const CustomerRegistration = () => {
                       className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       placeholder="Enter your email"
                       required
-                      disabled
                     />
                   </div>
                 </div>
@@ -546,13 +681,23 @@ const CustomerRegistration = () => {
             </div>
 
             {/* Submit Button */}
-            <div className="flex justify-center">
+            <div className="flex justify-center space-x-4">
+              <button
+                type="button"
+                onClick={() => navigate('/my-projects')}
+                className="px-8 py-3 text-lg border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="btn-primary px-12 py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary px-12 py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
-                {loading ? 'Submitting...' : 'Submit Project Details'}
+                <Save className="w-5 h-5" />
+                <span>
+                  {loading ? 'Updating Project...' : 'Update Project'}
+                </span>
               </button>
             </div>
           </form>
@@ -562,4 +707,4 @@ const CustomerRegistration = () => {
   );
 };
 
-export default CustomerRegistration;
+export default EditProject;
