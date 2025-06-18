@@ -59,7 +59,8 @@ const DesignerRegistration = () => {
       user: user?.email,
       isEditMode,
       designerLoading,
-      designer: designer?.name
+      designer: designer?.name,
+      formInitialized
     });
 
     // Wait for auth to load
@@ -87,9 +88,9 @@ const DesignerRegistration = () => {
         return;
       }
       
-      // Only redirect if designer loading is complete AND no designer found
+      // If designer loading is complete and no designer found, redirect to registration
       if (!designerLoading && !designer) {
-        console.log('No designer profile found after loading complete, redirecting to home');
+        console.log('No designer profile found after loading complete, redirecting to registration');
         setError('No designer profile found. Please register as a designer first.');
         setTimeout(() => {
           navigate('/register-designer');
@@ -98,7 +99,7 @@ const DesignerRegistration = () => {
       }
       
       // If we have designer data, populate the form
-      if (designer) {
+      if (designer && !formInitialized) {
         console.log('Populating form with designer data:', designer);
         
         setFormData({
@@ -117,18 +118,22 @@ const DesignerRegistration = () => {
           awards: designer.awards && designer.awards.length > 0 ? designer.awards : ['']
         });
         setFormInitialized(true);
+        console.log('Form initialized with designer data');
       }
     } else {
       console.log('Registration mode - setting user data');
       // Registration mode - set user data in form
-      setFormData(prev => ({
-        ...prev,
-        email: user.email || '',
-        name: user.user_metadata?.name || ''
-      }));
-      setFormInitialized(true);
+      if (!formInitialized) {
+        setFormData(prev => ({
+          ...prev,
+          email: user.email || '',
+          name: user.user_metadata?.name || ''
+        }));
+        setFormInitialized(true);
+        console.log('Form initialized with user data');
+      }
     }
-  }, [user, designer, authLoading, designerLoading, navigate, isEditMode]);
+  }, [user, designer, authLoading, designerLoading, navigate, isEditMode, formInitialized]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
