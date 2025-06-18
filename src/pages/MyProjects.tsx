@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Calendar, MapPin, IndianRupee, Clock, Edit, Eye, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Calendar, MapPin, IndianRupee, Clock, Edit, Eye, Trash2, AlertCircle, Send } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import type { Customer } from '../lib/supabase';
+import SendToDesignerModal from '../components/SendToDesignerModal';
 
 const MyProjects = () => {
   const navigate = useNavigate();
@@ -11,6 +12,8 @@ const MyProjects = () => {
   const [projects, setProjects] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedProject, setSelectedProject] = useState<Customer | null>(null);
+  const [showSendModal, setShowSendModal] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -70,6 +73,11 @@ const MyProjects = () => {
       console.error('Error deleting project:', error);
       alert('Failed to delete project: ' + error.message);
     }
+  };
+
+  const handleSendToDesigner = (project: Customer) => {
+    setSelectedProject(project);
+    setShowSendModal(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -281,19 +289,28 @@ const MyProjects = () => {
                   )}
 
                   {/* Action Buttons */}
-                  <div className="flex space-x-2">
+                  <div className="space-y-2">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => navigate(`/edit-project/${project.id}`)}
+                        className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1"
+                      >
+                        <Edit className="w-4 h-4" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteProject(project.id)}
+                        className="bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                     <button
-                      onClick={() => navigate(`/edit-project/${project.id}`)}
-                      className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1"
+                      onClick={() => handleSendToDesigner(project)}
+                      className="w-full bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                     >
-                      <Edit className="w-4 h-4" />
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteProject(project.id)}
-                      className="bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
+                      <Send className="w-4 h-4" />
+                      <span>Send to Designer</span>
                     </button>
                   </div>
                 </div>
@@ -302,6 +319,18 @@ const MyProjects = () => {
           </div>
         )}
       </div>
+
+      {/* Send to Designer Modal */}
+      {selectedProject && (
+        <SendToDesignerModal
+          isOpen={showSendModal}
+          onClose={() => {
+            setShowSendModal(false);
+            setSelectedProject(null);
+          }}
+          project={selectedProject}
+        />
+      )}
     </div>
   );
 };

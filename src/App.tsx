@@ -12,6 +12,7 @@ import DesignerRegistration from './pages/DesignerRegistration';
 import CustomerRegistration from './pages/CustomerRegistration';
 import MyProjects from './pages/MyProjects';
 import EditProject from './pages/EditProject';
+import CustomerProjects from './pages/CustomerProjects';
 import DebugPage from './pages/DebugPage';
 import DebugDesignerProfile from './pages/DebugDesignerProfile';
 
@@ -33,6 +34,7 @@ function App() {
             <Route path="/register-customer" element={<CustomerRegistration />} />
             <Route path="/my-projects" element={<MyProjects />} />
             <Route path="/edit-project/:id" element={<EditProject />} />
+            <Route path="/customer-projects" element={<CustomerProjects />} />
             <Route path="/debug" element={<DebugPage />} />
             <Route path="/debug-profile" element={<DebugDesignerProfile />} />
           </Routes>

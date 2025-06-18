@@ -44,19 +44,29 @@ if (!hasValidCredentials) {
       select: (columns?: string) => ({
         eq: (column: string, value: any) => ({
           order: (column: string, options?: any) => Promise.resolve({ data: [], error: null }),
-          single: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
+          single: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+          maybeSingle: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
         }),
         order: (column: string, options?: any) => Promise.resolve({ data: [], error: null }),
-        single: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
+        single: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+        maybeSingle: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
       }),
-      insert: (data: any) => Promise.resolve({ 
-        data: null, 
-        error: { message: 'Please connect to Supabase to enable database operations. Click "Connect to Supabase" in the top right.' } 
+      insert: (data: any) => ({
+        select: () => ({
+          single: () => Promise.resolve({ 
+            data: null, 
+            error: { message: 'Please connect to Supabase to enable database operations. Click "Connect to Supabase" in the top right.' } 
+          })
+        })
       }),
       update: (data: any) => ({
-        eq: (column: string, value: any) => Promise.resolve({ 
-          data: null, 
-          error: { message: 'Please connect to Supabase to enable database operations. Click "Connect to Supabase" in the top right.' } 
+        eq: (column: string, value: any) => ({
+          select: () => ({
+            single: () => Promise.resolve({ 
+              data: null, 
+              error: { message: 'Please connect to Supabase to enable database operations. Click "Connect to Supabase" in the top right.' } 
+            })
+          })
         })
       }),
       delete: () => ({
@@ -117,6 +127,18 @@ export type Customer = {
   inspiration_links: string[];
   room_types: string[];
   special_requirements?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProjectShare = {
+  id: string;
+  project_id: string;
+  customer_id: string;
+  designer_email: string;
+  designer_phone?: string;
+  message?: string;
   status: string;
   created_at: string;
   updated_at: string;

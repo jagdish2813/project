@@ -1,0 +1,364 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, MapPin, IndianRupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { useDesignerProfile } from '../hooks/useDesignerProfile';
+import { supabase } from '../lib/supabase';
+
+interface ProjectShare {
+  id: string;
+  project_id: string;
+  customer_id: string;
+  designer_email: string;
+  designer_phone: string | null;
+  message: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  project: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    location: string;
+    project_name: string;
+    property_type: string;
+    project_area: string | null;
+    budget_range: string;
+    timeline: string;
+    requirements: string;
+    preferred_designer: string | null;
+    layout_image_url: string | null;
+    inspiration_links: string[];
+    room_types: string[];
+    special_requirements: string | null;
+    status: string;
+    created_at: string;
+  };
+}
+
+const CustomerProjects = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { designer, isDesigner, loading: designerLoading } = useDesignerProfile();
+  const [projectShares, setProjectShares] = useState<ProjectShare[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (authLoading || designerLoading) return;
+    
+    if (!user) {
+      navigate('/');
+      return;
+    }
+    
+    if (!isDesigner || !designer) {
+      navigate('/');
+      return;
+    }
+    
+    fetchProjectShares();
+  }, [user, designer, isDesigner, authLoading, designerLoading, navigate]);
+
+  const fetchProjectShares = async () => {
+    if (!user || !designer) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data, error } = await supabase
+        .from('project_shares')
+        .select(`
+          *,
+          project:customers(*)
+        `)
+        .eq('designer_email', designer.email)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching project shares:', error);
+        throw error;
+      }
+      
+      setProjectShares(data || []);
+    } catch (error: any) {
+      console.error('Error fetching project shares:', error);
+      setError(error.message || 'Failed to load customer projects');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'Pending Review';
+      case 'in_progress':
+        return 'In Progress';
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status;
+    }
+  };
+
+  if (authLoading || designerLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || !isDesigner || !designer) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Access Denied</h2>
+          <p className="text-gray-600 mb-4">You need to be a registered designer to view customer projects.</p>
+          <button
+            onClick={() => navigate('/')}
+            className="btn-primary"
+          >
+            Go to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading customer projects...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-lg mb-4">
+            <p className="font-medium">Error loading customer projects</p>
+            <p className="text-sm">{error}</p>
+          </div>
+          <button
+            onClick={fetchProjectShares}
+            className="btn-primary"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <button
+            onClick={() => navigate('/')}
+            className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Home
+          </button>
+          <div>
+            <h1 className="text-3xl lg:text-4xl font-bold text-secondary-800 mb-4">
+              Customer Projects
+            </h1>
+            <p className="text-lg text-gray-600">
+              Projects shared with you by potential clients
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {projectShares.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="bg-white rounded-xl shadow-lg p-12">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <MessageSquare className="w-12 h-12 text-gray-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-secondary-800 mb-4">No Projects Shared Yet</h2>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                When customers share their projects with you, they will appear here. 
+                Make sure your profile is complete and visible to attract more clients.
+              </p>
+              <button
+                onClick={() => navigate('/edit-designer-profile')}
+                className="btn-primary"
+              >
+                Update My Profile
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projectShares.map((share) => (
+              <div key={share.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                {/* Project Header */}
+                <div className="p-6 border-b border-gray-100">
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="text-xl font-semibold text-secondary-800 line-clamp-2">
+                      {share.project.project_name}
+                    </h3>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(share.project.status)}`}>
+                      {getStatusText(share.project.status)}
+                    </span>
+                  </div>
+                  
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                    {share.project.requirements}
+                  </p>
+
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="w-4 h-4" />
+                      <span>{share.project.location}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <IndianRupee className="w-4 h-4" />
+                      <span>{share.project.budget_range}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Clock className="w-4 h-4" />
+                      <span>{share.project.timeline}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4" />
+                      <span>Shared {new Date(share.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Customer Details */}
+                <div className="p-6 bg-gray-50">
+                  <h4 className="font-semibold text-secondary-800 mb-3">Customer Details</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <User className="w-4 h-4" />
+                      <span>{share.project.name}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <Mail className="w-4 h-4" />
+                      <a href={`mailto:${share.project.email}`} className="text-primary-600 hover:text-primary-700">
+                        {share.project.email}
+                      </a>
+                    </div>
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <Phone className="w-4 h-4" />
+                      <a href={`tel:${share.project.phone}`} className="text-primary-600 hover:text-primary-700">
+                        {share.project.phone}
+                      </a>
+                    </div>
+                  </div>
+
+                  {share.message && (
+                    <div className="mt-4 p-3 bg-white rounded-lg border">
+                      <p className="text-sm font-medium text-gray-700 mb-1">Personal Message:</p>
+                      <p className="text-sm text-gray-600">{share.message}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Project Details */}
+                <div className="p-6">
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600 mb-2">
+                      <span className="font-medium">Property:</span> {share.project.property_type}
+                    </p>
+                    {share.project.project_area && (
+                      <p className="text-sm text-gray-600 mb-2">
+                        <span className="font-medium">Area:</span> {share.project.project_area}
+                      </p>
+                    )}
+                    {share.project.preferred_designer && (
+                      <p className="text-sm text-gray-600">
+                        <span className="font-medium">Preferred Designer:</span> {share.project.preferred_designer}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Room Types */}
+                  {share.project.room_types && share.project.room_types.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Rooms:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {share.project.room_types.slice(0, 3).map((room, index) => (
+                          <span key={index} className="bg-accent-100 text-accent-800 px-2 py-1 rounded-md text-xs">
+                            {room}
+                          </span>
+                        ))}
+                        {share.project.room_types.length > 3 && (
+                          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs">
+                            +{share.project.room_types.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Special Requirements */}
+                  {share.project.special_requirements && (
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-700 mb-1">Special Requirements:</p>
+                      <p className="text-sm text-gray-600">{share.project.special_requirements}</p>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex space-x-2">
+                    <a
+                      href={`mailto:${share.project.email}?subject=Regarding your ${share.project.project_name} project&body=Hi ${share.project.name},%0D%0A%0D%0AThank you for sharing your project details with me. I would love to discuss your ${share.project.project_name} project further.%0D%0A%0D%0ABest regards,%0D%0A${designer.name}`}
+                      className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors text-center"
+                    >
+                      Contact Customer
+                    </a>
+                    <a
+                      href={`tel:${share.project.phone}`}
+                      className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
+                    >
+                      <Phone className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default CustomerProjects;
