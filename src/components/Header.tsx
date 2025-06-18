@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus, Edit, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
+import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
 import AuthModal from './AuthModal';
 
 const Header = () => {
@@ -15,6 +16,7 @@ const Header = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { designer, isDesigner, loading: designerLoading } = useDesignerProfile();
+  const { hasCustomerProject, loading: registrationLoading } = useUserRegistrationStatus();
 
   const navigation = [
     { name: 'Home', href: '/', icon: HomeIcon },
@@ -122,7 +124,7 @@ const Header = () => {
 
                   {showUserMenu && (
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
-                      {designerLoading ? (
+                      {designerLoading || registrationLoading ? (
                         <div className="px-4 py-2 text-sm text-gray-500 flex items-center space-x-2">
                           <Loader2 className="w-4 h-4 animate-spin" />
                           <span>Loading profile...</span>
@@ -152,23 +154,30 @@ const Header = () => {
                               </button>
                             </>
                           ) : (
-                            <button
-                              onClick={handleDesignerRegistration}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-                            >
-                              <Palette className="w-4 h-4" />
-                              <span>Register as Designer</span>
-                            </button>
+                            <>
+                              {/* Show "Register as Designer" only if user is not a customer */}
+                              {!hasCustomerProject && (
+                                <button
+                                  onClick={handleDesignerRegistration}
+                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                                >
+                                  <Palette className="w-4 h-4" />
+                                  <span>Register as Designer</span>
+                                </button>
+                              )}
+                              
+                              {/* Show "Register Your Project" only if user is not a designer */}
+                              <button
+                                onClick={handleCustomerRegistration}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                              >
+                                <UserPlus className="w-4 h-4" />
+                                <span>Register Your Project</span>
+                              </button>
+                            </>
                           )}
                         </>
                       )}
-                      <button
-                        onClick={handleCustomerRegistration}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-                      >
-                        <UserPlus className="w-4 h-4" />
-                        <span>Register Your Project</span>
-                      </button>
                       <hr className="my-2" />
                       <button
                         onClick={handleSignOut}
@@ -239,7 +248,7 @@ const Header = () => {
                     <div className="px-3 py-2 text-sm text-gray-500">
                       Signed in as {user.user_metadata?.name || user.email}
                     </div>
-                    {designerLoading ? (
+                    {designerLoading || registrationLoading ? (
                       <div className="px-3 py-2 text-sm text-gray-500 flex items-center space-x-2">
                         <Loader2 className="w-4 h-4 animate-spin" />
                         <span>Loading profile...</span>
@@ -275,29 +284,36 @@ const Header = () => {
                             </button>
                           </>
                         ) : (
-                          <button
-                            onClick={() => {
-                              handleDesignerRegistration();
-                              setIsMenuOpen(false);
-                            }}
-                            className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
-                          >
-                            <Palette className="w-4 h-4" />
-                            <span>Register as Designer</span>
-                          </button>
+                          <>
+                            {/* Show "Register as Designer" only if user is not a customer */}
+                            {!hasCustomerProject && (
+                              <button
+                                onClick={() => {
+                                  handleDesignerRegistration();
+                                  setIsMenuOpen(false);
+                                }}
+                                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                              >
+                                <Palette className="w-4 h-4" />
+                                <span>Register as Designer</span>
+                              </button>
+                            )}
+                            
+                            {/* Show "Register Your Project" only if user is not a designer */}
+                            <button
+                              onClick={() => {
+                                handleCustomerRegistration();
+                                setIsMenuOpen(false);
+                              }}
+                              className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                            >
+                              <UserPlus className="w-4 h-4" />
+                              <span>Register Your Project</span>
+                            </button>
+                          </>
                         )}
                       </>
                     )}
-                    <button
-                      onClick={() => {
-                        handleCustomerRegistration();
-                        setIsMenuOpen(false);
-                      }}
-                      className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      <span>Register Your Project</span>
-                    </button>
                     <button
                       onClick={() => {
                         handleSignOut();
