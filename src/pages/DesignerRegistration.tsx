@@ -76,7 +76,7 @@ const DesignerRegistration = () => {
       // Keep waiting if designer data is still loading
       if (designerLoading) {
         console.log('Designer data still loading...');
-        return;
+        return;onCommitFiberUnmount
       }
       
       // Only redirect if designer loading is complete AND no designer found
