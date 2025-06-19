@@ -7,6 +7,7 @@ interface AuthModalProps {
   onClose: () => void;
   mode: 'login' | 'signup';
   onModeChange: (mode: 'login' | 'signup') => void;
+  onAuthSuccess?: () => void;
 }
 
 interface ValidationErrors {
@@ -16,7 +17,13 @@ interface ValidationErrors {
   general?: string;
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChange }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  mode, 
+  onModeChange, 
+  onAuthSuccess 
+}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -238,6 +245,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
           setTimeout(() => {
             clearForm();
             onClose();
+            // Call the success callback if provided
+            if (onAuthSuccess) {
+              onAuthSuccess();
+            }
           }, 1000);
         }
       }

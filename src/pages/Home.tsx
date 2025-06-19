@@ -4,12 +4,15 @@ import { Search, Star, Award, Users, ArrowRight, Play, Palette, UserPlus } from 
 import { useAuth } from '../hooks/useAuth';
 import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
 import VideoModal from '../components/VideoModal';
+import AuthModal from '../components/AuthModal';
 
 const Home = () => {
   const { user } = useAuth();
   const { hasAnyRegistration, loading: registrationLoading } = useUserRegistrationStatus();
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [pendingAction, setPendingAction] = useState<'designer' | 'customer' | null>(null);
 
   const featuredDesigners = [
     {
@@ -52,6 +55,8 @@ const Home = () => {
 
   const handleDesignerRegistration = () => {
     if (!user) {
+      setPendingAction('designer');
+      setAuthMode('login');
       setShowAuthModal(true);
       return;
     }
@@ -61,11 +66,28 @@ const Home = () => {
 
   const handleCustomerRegistration = () => {
     if (!user) {
+      setPendingAction('customer');
+      setAuthMode('login');
       setShowAuthModal(true);
       return;
     }
     // User is authenticated, proceed to registration
     window.location.href = '/register-customer';
+  };
+
+  const handleAuthSuccess = () => {
+    // After successful authentication, redirect based on pending action
+    if (pendingAction === 'designer') {
+      window.location.href = '/register-designer';
+    } else if (pendingAction === 'customer') {
+      window.location.href = '/register-customer';
+    }
+    setPendingAction(null);
+  };
+
+  const handleAuthModalClose = () => {
+    setShowAuthModal(false);
+    setPendingAction(null);
   };
 
   // Determine if we should show the "Join our community" section
@@ -362,35 +384,14 @@ const Home = () => {
         onClose={() => setShowVideoModal(false)} 
       />
 
-      {/* Auth Modal - You'll need to import and use your existing AuthModal component */}
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold text-secondary-800 mb-4">Sign In Required</h2>
-            <p className="text-gray-600 mb-6">
-              Please sign in to your account to register as a designer or submit a project.
-            </p>
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setShowAuthModal(false)}
-                className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowAuthModal(false);
-                  // Trigger the auth modal from Header component
-                  // You might need to pass this up to App level or use a global state
-                }}
-                className="flex-1 btn-primary"
-              >
-                Sign In
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={handleAuthModalClose}
+        mode={authMode}
+        onModeChange={setAuthMode}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </div>
   );
 };
