@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Star, Award, Users, ArrowRight, Play, Palette, UserPlus } from 'lucide-react';
+import { Star, Award, Users, ArrowRight, Play, Palette, UserPlus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
 import VideoModal from '../components/VideoModal';
@@ -120,18 +120,6 @@ const Home = () => {
                   <Play className="w-5 h-5 mr-2" />
                   Watch Our Story
                 </button>
-              </div>
-              
-              {/* Search Bar */}
-              <div className="relative max-w-md">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search by city, style, or designer..."
-                  className="pl-12 pr-4 py-4 w-full border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-lg"
-                />
               </div>
             </div>
             
@@ -327,26 +315,6 @@ const Home = () => {
           <div className="text-center mt-12">
             <Link to="/designers" className="btn-primary">
               View All Designers
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Call to Action */}
-      <section className="py-16 bg-gradient-to-r from-primary-500 to-secondary-600">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl lg:text-4xl font-bold text-white mb-6">
-            Ready to Transform Your Space?
-          </h2>
-          <p className="text-xl text-primary-100 mb-8">
-            Get matched with the perfect interior designer for your project. Start your journey today.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/designers" className="bg-white text-primary-600 hover:bg-gray-100 px-8 py-4 rounded-lg font-semibold transition-colors">
-              Find Your Designer
-            </Link>
-            <Link to="/projects" className="border-2 border-white text-white hover:bg-white hover:text-primary-600 px-8 py-4 rounded-lg font-semibold transition-colors">
-              Browse Projects
             </Link>
           </div>
         </div>
