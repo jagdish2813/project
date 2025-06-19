@@ -13,7 +13,7 @@ const Footer = () => {
               <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-accent-500 rounded-lg flex items-center justify-center">
                 <HomeIcon className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold">HomeDesigners</span>
+              <span className="text-xl font-bold">HomeInteriors</span>
             </Link>
             <p className="text-gray-300 mb-4">
               Premium home interior design services across India. Transform your space with our expert designers.
@@ -64,7 +64,7 @@ const Footer = () => {
               </div>
               <div className="flex items-center space-x-3">
                 <Mail className="w-4 h-4 text-accent-400" />
-                <span className="text-gray-300">info@homedesigners.com</span>
+                <span className="text-gray-300">info@homeinteriors.com</span>
               </div>
               <div className="flex items-start space-x-3">
                 <MapPin className="w-4 h-4 text-accent-400 mt-1" />
@@ -76,7 +76,7 @@ const Footer = () => {
 
         <div className="border-t border-gray-700 mt-8 pt-8 text-center">
           <p className="text-gray-300">
-            © 2024 HomeDesigners. All rights reserved. Crafting beautiful homes across India.
+            © 2024 HomeInteriors. All rights reserved. Crafting beautiful homes across India.
           </p>
         </div>
       </div>

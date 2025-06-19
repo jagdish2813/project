@@ -111,7 +111,7 @@ const Header = () => {
               <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
                 <HomeIcon className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-secondary-800">HomeDesigners</span>
+              <span className="text-xl font-bold text-secondary-800">HomeInteriors</span>
             </Link>
 
             {/* Desktop Navigation */}
