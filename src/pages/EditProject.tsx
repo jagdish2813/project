@@ -3,12 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { User, Mail, Phone, MapPin, Home, FileText, Upload, X, Plus, ExternalLink, ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import type { Customer } from '../lib/supabase';
 
 const EditProject = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user, loading: authLoading } = useAuth();
+  const { designer, isDesigner, loading: designerLoading } = useDesignerProfile();
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +87,8 @@ const EditProject = () => {
   ];
 
   useEffect(() => {
-    if (authLoading) return;
+    // Wait for both auth and designer loading to complete
+    if (authLoading || designerLoading) return;
     
     if (!user) {
       navigate('/');
@@ -93,12 +96,12 @@ const EditProject = () => {
     }
     
     if (!id) {
-      navigate('/my-projects');
+      navigate(isDesigner ? '/customer-projects' : '/my-projects');
       return;
     }
     
     fetchProject();
-  }, [user, authLoading, id, navigate]);
+  }, [user, authLoading, designerLoading, id, navigate, isDesigner]);
 
   const fetchProject = async () => {
     if (!user || !id) return;
@@ -107,12 +110,27 @@ const EditProject = () => {
       setFetchLoading(true);
       setError(null);
       
-      const { data, error } = await supabase
+      console.log('Fetching project with ID:', id);
+      console.log('User info:', { userId: user.id, isDesigner, designerId: designer?.id });
+      
+      // Build the query based on user type
+      let query = supabase
         .from('customers')
         .select('*')
-        .eq('id', id)
-        .eq('user_id', user.id) // Ensure user can only edit their own projects
-        .single();
+        .eq('id', id);
+
+      // Add appropriate filter based on user type
+      if (isDesigner && designer) {
+        // Designer can only edit projects assigned to them
+        query = query.eq('assigned_designer_id', designer.id);
+      } else {
+        // Customer can only edit their own projects
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
+      console.log('Query result:', { data, error });
 
       if (error) {
         console.error('Error fetching project:', error);
@@ -244,22 +262,39 @@ const EditProject = () => {
       const cleanedData = {
         ...formData,
         inspiration_links: formData.inspiration_links.filter(link => link.trim() !== ''),
-        room_types: formData.room_types.filter(room => room.trim() !== '')
+        room_types: formData.room_types.filter(room => room.trim() !== ''),
+        last_modified_by: user.id,
+        version: (project.version || 1) + 1
       };
 
-      const { error } = await supabase
+      console.log('Updating project with data:', cleanedData);
+
+      // Build the update query based on user type
+      let query = supabase
         .from('customers')
         .update(cleanedData)
-        .eq('id', project.id)
-        .eq('user_id', user.id); // Extra security check
+        .eq('id', project.id);
+
+      // Add appropriate filter based on user type for security
+      if (isDesigner && designer) {
+        query = query.eq('assigned_designer_id', designer.id);
+      } else {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { error } = await query;
 
       if (error) throw error;
 
       setSuccess('Project updated successfully!');
       
-      // Navigate back to projects after a short delay
+      // Navigate back to appropriate page after a short delay
       setTimeout(() => {
-        navigate('/my-projects');
+        if (isDesigner) {
+          navigate('/customer-projects');
+        } else {
+          navigate('/my-projects');
+        }
       }, 1500);
     } catch (error: any) {
       console.error('Error updating project:', error);
@@ -269,14 +304,16 @@ const EditProject = () => {
     }
   };
 
-  // Show loading while auth is being determined
-  if (authLoading || fetchLoading) {
+  // Show loading while auth or designer data is being determined
+  if (authLoading || designerLoading || fetchLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-gray-600">
-            {authLoading ? 'Loading user information...' : 'Loading project details...'}
+            {authLoading ? 'Loading user information...' : 
+             designerLoading ? 'Loading designer profile...' :
+             'Loading project details...'}
           </p>
         </div>
       </div>
@@ -312,7 +349,7 @@ const EditProject = () => {
           <p className="text-gray-600 mb-6">{error}</p>
           <div className="flex space-x-4">
             <button
-              onClick={() => navigate('/my-projects')}
+              onClick={() => navigate(isDesigner ? '/customer-projects' : '/my-projects')}
               className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors"
             >
               Back to Projects
@@ -329,24 +366,35 @@ const EditProject = () => {
     );
   }
 
+  const backUrl = isDesigner ? '/customer-projects' : '/my-projects';
+  const pageTitle = isDesigner ? 'Edit Customer Project' : 'Edit Project Details';
+  const pageDescription = isDesigner ? 
+    'Update project information and collaborate with the customer' :
+    'Update your project information and requirements';
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
             <button
-              onClick={() => navigate('/my-projects')}
+              onClick={() => navigate(backUrl)}
               className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to My Projects
+              Back to Projects
             </button>
             <h1 className="text-3xl font-bold text-secondary-800 mb-4">
-              Edit Project Details
+              {pageTitle}
             </h1>
             <p className="text-lg text-gray-600">
-              Update your project information and requirements
+              {pageDescription}
             </p>
+            {isDesigner && (
+              <div className="mt-2 text-sm text-blue-600 bg-blue-50 rounded-lg p-3">
+                You are editing this project as the assigned designer. Changes will be tracked in the project activity log.
+              </div>
+            )}
           </div>
 
           {/* Error/Success Messages */}
@@ -382,6 +430,7 @@ const EditProject = () => {
                       className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       placeholder="Enter your full name"
                       required
+                      disabled={isDesigner} // Designers can't edit customer personal info
                     />
                   </div>
                 </div>
@@ -400,6 +449,7 @@ const EditProject = () => {
                       className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       placeholder="Enter your email"
                       required
+                      disabled={isDesigner} // Designers can't edit customer personal info
                     />
                   </div>
                 </div>
@@ -418,6 +468,7 @@ const EditProject = () => {
                       className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       placeholder="+91 98765 43210"
                       required
+                      disabled={isDesigner} // Designers can't edit customer personal info
                     />
                   </div>
                 </div>
@@ -684,7 +735,7 @@ const EditProject = () => {
             <div className="flex justify-center space-x-4">
               <button
                 type="button"
-                onClick={() => navigate('/my-projects')}
+                onClick={() => navigate(backUrl)}
                 className="px-8 py-3 text-lg border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
               >
                 Cancel
