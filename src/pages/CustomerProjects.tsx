@@ -40,30 +40,60 @@ interface ProjectShare {
 const CustomerProjects = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { designer, isDesigner, loading: designerLoading } = useDesignerProfile();
+  const { designer, isDesigner, loading: designerLoading, error: designerError } = useDesignerProfile();
   const [projectShares, setProjectShares] = useState<ProjectShare[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
 
+  // Debug logging for hook states
   useEffect(() => {
-    if (authLoading || designerLoading) return;
+    console.log('CustomerProjects - Hook states:', {
+      authLoading,
+      designerLoading,
+      user: user ? { id: user.id, email: user.email } : null,
+      designer: designer ? { id: designer.id, email: designer.email, isActive: designer.is_active } : null,
+      isDesigner,
+      designerError
+    });
+  }, [authLoading, designerLoading, user, designer, isDesigner, designerError]);
+
+  useEffect(() => {
+    // Wait for both auth and designer loading to complete
+    if (authLoading || designerLoading) {
+      console.log('Still loading...', { authLoading, designerLoading });
+      return;
+    }
     
     if (!user) {
+      console.log('No user, redirecting to home');
       navigate('/');
+      return;
+    }
+    
+    if (designerError) {
+      console.log('Designer error:', designerError);
+      setError(`Designer profile error: ${designerError}`);
+      setLoading(false);
       return;
     }
     
     if (!isDesigner || !designer) {
-      navigate('/');
+      console.log('User is not a designer or designer data missing', { isDesigner, designer: !!designer });
+      setError('You need to be a registered designer to view customer projects.');
+      setLoading(false);
       return;
     }
     
+    console.log('All checks passed, fetching project shares');
     fetchProjectShares();
-  }, [user, designer, isDesigner, authLoading, designerLoading, navigate]);
+  }, [user, designer, isDesigner, authLoading, designerLoading, designerError, navigate]);
 
   const fetchProjectShares = async () => {
-    if (!user || !designer) return;
+    if (!user || !designer) {
+      console.log('Cannot fetch - missing user or designer');
+      return;
+    }
     
     try {
       setLoading(true);
@@ -220,29 +250,66 @@ const CustomerProjects = () => {
     }
   };
 
+  // Show loading while auth or designer data is loading
   if (authLoading || designerLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">
+            {authLoading ? 'Loading user...' : 'Loading designer profile...'}
+          </p>
         </div>
       </div>
     );
   }
 
-  if (!user || !isDesigner || !designer) {
+  // Show error if user is not authenticated
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-secondary-800 mb-4">Access Denied</h2>
-          <p className="text-gray-600 mb-4">You need to be a registered designer to view customer projects.</p>
+          <p className="text-gray-600 mb-4">You need to be signed in to view customer projects.</p>
           <button
             onClick={() => navigate('/')}
             className="btn-primary"
           >
             Go to Home
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if user is not a designer
+  if (!isDesigner || !designer) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Access Denied</h2>
+          <p className="text-gray-600 mb-4">
+            You need to be a registered designer to view customer projects.
+          </p>
+          {designerError && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 max-w-md mx-auto">
+              <p className="text-sm">{designerError}</p>
+            </div>
+          )}
+          <div className="flex space-x-4 justify-center">
+            <button
+              onClick={() => navigate('/register-designer')}
+              className="btn-primary"
+            >
+              Register as Designer
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+            >
+              Go to Home
+            </button>
+          </div>
         </div>
       </div>
     );

@@ -24,7 +24,7 @@ export const useDesignerProfile = () => {
       
       console.log('Fetching designer profile for user:', user.id, user.email);
       
-      // Only fetch designer data - no customers call needed here
+      // Fetch designer data with better error handling
       const { data, error } = await supabase
         .from('designers')
         .select('*')
@@ -57,10 +57,8 @@ export const useDesignerProfile = () => {
       setError(error.message);
       setDesigner(null);
     } finally {
-      // Add 100ms delay before setting loading to false
-      setTimeout(() => {
-        setLoading(false);
-      }, 100);
+      // Remove the artificial delay that might be causing issues
+      setLoading(false);
     }
   }, [user]);
 
