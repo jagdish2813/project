@@ -113,32 +113,28 @@ const EditProject = () => {
       console.log('Fetching project with ID:', id);
       console.log('User info:', { userId: user.id, isDesigner, designerId: designer?.id });
       
-      // Build the query based on user type
-      let query = supabase
+      // Build the query - RLS policies will handle access control
+      const query = supabase
         .from('customers')
         .select('*')
         .eq('id', id);
 
-      // Add appropriate filter based on user type
-      if (isDesigner && designer) {
-        // Designer can only edit projects assigned to them
-        query = query.eq('assigned_designer_id', designer.id);
-      } else {
-        // Customer can only edit their own projects
-        query = query.eq('user_id', user.id);
-      }
+      // The RLS policies will automatically filter based on:
+      // 1. user_id = uid() for customers
+      // 2. assigned_designer_id matching the designer's ID for designers
+      // So we don't need to add additional filters here
 
       const { data, error } = await query.maybeSingle();
 
       console.log('Query result:', { data, error });
 
       if (error) {
-        console.error('Error fetching project:', error);
+        console.error('Database error:', error);
         throw error;
       }
       
       if (!data) {
-        throw new Error('Project not found or access denied');
+        throw new Error('Project not found or you do not have access to this project');
       }
       
       setProject(data);
@@ -269,18 +265,14 @@ const EditProject = () => {
 
       console.log('Updating project with data:', cleanedData);
 
-      // Build the update query based on user type
-      let query = supabase
+      // Build the update query - RLS policies will handle access control
+      const query = supabase
         .from('customers')
         .update(cleanedData)
         .eq('id', project.id);
 
-      // Add appropriate filter based on user type for security
-      if (isDesigner && designer) {
-        query = query.eq('assigned_designer_id', designer.id);
-      } else {
-        query = query.eq('user_id', user.id);
-      }
+      // The RLS policies will automatically ensure only authorized users can update
+      // No need for additional filters here
 
       const { error } = await query;
 

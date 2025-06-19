@@ -36,24 +36,34 @@ const ProjectDetailWithTracking = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
+      console.log('Fetching project with ID:', id);
+      console.log('User info:', { userId: user.id, isDesigner, designerId: designer?.id });
+
+      // Build query that works with RLS policies
+      let query = supabase
         .from('customers')
         .select(`
           *,
           assigned_designer:designers(id, name, email, phone, specialization)
         `)
-        .eq('id', id)
-        .single();
+        .eq('id', id);
 
-      if (error) throw error;
+      // The RLS policies will automatically filter based on:
+      // 1. user_id = uid() for customers
+      // 2. assigned_designer_id matching the designer's ID for designers
+      // So we don't need to add additional filters here
 
-      // Check if user has access to this project
-      const hasAccess = 
-        data.user_id === user.id || // Customer owns the project
-        (isDesigner && data.assigned_designer_id === designer?.id); // Designer is assigned
+      const { data, error } = await query.maybeSingle();
 
-      if (!hasAccess) {
-        throw new Error('You do not have access to this project');
+      console.log('Query result:', { data, error });
+
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error('Project not found or you do not have access to this project');
       }
 
       setProject(data);
