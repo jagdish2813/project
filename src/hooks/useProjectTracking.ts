@@ -119,8 +119,7 @@ export const useProjectTracking = (projectId?: string) => {
         .update({
           assigned_designer_id: designer.id,
           assignment_status: 'assigned',
-          last_modified_by: user.id,
-          version: supabase.rpc('increment_version', { project_id: projectId })
+          last_modified_by: user.id
         })
         .eq('id', projectId)
         .eq('user_id', user.id);
