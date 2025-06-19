@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Calendar, MapPin, IndianRupee, Clock, Edit, Eye, Trash2, AlertCircle, Send } from 'lucide-react';
+import { Plus, Calendar, MapPin, IndianRupee, Clock, Edit, Eye, Trash2, AlertCircle, Send, Activity } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import type { Customer } from '../lib/supabase';
-import SendToDesignerModal from '../components/SendToDesignerModal';
+import AssignProjectModal from '../components/AssignProjectModal';
 
 const MyProjects = () => {
   const navigate = useNavigate();
@@ -13,7 +13,7 @@ const MyProjects = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<Customer | null>(null);
-  const [showSendModal, setShowSendModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -35,7 +35,10 @@ const MyProjects = () => {
       
       const { data, error } = await supabase
         .from('customers')
-        .select('*')
+        .select(`
+          *,
+          assigned_designer:designers(id, name, email, specialization)
+        `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -75,30 +78,37 @@ const MyProjects = () => {
     }
   };
 
-  const handleSendToDesigner = (project: Customer) => {
+  const handleAssignToDesigner = (project: Customer) => {
     setSelectedProject(project);
-    setShowSendModal(true);
+    setShowAssignModal(true);
+  };
+
+  const handleAssignSuccess = () => {
+    fetchProjects(); // Refresh the projects list
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+    switch (status?.toLowerCase()) {
+      case 'assigned':
+        return 'bg-green-100 text-green-800';
       case 'in_progress':
         return 'bg-blue-100 text-blue-800';
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-purple-100 text-purple-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-yellow-100 text-yellow-800';
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: string, hasDesigner: boolean) => {
+    if (!status || status === 'unassigned') {
+      return hasDesigner ? 'Assigned' : 'Unassigned';
+    }
     switch (status.toLowerCase()) {
-      case 'pending':
-        return 'Pending Review';
+      case 'assigned':
+        return 'Assigned';
       case 'in_progress':
         return 'In Progress';
       case 'completed':
@@ -222,8 +232,8 @@ const MyProjects = () => {
                     <h3 className="text-xl font-semibold text-secondary-800 line-clamp-2">
                       {project.project_name}
                     </h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
-                      {getStatusText(project.status)}
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(project.assignment_status || 'unassigned')}`}>
+                      {getStatusText(project.assignment_status || 'unassigned', !!(project as any).assigned_designer)}
                     </span>
                   </div>
                   
@@ -250,6 +260,25 @@ const MyProjects = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Designer Info */}
+                {(project as any).assigned_designer && (
+                  <div className="px-6 py-4 bg-green-50 border-b border-gray-100">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                        <Send className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-green-800">
+                          Assigned to {(project as any).assigned_designer.name}
+                        </p>
+                        <p className="text-sm text-green-600">
+                          {(project as any).assigned_designer.specialization}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Project Details */}
                 <div className="p-6">
@@ -292,11 +321,17 @@ const MyProjects = () => {
                   <div className="space-y-2">
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => navigate(`/edit-project/${project.id}`)}
+                        onClick={() => navigate(`/project-detail/${project.id}`)}
                         className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1"
                       >
+                        <Activity className="w-4 h-4" />
+                        <span>View Details</span>
+                      </button>
+                      <button
+                        onClick={() => navigate(`/edit-project/${project.id}`)}
+                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
+                      >
                         <Edit className="w-4 h-4" />
-                        <span>Edit</span>
                       </button>
                       <button
                         onClick={() => handleDeleteProject(project.id)}
@@ -305,13 +340,16 @@ const MyProjects = () => {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    <button
-                      onClick={() => handleSendToDesigner(project)}
-                      className="w-full bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                    >
-                      <Send className="w-4 h-4" />
-                      <span>Send to Designer</span>
-                    </button>
+                    
+                    {!(project as any).assigned_designer && (
+                      <button
+                        onClick={() => handleAssignToDesigner(project)}
+                        className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <Send className="w-4 h-4" />
+                        <span>Assign to Designer</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -320,15 +358,16 @@ const MyProjects = () => {
         )}
       </div>
 
-      {/* Send to Designer Modal */}
+      {/* Assign Project Modal */}
       {selectedProject && (
-        <SendToDesignerModal
-          isOpen={showSendModal}
+        <AssignProjectModal
+          isOpen={showAssignModal}
           onClose={() => {
-            setShowSendModal(false);
+            setShowAssignModal(false);
             setSelectedProject(null);
           }}
           project={selectedProject}
+          onSuccess={handleAssignSuccess}
         />
       )}
     </div>
