@@ -90,8 +90,9 @@ const Home = () => {
     setPendingAction(null);
   };
 
-  // Determine if we should show the "Join our community" section
-  const shouldShowJoinCommunity = !user || (!registrationLoading && !hasAnyRegistration);
+  // Only show the "Join our community" section if user is not signed in
+  // Remove it completely when user is signed in (regardless of registration status)
+  const shouldShowJoinCommunity = !user;
 
   return (
     <div className="gradient-bg">
@@ -158,7 +159,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Registration Options - Only show if user hasn't registered yet */}
+      {/* Registration Options - Only show if user is not logged in */}
       {shouldShowJoinCommunity && (
         <section className="py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -240,33 +241,6 @@ const Home = () => {
                 >
                   Register Your Project
                 </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Thank You Section - Show if user has registered */}
-      {user && !registrationLoading && hasAnyRegistration && (
-        <section className="py-16 bg-gradient-to-r from-green-50 to-blue-50">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="bg-white rounded-xl shadow-lg p-8">
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Star className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-3xl font-bold text-secondary-800 mb-4">
-                Welcome to Our Community!
-              </h2>
-              <p className="text-xl text-gray-600 mb-6">
-                Thank you for joining HomeDesigners. You're now part of India's premier interior design platform.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to="/designers" className="btn-primary">
-                  Explore Designers
-                </Link>
-                <Link to="/projects" className="btn-secondary">
-                  View Projects
-                </Link>
               </div>
             </div>
           </div>
