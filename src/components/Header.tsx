@@ -28,8 +28,23 @@ const Header = () => {
   const isActive = (path: string) => location.pathname === path;
 
   const handleSignOut = async () => {
-    await signOut();
-    setShowUserMenu(false);
+    try {
+      // Close any open menus
+      setShowUserMenu(false);
+      setIsMenuOpen(false);
+      
+      // Clear any form states in the current component
+      setShowAuthModal(false);
+      setAuthMode('login');
+      setEditProfileLoading(false);
+      
+      // Call the enhanced signOut function that handles clearing and redirecting
+      await signOut();
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      // Force redirect even if there's an error
+      window.location.href = '/';
+    }
   };
 
   const handleDesignerRegistration = () => {
@@ -365,10 +380,7 @@ const Header = () => {
                       </>
                     )}
                     <button
-                      onClick={() => {
-                        handleSignOut();
-                        setIsMenuOpen(false);
-                      }}
+                      onClick={handleSignOut}
                       className="w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-primary-50"
                     >
                       Sign Out

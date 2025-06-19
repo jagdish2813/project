@@ -39,6 +39,26 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
     };
   }, [isOpen]);
 
+  // Clear form when modal closes or mode changes
+  useEffect(() => {
+    if (!isOpen) {
+      clearForm();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    clearForm();
+  }, [mode]);
+
+  const clearForm = () => {
+    setEmail('');
+    setPassword('');
+    setName('');
+    setErrors({});
+    setSuccess('');
+    setShowPassword(false);
+  };
+
   const validateName = (name: string): string | undefined => {
     if (!name.trim()) {
       return 'Full name is required';
@@ -216,6 +236,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
         if (data.user) {
           setSuccess('Signed in successfully!');
           setTimeout(() => {
+            clearForm();
             onClose();
           }, 1000);
         }
@@ -228,22 +249,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
     }
   };
 
-  const resetForm = () => {
-    setEmail('');
-    setPassword('');
-    setName('');
-    setErrors({});
-    setSuccess('');
-    setShowPassword(false);
-  };
-
   const handleClose = () => {
-    resetForm();
+    clearForm();
     onClose();
   };
 
   const handleModeChange = (newMode: 'login' | 'signup') => {
-    resetForm();
+    clearForm();
     onModeChange(newMode);
   };
 
@@ -281,6 +293,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
                   }`}
                   placeholder="Enter your full name"
                   required
+                  autoComplete="name"
                 />
               </div>
               {errors.name && (
@@ -307,6 +320,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
                 }`}
                 placeholder="Enter your email"
                 required
+                autoComplete="email"
               />
             </div>
             {errors.email && (
@@ -332,6 +346,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onModeChan
                 }`}
                 placeholder="Enter your password"
                 required
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               />
               <button
                 type="button"
