@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, IndianRupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Calendar, MapPin, IndianRupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -44,6 +44,7 @@ const CustomerProjects = () => {
   const [projectShares, setProjectShares] = useState<ProjectShare[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   useEffect(() => {
     if (authLoading || designerLoading) return;
@@ -68,20 +69,62 @@ const CustomerProjects = () => {
       setLoading(true);
       setError(null);
       
-      const { data, error } = await supabase
+      console.log('Fetching project shares for designer:', {
+        designerId: designer.id,
+        designerEmail: designer.email,
+        userId: user.id
+      });
+
+      // First, let's check if we can access the project_shares table at all
+      const { data: testData, error: testError } = await supabase
+        .from('project_shares')
+        .select('id, designer_email')
+        .limit(1);
+
+      console.log('Test query result:', { testData, testError });
+
+      // Now try to fetch shares for this designer
+      const { data, error, count } = await supabase
         .from('project_shares')
         .select(`
           *,
           project:customers(*)
-        `)
-        .eq('designer_email', designer.email)
+        `, { count: 'exact' })
+        .eq('designer_email', designer.email.toLowerCase())
         .order('created_at', { ascending: false });
+
+      console.log('Project shares query result:', { 
+        data, 
+        error, 
+        count,
+        designerEmail: designer.email 
+      });
 
       if (error) {
         console.error('Error fetching project shares:', error);
+        
+        // Try alternative query without join to see if that works
+        const { data: simpleData, error: simpleError } = await supabase
+          .from('project_shares')
+          .select('*')
+          .eq('designer_email', designer.email.toLowerCase());
+
+        console.log('Simple query result:', { simpleData, simpleError });
+        
+        setDebugInfo({
+          originalError: error,
+          simpleQuery: { data: simpleData, error: simpleError },
+          designerInfo: {
+            email: designer.email,
+            userId: user.id,
+            isActive: designer.is_active
+          }
+        });
+        
         throw error;
       }
       
+      console.log('Successfully fetched project shares:', data);
       setProjectShares(data || []);
     } catch (error: any) {
       console.error('Error fetching project shares:', error);
@@ -163,17 +206,63 @@ const CustomerProjects = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-2xl mx-auto px-4">
           <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-lg mb-4">
-            <p className="font-medium">Error loading customer projects</p>
-            <p className="text-sm">{error}</p>
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+              <div className="text-left">
+                <p className="font-medium">Error loading customer projects</p>
+                <p className="text-sm mt-1">{error}</p>
+              </div>
+            </div>
           </div>
-          <button
-            onClick={fetchProjectShares}
-            className="btn-primary"
-          >
-            Try Again
-          </button>
+          
+          {debugInfo && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 text-left">
+              <h3 className="font-medium text-gray-800 mb-2">Debug Information:</h3>
+              <div className="text-xs text-gray-600 space-y-2">
+                <div>
+                  <strong>Designer Email:</strong> {debugInfo.designerInfo?.email}
+                </div>
+                <div>
+                  <strong>User ID:</strong> {debugInfo.designerInfo?.userId}
+                </div>
+                <div>
+                  <strong>Is Active:</strong> {debugInfo.designerInfo?.isActive ? 'Yes' : 'No'}
+                </div>
+                {debugInfo.originalError && (
+                  <div>
+                    <strong>Original Error:</strong> {debugInfo.originalError.message}
+                  </div>
+                )}
+                {debugInfo.simpleQuery?.error && (
+                  <div>
+                    <strong>Simple Query Error:</strong> {debugInfo.simpleQuery.error.message}
+                  </div>
+                )}
+                {debugInfo.simpleQuery?.data && (
+                  <div>
+                    <strong>Simple Query Results:</strong> {debugInfo.simpleQuery.data.length} records found
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <div className="flex space-x-4 justify-center">
+            <button
+              onClick={fetchProjectShares}
+              className="btn-primary"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+            >
+              Go Home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -198,6 +287,11 @@ const CustomerProjects = () => {
             <p className="text-lg text-gray-600">
               Projects shared with you by potential clients
             </p>
+            {designer && (
+              <p className="text-sm text-gray-500 mt-2">
+                Showing projects sent to: {designer.email}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -214,12 +308,20 @@ const CustomerProjects = () => {
                 When customers share their projects with you, they will appear here. 
                 Make sure your profile is complete and visible to attract more clients.
               </p>
-              <button
-                onClick={() => navigate('/edit-designer-profile')}
-                className="btn-primary"
-              >
-                Update My Profile
-              </button>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={() => navigate('/edit-designer-profile')}
+                  className="btn-primary"
+                >
+                  Update My Profile
+                </button>
+                <button
+                  onClick={fetchProjectShares}
+                  className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                >
+                  Refresh
+                </button>
+              </div>
             </div>
           </div>
         ) : (
