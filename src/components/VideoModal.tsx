@@ -25,7 +25,7 @@ const VideoModal: React.FC<VideoModalProps> = ({ isOpen, onClose }) => {
         <div className="aspect-video">
           <iframe
             src={videoUrl}
-            title="HomeInteriors Story - Interior Design Portfolio"
+            title="TheHomeDesigners Story - Interior Design Portfolio"
             className="w-full h-full"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
