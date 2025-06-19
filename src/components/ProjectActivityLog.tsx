@@ -1,11 +1,159 @@
 import React from 'react';
-import { Clock, User, Edit, UserPlus, CheckCircle, AlertCircle, FileText } from 'lucide-react';
+import { Clock, User, Edit, UserPlus, CheckCircle, AlertCircle, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { ProjectActivity } from '../hooks/useProjectTracking';
 
 interface ProjectActivityLogProps {
   activities: ProjectActivity[];
   loading?: boolean;
 }
+
+interface ChangeDisplayProps {
+  activity: ProjectActivity;
+}
+
+const ChangeDisplay: React.FC<ChangeDisplayProps> = ({ activity }) => {
+  const [isExpanded, setIsExpanded] = React.useState(false);
+
+  if (!activity.old_values || !activity.new_values) {
+    return null;
+  }
+
+  // Get the fields that actually changed
+  const changedFields = Object.keys(activity.new_values).filter(key => {
+    const oldValue = activity.old_values[key];
+    const newValue = activity.new_values[key];
+    
+    // Handle arrays specially
+    if (Array.isArray(oldValue) && Array.isArray(newValue)) {
+      return JSON.stringify(oldValue.sort()) !== JSON.stringify(newValue.sort());
+    }
+    
+    // Handle null/undefined values
+    if (oldValue === null || oldValue === undefined) {
+      return newValue !== null && newValue !== undefined && newValue !== '';
+    }
+    
+    if (newValue === null || newValue === undefined) {
+      return oldValue !== null && oldValue !== undefined && oldValue !== '';
+    }
+    
+    return String(oldValue) !== String(newValue);
+  });
+
+  if (changedFields.length === 0) {
+    return null;
+  }
+
+  const formatValue = (value: any): string => {
+    if (value === null || value === undefined) {
+      return '(empty)';
+    }
+    
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return '(empty list)';
+      }
+      return value.join(', ');
+    }
+    
+    if (typeof value === 'boolean') {
+      return value ? 'Yes' : 'No';
+    }
+    
+    if (typeof value === 'string' && value.trim() === '') {
+      return '(empty)';
+    }
+    
+    return String(value);
+  };
+
+  const getFieldDisplayName = (fieldName: string): string => {
+    const fieldMap: Record<string, string> = {
+      'project_name': 'Project Name',
+      'property_type': 'Property Type',
+      'project_area': 'Project Area',
+      'budget_range': 'Budget Range',
+      'timeline': 'Timeline',
+      'requirements': 'Requirements',
+      'special_requirements': 'Special Requirements',
+      'room_types': 'Room Types',
+      'inspiration_links': 'Inspiration Links',
+      'preferred_designer': 'Preferred Designer',
+      'layout_image_url': 'Layout Image',
+      'assignment_status': 'Assignment Status',
+      'assigned_designer_id': 'Assigned Designer',
+      'location': 'Location',
+      'name': 'Customer Name',
+      'email': 'Email',
+      'phone': 'Phone',
+      'version': 'Version',
+      'last_modified_by': 'Last Modified By',
+      'updated_at': 'Updated At'
+    };
+    
+    return fieldMap[fieldName] || fieldName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  // Filter out system fields that users don't need to see
+  const userRelevantFields = changedFields.filter(field => 
+    !['id', 'user_id', 'created_at', 'updated_at', 'version', 'last_modified_by'].includes(field)
+  );
+
+  if (userRelevantFields.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-2">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center space-x-1 text-xs text-primary-600 hover:text-primary-700 transition-colors"
+      >
+        {isExpanded ? (
+          <ChevronDown className="w-3 h-3" />
+        ) : (
+          <ChevronRight className="w-3 h-3" />
+        )}
+        <span>View changes ({userRelevantFields.length} field{userRelevantFields.length !== 1 ? 's' : ''})</span>
+      </button>
+      
+      {isExpanded && (
+        <div className="mt-2 p-3 bg-gray-50 rounded-lg border text-xs">
+          <div className="space-y-3">
+            {userRelevantFields.map(field => {
+              const oldValue = activity.old_values[field];
+              const newValue = activity.new_values[field];
+              
+              return (
+                <div key={field} className="border-b border-gray-200 pb-2 last:border-b-0 last:pb-0">
+                  <div className="font-medium text-gray-700 mb-1">
+                    {getFieldDisplayName(field)}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div>
+                      <div className="text-gray-500 mb-1">Previous:</div>
+                      <div className="bg-red-50 border border-red-200 rounded px-2 py-1 text-red-800">
+                        {formatValue(oldValue)}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="text-gray-500 mb-1">Current:</div>
+                      <div className="bg-green-50 border border-green-200 rounded px-2 py-1 text-green-800">
+                        {formatValue(newValue)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ProjectActivityLog: React.FC<ProjectActivityLogProps> = ({ activities, loading }) => {
   const getActivityIcon = (activityType: string) => {
@@ -64,71 +212,60 @@ const ProjectActivityLog: React.FC<ProjectActivityLogProps> = ({ activities, loa
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6">
-      <div className="flex items-center space-x-2 mb-6">
+    <div className="space-y-6">
+      <div className="flex items-center space-x-2">
         <Clock className="w-5 h-5 text-primary-600" />
         <h3 className="text-lg font-semibold text-secondary-800">Project Activity</h3>
       </div>
 
       {activities.length === 0 ? (
-        <div className="text-center py-8">
+        <div className="text-center py-8 bg-white rounded-xl shadow-lg">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Clock className="w-8 h-8 text-gray-400" />
           </div>
           <p className="text-gray-500">No activity recorded yet</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {activities.map((activity, index) => (
-            <div key={activity.id} className="flex space-x-3">
-              <div className="flex flex-col items-center">
-                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                  {getActivityIcon(activity.activity_type)}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="space-y-4">
+            {activities.map((activity, index) => (
+              <div key={activity.id} className="flex space-x-3">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                    {getActivityIcon(activity.activity_type)}
+                  </div>
+                  {index < activities.length - 1 && (
+                    <div className="w-0.5 h-8 bg-gray-200 mt-2"></div>
+                  )}
                 </div>
-                {index < activities.length - 1 && (
-                  <div className="w-0.5 h-8 bg-gray-200 mt-2"></div>
-                )}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-secondary-800">
-                      <span className={`font-medium ${getActivityColor(activity.user_type)}`}>
-                        {activity.user_name}
-                      </span>
-                      <span className="mx-1">•</span>
-                      <span className="capitalize">{activity.user_type}</span>
-                    </p>
-                    <p className="text-gray-600 mt-1">{activity.description}</p>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm text-secondary-800">
+                        <span className={`font-medium ${getActivityColor(activity.user_type)}`}>
+                          {activity.user_name}
+                        </span>
+                        <span className="mx-1">•</span>
+                        <span className="capitalize">{activity.user_type}</span>
+                      </p>
+                      <p className="text-gray-600 mt-1">{activity.description}</p>
+                      
+                      {/* Show user-friendly changes if available */}
+                      {activity.activity_type === 'UPDATE' && (
+                        <ChangeDisplay activity={activity} />
+                      )}
+                    </div>
                     
-                    {/* Show specific changes if available */}
-                    {activity.activity_type === 'UPDATE' && activity.old_values && activity.new_values && (
-                      <div className="mt-2 text-xs text-gray-500">
-                        <details className="cursor-pointer">
-                          <summary className="hover:text-gray-700">View changes</summary>
-                          <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
-                            <pre className="whitespace-pre-wrap">
-                              {JSON.stringify({
-                                changed: Object.keys(activity.new_values).filter(key => 
-                                  JSON.stringify(activity.old_values[key]) !== JSON.stringify(activity.new_values[key])
-                                )
-                              }, null, 2)}
-                            </pre>
-                          </div>
-                        </details>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center space-x-2 text-xs text-gray-500 ml-4">
-                    <Clock className="w-3 h-3" />
-                    <span>{formatDate(activity.created_at)}</span>
+                    <div className="flex items-center space-x-2 text-xs text-gray-500 ml-4">
+                      <Clock className="w-3 h-3" />
+                      <span>{formatDate(activity.created_at)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>
