@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, IndianRupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, IndianRupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -68,67 +68,123 @@ const CustomerProjects = () => {
     try {
       setLoading(true);
       setError(null);
+      setDebugInfo(null);
       
       console.log('Fetching project shares for designer:', {
         designerId: designer.id,
         designerEmail: designer.email,
-        userId: user.id
+        userId: user.id,
+        isActive: designer.is_active
       });
 
-      // First, let's check if we can access the project_shares table at all
-      const { data: testData, error: testError } = await supabase
+      // First, let's test basic access to the tables
+      console.log('Testing basic table access...');
+      
+      // Test designers table access
+      const { data: designerTest, error: designerTestError } = await supabase
+        .from('designers')
+        .select('id, email, is_active')
+        .eq('user_id', user.id)
+        .single();
+
+      console.log('Designer table test:', { designerTest, designerTestError });
+
+      // Test project_shares table access
+      const { data: sharesTest, error: sharesTestError } = await supabase
         .from('project_shares')
         .select('id, designer_email')
         .limit(1);
 
-      console.log('Test query result:', { testData, testError });
+      console.log('Project shares table test:', { sharesTest, sharesTestError });
 
-      // Now try to fetch shares for this designer
-      const { data, error, count } = await supabase
+      // Test customers table access
+      const { data: customersTest, error: customersTestError } = await supabase
+        .from('customers')
+        .select('id, project_name')
+        .limit(1);
+
+      console.log('Customers table test:', { customersTest, customersTestError });
+
+      // Now try to fetch shares for this designer with a simpler query first
+      console.log('Fetching project shares (simple query)...');
+      const { data: simpleShares, error: simpleError } = await supabase
+        .from('project_shares')
+        .select('*')
+        .ilike('designer_email', designer.email);
+
+      console.log('Simple shares query:', { simpleShares, simpleError });
+
+      if (simpleError) {
+        throw new Error(`Failed to access project shares: ${simpleError.message}`);
+      }
+
+      // If simple query works, try the complex query with join
+      console.log('Fetching project shares with customer data...');
+      const { data, error } = await supabase
         .from('project_shares')
         .select(`
           *,
           project:customers(*)
-        `, { count: 'exact' })
-        .eq('designer_email', designer.email.toLowerCase())
+        `)
+        .ilike('designer_email', designer.email)
         .order('created_at', { ascending: false });
 
-      console.log('Project shares query result:', { 
-        data, 
-        error, 
-        count,
-        designerEmail: designer.email 
-      });
+      console.log('Complex query result:', { data, error });
 
       if (error) {
-        console.error('Error fetching project shares:', error);
+        console.error('Error in complex query:', error);
         
-        // Try alternative query without join to see if that works
-        const { data: simpleData, error: simpleError } = await supabase
-          .from('project_shares')
-          .select('*')
-          .eq('designer_email', designer.email.toLowerCase());
+        // Fallback: get shares and customers separately
+        console.log('Trying fallback approach...');
+        const shares = simpleShares || [];
+        const projectIds = shares.map(share => share.project_id);
+        
+        if (projectIds.length > 0) {
+          const { data: projects, error: projectsError } = await supabase
+            .from('customers')
+            .select('*')
+            .in('id', projectIds);
 
-        console.log('Simple query result:', { simpleData, simpleError });
-        
-        setDebugInfo({
-          originalError: error,
-          simpleQuery: { data: simpleData, error: simpleError },
-          designerInfo: {
-            email: designer.email,
-            userId: user.id,
-            isActive: designer.is_active
+          if (projectsError) {
+            throw new Error(`Failed to fetch customer projects: ${projectsError.message}`);
           }
-        });
-        
-        throw error;
+
+          // Manually join the data
+          const joinedData = shares.map(share => ({
+            ...share,
+            project: projects?.find(p => p.id === share.project_id) || null
+          })).filter(share => share.project !== null);
+
+          console.log('Fallback data:', joinedData);
+          setProjectShares(joinedData);
+        } else {
+          setProjectShares([]);
+        }
+      } else {
+        console.log('Successfully fetched project shares:', data);
+        setProjectShares(data || []);
       }
-      
-      console.log('Successfully fetched project shares:', data);
-      setProjectShares(data || []);
+
+      setDebugInfo({
+        designerTest,
+        sharesTest: sharesTest?.length || 0,
+        customersTest: customersTest?.length || 0,
+        simpleSharesCount: simpleShares?.length || 0,
+        finalCount: data?.length || projectShares.length
+      });
+
     } catch (error: any) {
       console.error('Error fetching project shares:', error);
       setError(error.message || 'Failed to load customer projects');
+      
+      setDebugInfo({
+        error: error.message,
+        designerInfo: {
+          email: designer?.email,
+          userId: user?.id,
+          isActive: designer?.is_active
+        }
+      });
     } finally {
       setLoading(false);
     }
@@ -206,7 +262,7 @@ const CustomerProjects = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-2xl mx-auto px-4">
+        <div className="text-center max-w-4xl mx-auto px-4">
           <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-lg mb-4">
             <div className="flex items-start space-x-3">
               <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
@@ -230,19 +286,29 @@ const CustomerProjects = () => {
                 <div>
                   <strong>Is Active:</strong> {debugInfo.designerInfo?.isActive ? 'Yes' : 'No'}
                 </div>
-                {debugInfo.originalError && (
+                {debugInfo.designerTest && (
                   <div>
-                    <strong>Original Error:</strong> {debugInfo.originalError.message}
+                    <strong>Designer Table Access:</strong> ✓ Working
                   </div>
                 )}
-                {debugInfo.simpleQuery?.error && (
+                {typeof debugInfo.sharesTest === 'number' && (
                   <div>
-                    <strong>Simple Query Error:</strong> {debugInfo.simpleQuery.error.message}
+                    <strong>Project Shares Table:</strong> ✓ {debugInfo.sharesTest} total records
                   </div>
                 )}
-                {debugInfo.simpleQuery?.data && (
+                {typeof debugInfo.customersTest === 'number' && (
                   <div>
-                    <strong>Simple Query Results:</strong> {debugInfo.simpleQuery.data.length} records found
+                    <strong>Customers Table:</strong> ✓ {debugInfo.customersTest} total records
+                  </div>
+                )}
+                {typeof debugInfo.simpleSharesCount === 'number' && (
+                  <div>
+                    <strong>Shares for Designer:</strong> {debugInfo.simpleSharesCount} found
+                  </div>
+                )}
+                {debugInfo.error && (
+                  <div>
+                    <strong>Error Details:</strong> {debugInfo.error}
                   </div>
                 )}
               </div>
@@ -252,9 +318,10 @@ const CustomerProjects = () => {
           <div className="flex space-x-4 justify-center">
             <button
               onClick={fetchProjectShares}
-              className="btn-primary"
+              className="btn-primary flex items-center space-x-2"
             >
-              Try Again
+              <RefreshCw className="w-4 h-4" />
+              <span>Try Again</span>
             </button>
             <button
               onClick={() => navigate('/')}
@@ -292,6 +359,11 @@ const CustomerProjects = () => {
                 Showing projects sent to: {designer.email}
               </p>
             )}
+            {debugInfo && (
+              <p className="text-xs text-gray-400 mt-1">
+                Found {debugInfo.finalCount || projectShares.length} project shares
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -317,9 +389,10 @@ const CustomerProjects = () => {
                 </button>
                 <button
                   onClick={fetchProjectShares}
-                  className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                  className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors flex items-center justify-center space-x-2"
                 >
-                  Refresh
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Refresh</span>
                 </button>
               </div>
             </div>
