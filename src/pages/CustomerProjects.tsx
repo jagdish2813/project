@@ -37,14 +37,41 @@ interface ProjectShare {
   };
 }
 
+interface AssignedProject {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  project_name: string;
+  property_type: string;
+  project_area: string | null;
+  budget_range: string;
+  timeline: string;
+  requirements: string;
+  preferred_designer: string | null;
+  layout_image_url: string | null;
+  inspiration_links: string[];
+  room_types: string[];
+  special_requirements: string | null;
+  status: string;
+  assignment_status: string;
+  assigned_designer_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const CustomerProjects = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { designer, isDesigner, loading: designerLoading, error: designerError } = useDesignerProfile();
   const [projectShares, setProjectShares] = useState<ProjectShare[]>([]);
+  const [assignedProjects, setAssignedProjects] = useState<AssignedProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'assigned' | 'shared'>('assigned');
 
   // Debug logging for hook states
   useEffect(() => {
@@ -85,11 +112,11 @@ const CustomerProjects = () => {
       return;
     }
     
-    console.log('All checks passed, fetching project shares');
-    fetchProjectShares();
+    console.log('All checks passed, fetching projects');
+    fetchProjects();
   }, [user, designer, isDesigner, authLoading, designerLoading, designerError, navigate]);
 
-  const fetchProjectShares = async () => {
+  const fetchProjects = async () => {
     if (!user || !designer) {
       console.log('Cannot fetch - missing user or designer');
       return;
@@ -100,57 +127,33 @@ const CustomerProjects = () => {
       setError(null);
       setDebugInfo(null);
       
-      console.log('Fetching project shares for designer:', {
+      console.log('Fetching projects for designer:', {
         designerId: designer.id,
         designerEmail: designer.email,
         userId: user.id,
         isActive: designer.is_active
       });
 
-      // First, let's test basic access to the tables
-      console.log('Testing basic table access...');
-      
-      // Test designers table access
-      const { data: designerTest, error: designerTestError } = await supabase
-        .from('designers')
-        .select('id, email, is_active')
-        .eq('user_id', user.id)
-        .single();
-
-      console.log('Designer table test:', { designerTest, designerTestError });
-
-      // Test project_shares table access
-      const { data: sharesTest, error: sharesTestError } = await supabase
-        .from('project_shares')
-        .select('id, designer_email')
-        .limit(1);
-
-      console.log('Project shares table test:', { sharesTest, sharesTestError });
-
-      // Test customers table access
-      const { data: customersTest, error: customersTestError } = await supabase
+      // Fetch assigned projects (projects where this designer is assigned)
+      console.log('Fetching assigned projects...');
+      const { data: assignedData, error: assignedError } = await supabase
         .from('customers')
-        .select('id, project_name')
-        .limit(1);
-
-      console.log('Customers table test:', { customersTest, customersTestError });
-
-      // Now try to fetch shares for this designer with a simpler query first
-      console.log('Fetching project shares (simple query)...');
-      const { data: simpleShares, error: simpleError } = await supabase
-        .from('project_shares')
         .select('*')
-        .ilike('designer_email', designer.email);
+        .eq('assigned_designer_id', designer.id)
+        .order('created_at', { ascending: false });
 
-      console.log('Simple shares query:', { simpleShares, simpleError });
+      console.log('Assigned projects query result:', { assignedData, assignedError });
 
-      if (simpleError) {
-        throw new Error(`Failed to access project shares: ${simpleError.message}`);
+      if (assignedError) {
+        console.error('Error fetching assigned projects:', assignedError);
+        throw new Error(`Failed to fetch assigned projects: ${assignedError.message}`);
       }
 
-      // If simple query works, try the complex query with join
-      console.log('Fetching project shares with customer data...');
-      const { data, error } = await supabase
+      setAssignedProjects(assignedData || []);
+
+      // Fetch shared projects (projects shared via email)
+      console.log('Fetching shared projects...');
+      const { data: sharedData, error: sharedError } = await supabase
         .from('project_shares')
         .select(`
           *,
@@ -159,52 +162,31 @@ const CustomerProjects = () => {
         .ilike('designer_email', designer.email)
         .order('created_at', { ascending: false });
 
-      console.log('Complex query result:', { data, error });
+      console.log('Shared projects query result:', { sharedData, sharedError });
 
-      if (error) {
-        console.error('Error in complex query:', error);
-        
-        // Fallback: get shares and customers separately
-        console.log('Trying fallback approach...');
-        const shares = simpleShares || [];
-        const projectIds = shares.map(share => share.project_id);
-        
-        if (projectIds.length > 0) {
-          const { data: projects, error: projectsError } = await supabase
-            .from('customers')
-            .select('*')
-            .in('id', projectIds);
-
-          if (projectsError) {
-            throw new Error(`Failed to fetch customer projects: ${projectsError.message}`);
-          }
-
-          // Manually join the data
-          const joinedData = shares.map(share => ({
-            ...share,
-            project: projects?.find(p => p.id === share.project_id) || null
-          })).filter(share => share.project !== null);
-
-          console.log('Fallback data:', joinedData);
-          setProjectShares(joinedData);
-        } else {
-          setProjectShares([]);
-        }
+      if (sharedError) {
+        console.error('Error fetching shared projects:', sharedError);
+        // Don't throw error for shared projects, just log it
+        console.warn('Could not fetch shared projects, continuing with assigned projects only');
+        setProjectShares([]);
       } else {
-        console.log('Successfully fetched project shares:', data);
-        setProjectShares(data || []);
+        setProjectShares(sharedData || []);
       }
 
       setDebugInfo({
-        designerTest,
-        sharesTest: sharesTest?.length || 0,
-        customersTest: customersTest?.length || 0,
-        simpleSharesCount: simpleShares?.length || 0,
-        finalCount: data?.length || projectShares.length
+        designerInfo: {
+          id: designer.id,
+          email: designer.email,
+          userId: user.id,
+          isActive: designer.is_active
+        },
+        assignedCount: assignedData?.length || 0,
+        sharedCount: sharedData?.length || 0,
+        totalProjects: (assignedData?.length || 0) + (sharedData?.length || 0)
       });
 
     } catch (error: any) {
-      console.error('Error fetching project shares:', error);
+      console.error('Error fetching projects:', error);
       setError(error.message || 'Failed to load customer projects');
       
       setDebugInfo({
@@ -222,23 +204,23 @@ const CustomerProjects = () => {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+      case 'assigned':
+        return 'bg-green-100 text-green-800';
       case 'in_progress':
         return 'bg-blue-100 text-blue-800';
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-purple-100 text-purple-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-yellow-100 text-yellow-800';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending':
-        return 'Pending Review';
+      case 'assigned':
+        return 'Assigned';
       case 'in_progress':
         return 'In Progress';
       case 'completed':
@@ -246,7 +228,7 @@ const CustomerProjects = () => {
       case 'cancelled':
         return 'Cancelled';
       default:
-        return status;
+        return 'Pending';
     }
   };
 
@@ -353,26 +335,6 @@ const CustomerProjects = () => {
                 <div>
                   <strong>Is Active:</strong> {debugInfo.designerInfo?.isActive ? 'Yes' : 'No'}
                 </div>
-                {debugInfo.designerTest && (
-                  <div>
-                    <strong>Designer Table Access:</strong> ✓ Working
-                  </div>
-                )}
-                {typeof debugInfo.sharesTest === 'number' && (
-                  <div>
-                    <strong>Project Shares Table:</strong> ✓ {debugInfo.sharesTest} total records
-                  </div>
-                )}
-                {typeof debugInfo.customersTest === 'number' && (
-                  <div>
-                    <strong>Customers Table:</strong> ✓ {debugInfo.customersTest} total records
-                  </div>
-                )}
-                {typeof debugInfo.simpleSharesCount === 'number' && (
-                  <div>
-                    <strong>Shares for Designer:</strong> {debugInfo.simpleSharesCount} found
-                  </div>
-                )}
                 {debugInfo.error && (
                   <div>
                     <strong>Error Details:</strong> {debugInfo.error}
@@ -384,7 +346,7 @@ const CustomerProjects = () => {
           
           <div className="flex space-x-4 justify-center">
             <button
-              onClick={fetchProjectShares}
+              onClick={fetchProjects}
               className="btn-primary flex items-center space-x-2"
             >
               <RefreshCw className="w-4 h-4" />
@@ -401,6 +363,8 @@ const CustomerProjects = () => {
       </div>
     );
   }
+
+  const totalProjects = assignedProjects.length + projectShares.length;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -419,16 +383,16 @@ const CustomerProjects = () => {
               Customer Projects
             </h1>
             <p className="text-lg text-gray-600">
-              Projects shared with you by potential clients
+              Projects assigned to you and shared by potential clients
             </p>
             {designer && (
               <p className="text-sm text-gray-500 mt-2">
-                Showing projects sent to: {designer.email}
+                Designer: {designer.name} ({designer.email})
               </p>
             )}
             {debugInfo && (
               <p className="text-xs text-gray-400 mt-1">
-                Found {debugInfo.finalCount || projectShares.length} project shares
+                {debugInfo.assignedCount} assigned • {debugInfo.sharedCount} shared • {totalProjects} total
               </p>
             )}
           </div>
@@ -436,167 +400,348 @@ const CustomerProjects = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {projectShares.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="bg-white rounded-xl shadow-lg p-12">
-              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <MessageSquare className="w-12 h-12 text-gray-400" />
-              </div>
-              <h2 className="text-2xl font-bold text-secondary-800 mb-4">No Projects Shared Yet</h2>
-              <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                When customers share their projects with you, they will appear here. 
-                Make sure your profile is complete and visible to attract more clients.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button
-                  onClick={() => navigate('/edit-designer-profile')}
-                  className="btn-primary"
-                >
-                  Update My Profile
-                </button>
-                <button
-                  onClick={fetchProjectShares}
-                  className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors flex items-center justify-center space-x-2"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Refresh</span>
-                </button>
+        {/* Tab Navigation */}
+        <div className="bg-white rounded-xl shadow-sm mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8 px-6">
+              <button
+                onClick={() => setActiveTab('assigned')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'assigned'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Assigned Projects ({assignedProjects.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('shared')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'shared'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Shared Projects ({projectShares.length})
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Content */}
+        {activeTab === 'assigned' ? (
+          // Assigned Projects
+          assignedProjects.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="bg-white rounded-xl shadow-lg p-12">
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <User className="w-12 h-12 text-gray-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-secondary-800 mb-4">No Assigned Projects Yet</h2>
+                <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                  When customers assign projects to you, they will appear here. 
+                  Make sure your profile is complete and visible to attract more clients.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <button
+                    onClick={() => navigate('/edit-designer-profile')}
+                    className="btn-primary"
+                  >
+                    Update My Profile
+                  </button>
+                  <button
+                    onClick={fetchProjects}
+                    className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Refresh</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projectShares.map((share) => (
-              <div key={share.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                {/* Project Header */}
-                <div className="p-6 border-b border-gray-100">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-xl font-semibold text-secondary-800 line-clamp-2">
-                      {share.project.project_name}
-                    </h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(share.project.status)}`}>
-                      {getStatusText(share.project.status)}
-                    </span>
-                  </div>
-                  
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {share.project.requirements}
-                  </p>
-
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="w-4 h-4" />
-                      <span>{share.project.location}</span>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {assignedProjects.map((project) => (
+                <div key={project.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                  {/* Project Header */}
+                  <div className="p-6 border-b border-gray-100">
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="text-xl font-semibold text-secondary-800 line-clamp-2">
+                        {project.project_name}
+                      </h3>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(project.assignment_status || 'assigned')}`}>
+                        {getStatusText(project.assignment_status || 'assigned')}
+                      </span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <IndianRupee className="w-4 h-4" />
-                      <span>{share.project.budget_range}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-4 h-4" />
-                      <span>{share.project.timeline}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>Shared {new Date(share.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Customer Details */}
-                <div className="p-6 bg-gray-50">
-                  <h4 className="font-semibold text-secondary-800 mb-3">Customer Details</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <User className="w-4 h-4" />
-                      <span>{share.project.name}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <Mail className="w-4 h-4" />
-                      <a href={`mailto:${share.project.email}`} className="text-primary-600 hover:text-primary-700">
-                        {share.project.email}
-                      </a>
-                    </div>
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <Phone className="w-4 h-4" />
-                      <a href={`tel:${share.project.phone}`} className="text-primary-600 hover:text-primary-700">
-                        {share.project.phone}
-                      </a>
-                    </div>
-                  </div>
-
-                  {share.message && (
-                    <div className="mt-4 p-3 bg-white rounded-lg border">
-                      <p className="text-sm font-medium text-gray-700 mb-1">Personal Message:</p>
-                      <p className="text-sm text-gray-600">{share.message}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Project Details */}
-                <div className="p-6">
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-600 mb-2">
-                      <span className="font-medium">Property:</span> {share.project.property_type}
+                    
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                      {project.requirements}
                     </p>
-                    {share.project.project_area && (
-                      <p className="text-sm text-gray-600 mb-2">
-                        <span className="font-medium">Area:</span> {share.project.project_area}
-                      </p>
-                    )}
-                    {share.project.preferred_designer && (
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Preferred Designer:</span> {share.project.preferred_designer}
-                      </p>
-                    )}
-                  </div>
 
-                  {/* Room Types */}
-                  {share.project.room_types && share.project.room_types.length > 0 && (
-                    <div className="mb-4">
-                      <p className="text-sm font-medium text-gray-700 mb-2">Rooms:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {share.project.room_types.slice(0, 3).map((room, index) => (
-                          <span key={index} className="bg-accent-100 text-accent-800 px-2 py-1 rounded-md text-xs">
-                            {room}
-                          </span>
-                        ))}
-                        {share.project.room_types.length > 3 && (
-                          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs">
-                            +{share.project.room_types.length - 3} more
-                          </span>
-                        )}
+                    <div className="space-y-2 text-sm text-gray-600">
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="w-4 h-4" />
+                        <span>{project.location}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <IndianRupee className="w-4 h-4" />
+                        <span>{project.budget_range}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Clock className="w-4 h-4" />
+                        <span>{project.timeline}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="w-4 h-4" />
+                        <span>Assigned {new Date(project.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
-                  )}
+                  </div>
 
-                  {/* Special Requirements */}
-                  {share.project.special_requirements && (
-                    <div className="mb-4">
-                      <p className="text-sm font-medium text-gray-700 mb-1">Special Requirements:</p>
-                      <p className="text-sm text-gray-600">{share.project.special_requirements}</p>
+                  {/* Customer Details */}
+                  <div className="p-6 bg-gray-50">
+                    <h4 className="font-semibold text-secondary-800 mb-3">Customer Details</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <User className="w-4 h-4" />
+                        <span>{project.name}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <Mail className="w-4 h-4" />
+                        <a href={`mailto:${project.email}`} className="text-primary-600 hover:text-primary-700">
+                          {project.email}
+                        </a>
+                      </div>
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <Phone className="w-4 h-4" />
+                        <a href={`tel:${project.phone}`} className="text-primary-600 hover:text-primary-700">
+                          {project.phone}
+                        </a>
+                      </div>
                     </div>
-                  )}
+                  </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex space-x-2">
-                    <a
-                      href={`mailto:${share.project.email}?subject=Regarding your ${share.project.project_name} project&body=Hi ${share.project.name},%0D%0A%0D%0AThank you for sharing your project details with me. I would love to discuss your ${share.project.project_name} project further.%0D%0A%0D%0ABest regards,%0D%0A${designer.name}`}
-                      className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors text-center"
-                    >
-                      Contact Customer
-                    </a>
-                    <a
-                      href={`tel:${share.project.phone}`}
-                      className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
-                    >
-                      <Phone className="w-4 h-4" />
-                    </a>
+                  {/* Project Details */}
+                  <div className="p-6">
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-600 mb-2">
+                        <span className="font-medium">Property:</span> {project.property_type}
+                      </p>
+                      {project.project_area && (
+                        <p className="text-sm text-gray-600 mb-2">
+                          <span className="font-medium">Area:</span> {project.project_area}
+                        </p>
+                      )}
+                      {project.preferred_designer && (
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Preferred Designer:</span> {project.preferred_designer}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Room Types */}
+                    {project.room_types && project.room_types.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Rooms:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {project.room_types.slice(0, 3).map((room, index) => (
+                            <span key={index} className="bg-accent-100 text-accent-800 px-2 py-1 rounded-md text-xs">
+                              {room}
+                            </span>
+                          ))}
+                          {project.room_types.length > 3 && (
+                            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs">
+                              +{project.room_types.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => navigate(`/project-detail/${project.id}`)}
+                        className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors text-center"
+                      >
+                        View Details
+                      </button>
+                      <a
+                        href={`tel:${project.phone}`}
+                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
+                      >
+                        <Phone className="w-4 h-4" />
+                      </a>
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+          )
+        ) : (
+          // Shared Projects (existing code)
+          projectShares.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="bg-white rounded-xl shadow-lg p-12">
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <MessageSquare className="w-12 h-12 text-gray-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-secondary-800 mb-4">No Shared Projects Yet</h2>
+                <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                  When customers share their projects with you via email, they will appear here. 
+                  Make sure your profile is complete and visible to attract more clients.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <button
+                    onClick={() => navigate('/edit-designer-profile')}
+                    className="btn-primary"
+                  >
+                    Update My Profile
+                  </button>
+                  <button
+                    onClick={fetchProjects}
+                    className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Refresh</span>
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projectShares.map((share) => (
+                <div key={share.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                  {/* Project Header */}
+                  <div className="p-6 border-b border-gray-100">
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="text-xl font-semibold text-secondary-800 line-clamp-2">
+                        {share.project.project_name}
+                      </h3>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(share.project.status)}`}>
+                        {getStatusText(share.project.status)}
+                      </span>
+                    </div>
+                    
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                      {share.project.requirements}
+                    </p>
+
+                    <div className="space-y-2 text-sm text-gray-600">
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="w-4 h-4" />
+                        <span>{share.project.location}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <IndianRupee className="w-4 h-4" />
+                        <span>{share.project.budget_range}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Clock className="w-4 h-4" />
+                        <span>{share.project.timeline}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="w-4 h-4" />
+                        <span>Shared {new Date(share.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Customer Details */}
+                  <div className="p-6 bg-gray-50">
+                    <h4 className="font-semibold text-secondary-800 mb-3">Customer Details</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <User className="w-4 h-4" />
+                        <span>{share.project.name}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <Mail className="w-4 h-4" />
+                        <a href={`mailto:${share.project.email}`} className="text-primary-600 hover:text-primary-700">
+                          {share.project.email}
+                        </a>
+                      </div>
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <Phone className="w-4 h-4" />
+                        <a href={`tel:${share.project.phone}`} className="text-primary-600 hover:text-primary-700">
+                          {share.project.phone}
+                        </a>
+                      </div>
+                    </div>
+
+                    {share.message && (
+                      <div className="mt-4 p-3 bg-white rounded-lg border">
+                        <p className="text-sm font-medium text-gray-700 mb-1">Personal Message:</p>
+                        <p className="text-sm text-gray-600">{share.message}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Project Details */}
+                  <div className="p-6">
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-600 mb-2">
+                        <span className="font-medium">Property:</span> {share.project.property_type}
+                      </p>
+                      {share.project.project_area && (
+                        <p className="text-sm text-gray-600 mb-2">
+                          <span className="font-medium">Area:</span> {share.project.project_area}
+                        </p>
+                      )}
+                      {share.project.preferred_designer && (
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Preferred Designer:</span> {share.project.preferred_designer}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Room Types */}
+                    {share.project.room_types && share.project.room_types.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Rooms:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {share.project.room_types.slice(0, 3).map((room, index) => (
+                            <span key={index} className="bg-accent-100 text-accent-800 px-2 py-1 rounded-md text-xs">
+                              {room}
+                            </span>
+                          ))}
+                          {share.project.room_types.length > 3 && (
+                            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs">
+                              +{share.project.room_types.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Special Requirements */}
+                    {share.project.special_requirements && (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-700 mb-1">Special Requirements:</p>
+                        <p className="text-sm text-gray-600">{share.project.special_requirements}</p>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex space-x-2">
+                      <a
+                        href={`mailto:${share.project.email}?subject=Regarding your ${share.project.project_name} project&body=Hi ${share.project.name},%0D%0A%0D%0AThank you for sharing your project details with me. I would love to discuss your ${share.project.project_name} project further.%0D%0A%0D%0ABest regards,%0D%0A${designer.name}`}
+                        className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors text-center"
+                      >
+                        Contact Customer
+                      </a>
+                      <a
+                        href={`tel:${share.project.phone}`}
+                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
+                      >
+                        <Phone className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         )}
       </div>
     </div>
