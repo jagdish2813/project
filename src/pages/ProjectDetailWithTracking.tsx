@@ -14,7 +14,7 @@ const ProjectDetailWithTracking = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { designer, isDesigner } = useDesignerProfile();
+  const { designer, isDesigner, loading: designerLoading } = useDesignerProfile();
   const { activities, versions, assignments, loading: trackingLoading, refreshData } = useProjectTracking(id);
   
   const [project, setProject] = useState<Customer | null>(null);
@@ -24,10 +24,10 @@ const ProjectDetailWithTracking = () => {
   const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'versions'>('details');
 
   useEffect(() => {
-    if (id && user) {
+    if (id && user && !designerLoading) {
       fetchProject();
     }
-  }, [id, user]);
+  }, [id, user, designerLoading, isDesigner, designer]);
 
   const fetchProject = async () => {
     if (!id || !user) return;
@@ -74,7 +74,7 @@ const ProjectDetailWithTracking = () => {
   const isAssignedDesigner = isDesigner && project?.assigned_designer_id === designer?.id;
   const canEdit = isProjectOwner || isAssignedDesigner;
 
-  if (loading) {
+  if (loading || designerLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
