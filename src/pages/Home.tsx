@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Award, Users, ArrowRight, Play, Palette, UserPlus } from 'lucide-react';
+import { Star, Award, Users, ArrowRight, Play, Palette, UserPlus, Percent, Clock, Gift, ExternalLink } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
 import VideoModal from '../components/VideoModal';
@@ -44,6 +44,66 @@ const Home = () => {
       reviews: 85,
       location: 'Bangalore',
       image: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=400'
+    }
+  ];
+
+  const designerAds = [
+    {
+      id: 1,
+      name: 'Priya Sharma',
+      specialization: 'Modern & Contemporary',
+      location: 'Mumbai',
+      image: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
+      portfolioImage: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=800',
+      offer: {
+        title: 'New Year Special',
+        discount: '25% OFF',
+        description: 'Complete home makeover packages',
+        validUntil: '2024-01-31',
+        originalPrice: '₹2,00,000',
+        discountedPrice: '₹1,50,000'
+      },
+      rating: 4.9,
+      projects: 45,
+      badge: 'Premium Designer'
+    },
+    {
+      id: 2,
+      name: 'Vikram Singh',
+      specialization: 'Luxury & High-End',
+      location: 'Gurgaon',
+      image: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400',
+      portfolioImage: 'https://images.pexels.com/photos/1457842/pexels-photo-1457842.jpeg?auto=compress&cs=tinysrgb&w=800',
+      offer: {
+        title: 'Luxury Living Sale',
+        discount: 'FREE',
+        description: '3D visualization with any project above ₹5L',
+        validUntil: '2024-02-15',
+        originalPrice: '₹50,000',
+        discountedPrice: 'FREE'
+      },
+      rating: 4.7,
+      projects: 89,
+      badge: 'Top Rated'
+    },
+    {
+      id: 3,
+      name: 'Meera Reddy',
+      specialization: 'Eco-Friendly Design',
+      location: 'Hyderabad',
+      image: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=400',
+      portfolioImage: 'https://images.pexels.com/photos/1571461/pexels-photo-1571461.jpeg?auto=compress&cs=tinysrgb&w=800',
+      offer: {
+        title: 'Green Home Initiative',
+        discount: '30% OFF',
+        description: 'Sustainable design consultation',
+        validUntil: '2024-02-28',
+        originalPrice: '₹75,000',
+        discountedPrice: '₹52,500'
+      },
+      rating: 4.8,
+      projects: 28,
+      badge: 'Eco Expert'
     }
   ];
 
@@ -316,6 +376,130 @@ const Home = () => {
             <Link to="/designers" className="btn-primary">
               View All Designers
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Designer Ads Section */}
+      <section className="py-16 bg-gradient-to-br from-gray-50 to-primary-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center space-x-2 bg-primary-100 text-primary-800 px-4 py-2 rounded-full text-sm font-medium mb-4">
+              <Gift className="w-4 h-4" />
+              <span>Limited Time Offers</span>
+            </div>
+            <h2 className="text-3xl lg:text-4xl font-bold text-secondary-800 mb-4">
+              Exclusive Designer Deals
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Don't miss out on these amazing offers from our top designers. Transform your space with premium services at unbeatable prices.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {designerAds.map((ad) => (
+              <div key={ad.id} className="bg-white rounded-2xl shadow-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+                {/* Offer Badge */}
+                <div className="relative">
+                  <img
+                    src={ad.portfolioImage}
+                    alt={`${ad.name}'s work`}
+                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute top-4 right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                    {ad.offer.discount}
+                  </div>
+                  <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2">
+                    <div className="flex items-center space-x-2">
+                      <img
+                        src={ad.image}
+                        alt={ad.name}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                      <div>
+                        <p className="font-semibold text-secondary-800 text-sm">{ad.name}</p>
+                        <p className="text-xs text-gray-600">{ad.location}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="bg-primary-100 text-primary-800 px-2 py-1 rounded-full text-xs font-medium">
+                      {ad.badge}
+                    </span>
+                    <div className="flex items-center space-x-1">
+                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                      <span className="text-sm font-medium text-gray-700">{ad.rating}</span>
+                      <span className="text-xs text-gray-500">({ad.projects} projects)</span>
+                    </div>
+                  </div>
+
+                  <h3 className="text-xl font-bold text-secondary-800 mb-2">{ad.offer.title}</h3>
+                  <p className="text-gray-600 mb-4">{ad.offer.description}</p>
+                  <p className="text-sm text-gray-500 mb-4">{ad.specialization}</p>
+
+                  {/* Pricing */}
+                  <div className="bg-gradient-to-r from-primary-50 to-accent-50 rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-500 line-through">{ad.offer.originalPrice}</p>
+                        <p className="text-2xl font-bold text-primary-600">{ad.offer.discountedPrice}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center space-x-1 text-red-500 mb-1">
+                          <Clock className="w-4 h-4" />
+                          <span className="text-sm font-medium">Limited Time</span>
+                        </div>
+                        <p className="text-xs text-gray-500">Valid until {new Date(ad.offer.validUntil).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex space-x-3">
+                    <Link
+                      to={`/designers/${ad.id}`}
+                      className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-3 px-4 rounded-lg font-medium transition-colors text-center"
+                    >
+                      View Profile
+                    </Link>
+                    <button className="bg-secondary-500 hover:bg-secondary-600 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center space-x-1">
+                      <ExternalLink className="w-4 h-4" />
+                      <span>Contact</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Floating Discount Badge */}
+                <div className="absolute top-0 left-0 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-br-lg text-xs font-bold">
+                  <div className="flex items-center space-x-1">
+                    <Percent className="w-3 h-3" />
+                    <span>SAVE BIG</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Call to Action */}
+          <div className="text-center mt-12">
+            <div className="bg-white rounded-2xl shadow-lg p-8 max-w-2xl mx-auto">
+              <h3 className="text-2xl font-bold text-secondary-800 mb-4">
+                Want to Feature Your Offers?
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Join our platform as a designer and showcase your special offers to thousands of potential clients.
+              </p>
+              <button
+                onClick={handleDesignerRegistration}
+                className="btn-primary"
+              >
+                Become a Featured Designer
+              </button>
+            </div>
           </div>
         </div>
       </section>
