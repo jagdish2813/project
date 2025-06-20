@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Star, Award, CheckCircle, Info, Layers, Hammer, Shield, Zap } from 'lucide-react';
+import { Search, Filter, Star, Award, CheckCircle, Info, Layers, Hammer, Shield, Zap, X } from 'lucide-react';
 
 interface Material {
   id: string;
