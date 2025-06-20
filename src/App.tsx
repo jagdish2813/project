@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import Designers from './pages/Designers';
 import Projects from './pages/Projects';
 import Gallery from './pages/Gallery';
+import Materials from './pages/Materials';
 import DesignerDetail from './pages/DesignerDetail';
 import ProjectDetail from './pages/ProjectDetail';
 import DesignerRegistration from './pages/DesignerRegistration';
@@ -31,6 +32,7 @@ function App() {
             <Route path="/projects" element={<Projects />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
             <Route path="/gallery" element={<Gallery />} />
+            <Route path="/materials" element={<Materials />} />
             <Route path="/register-designer" element={<DesignerRegistration />} />
             <Route path="/edit-designer-profile" element={<DesignerRegistration />} />
             <Route path="/register-customer" element={<CustomerRegistration />} />
