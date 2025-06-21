@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus, Edit, Loader2, FolderOpen, Users } from 'lucide-react';
+import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus, Edit, Loader2, FolderOpen, Users, BarChart3 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
@@ -102,6 +102,11 @@ const Header = () => {
     }
   };
 
+  const handleDesignerDashboard = () => {
+    navigate('/designer-dashboard');
+    setShowUserMenu(false);
+  };
+
   return (
     <>
       <header className="bg-white shadow-lg sticky top-0 z-50">
@@ -159,6 +164,13 @@ const Header = () => {
                         <>
                           {isDesigner ? (
                             <>
+                              <button
+                                onClick={handleDesignerDashboard}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                              >
+                                <BarChart3 className="w-4 h-4" />
+                                <span>Dashboard</span>
+                              </button>
                               <button
                                 onClick={handleViewProfile}
                                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
@@ -300,6 +312,16 @@ const Header = () => {
                       <>
                         {isDesigner ? (
                           <>
+                            <button
+                              onClick={() => {
+                                handleDesignerDashboard();
+                                setIsMenuOpen(false);
+                              }}
+                              className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                            >
+                              <BarChart3 className="w-4 h-4" />
+                              <span>Dashboard</span>
+                            </button>
                             <button
                               onClick={() => {
                                 handleViewProfile();
