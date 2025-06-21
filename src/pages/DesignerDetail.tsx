@@ -31,11 +31,16 @@ const DesignerDetail = () => {
         .select('*')
         .eq('id', designerId)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Supabase error:', error);
         throw error;
+      }
+      
+      if (!data) {
+        setError('Designer not found');
+        return;
       }
       
       setDesigner(data);
