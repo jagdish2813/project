@@ -16,7 +16,7 @@ const Home = () => {
 
   const featuredDesigners = [
     {
-      id: '1', // This should match actual designer IDs from your database
+      id: '550e8400-e29b-41d4-a716-446655440001', // Valid UUID format
       name: 'Priya Sharma',
       specialization: 'Modern & Contemporary',
       experience: '8 years',
@@ -26,7 +26,7 @@ const Home = () => {
       image: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'
     },
     {
-      id: '2', // This should match actual designer IDs from your database
+      id: '550e8400-e29b-41d4-a716-446655440002', // Valid UUID format
       name: 'Rajesh Kumar',
       specialization: 'Traditional Indian',
       experience: '12 years',
@@ -36,7 +36,7 @@ const Home = () => {
       image: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400'
     },
     {
-      id: '3', // This should match actual designer IDs from your database
+      id: '550e8400-e29b-41d4-a716-446655440003', // Valid UUID format
       name: 'Anita Desai',
       specialization: 'Minimalist Design',
       experience: '6 years',
@@ -49,7 +49,7 @@ const Home = () => {
 
   const designerAds = [
     {
-      id: '1', // Use actual designer ID from database
+      id: '550e8400-e29b-41d4-a716-446655440001', // Valid UUID format - same as featured designer
       name: 'Priya Sharma',
       specialization: 'Modern & Contemporary',
       location: 'Mumbai',
@@ -68,7 +68,7 @@ const Home = () => {
       badge: 'Premium Designer'
     },
     {
-      id: '2', // Use actual designer ID from database
+      id: '550e8400-e29b-41d4-a716-446655440004', // Valid UUID format
       name: 'Vikram Singh',
       specialization: 'Luxury & High-End',
       location: 'Gurgaon',
@@ -87,7 +87,7 @@ const Home = () => {
       badge: 'Top Rated'
     },
     {
-      id: '3', // Use actual designer ID from database
+      id: '550e8400-e29b-41d4-a716-446655440005', // Valid UUID format
       name: 'Meera Reddy',
       specialization: 'Eco-Friendly Design',
       location: 'Hyderabad',
