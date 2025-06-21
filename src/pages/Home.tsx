@@ -16,7 +16,7 @@ const Home = () => {
 
   const featuredDesigners = [
     {
-      id: 1,
+      id: '1', // This should match actual designer IDs from your database
       name: 'Priya Sharma',
       specialization: 'Modern & Contemporary',
       experience: '8 years',
@@ -26,7 +26,7 @@ const Home = () => {
       image: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'
     },
     {
-      id: 2,
+      id: '2', // This should match actual designer IDs from your database
       name: 'Rajesh Kumar',
       specialization: 'Traditional Indian',
       experience: '12 years',
@@ -36,7 +36,7 @@ const Home = () => {
       image: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400'
     },
     {
-      id: 3,
+      id: '3', // This should match actual designer IDs from your database
       name: 'Anita Desai',
       specialization: 'Minimalist Design',
       experience: '6 years',
@@ -49,7 +49,7 @@ const Home = () => {
 
   const designerAds = [
     {
-      id: 1,
+      id: '1', // Use actual designer ID from database
       name: 'Priya Sharma',
       specialization: 'Modern & Contemporary',
       location: 'Mumbai',
@@ -68,7 +68,7 @@ const Home = () => {
       badge: 'Premium Designer'
     },
     {
-      id: 2,
+      id: '2', // Use actual designer ID from database
       name: 'Vikram Singh',
       specialization: 'Luxury & High-End',
       location: 'Gurgaon',
@@ -87,7 +87,7 @@ const Home = () => {
       badge: 'Top Rated'
     },
     {
-      id: 3,
+      id: '3', // Use actual designer ID from database
       name: 'Meera Reddy',
       specialization: 'Eco-Friendly Design',
       location: 'Hyderabad',
@@ -133,6 +133,17 @@ const Home = () => {
     }
     // User is authenticated, proceed to registration
     window.location.href = '/register-customer';
+  };
+
+  const handleContactDesigner = (designerId: string) => {
+    if (!user) {
+      setPendingAction(null);
+      setAuthMode('login');
+      setShowAuthModal(true);
+      return;
+    }
+    // User is authenticated, proceed to contact
+    window.location.href = `/designers/${designerId}`;
   };
 
   const handleAuthSuccess = () => {
@@ -466,10 +477,23 @@ const Home = () => {
                     >
                       View Profile
                     </Link>
-                    <button className="bg-secondary-500 hover:bg-secondary-600 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center space-x-1">
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Contact</span>
-                    </button>
+                    {user ? (
+                      <Link
+                        to={`/designers/${ad.id}`}
+                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center space-x-1"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Contact</span>
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => handleContactDesigner(ad.id)}
+                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center space-x-1"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Contact</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
