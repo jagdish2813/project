@@ -107,6 +107,17 @@ const Header = () => {
     setShowUserMenu(false);
   };
 
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    
+    // Check if user is a designer and redirect to dashboard
+    // We need to wait a moment for the designer profile to load
+    setTimeout(() => {
+      // Force a page refresh to ensure all hooks are properly initialized
+      window.location.reload();
+    }, 500);
+  };
+
   return (
     <>
       <header className="bg-white shadow-lg sticky top-0 z-50">
@@ -444,6 +455,7 @@ const Header = () => {
         onClose={() => setShowAuthModal(false)}
         mode={authMode}
         onModeChange={setAuthMode}
+        onAuthSuccess={handleAuthSuccess}
       />
     </>
   );

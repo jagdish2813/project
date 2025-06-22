@@ -1,5 +1,7 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { useAuth } from './hooks/useAuth';
+import { useDesignerProfile } from './hooks/useDesignerProfile';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Chatbot from './components/Chatbot';
@@ -21,10 +23,30 @@ import AdminDashboard from './pages/AdminDashboard';
 import DebugPage from './pages/DebugPage';
 import DebugDesignerProfile from './pages/DebugDesignerProfile';
 
+// Component to handle designer dashboard redirect
+const DesignerRedirectHandler = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { isDesigner, loading: designerLoading } = useDesignerProfile();
+
+  useEffect(() => {
+    // Only redirect if user is authenticated and we've finished loading designer profile
+    if (!authLoading && !designerLoading && user && isDesigner) {
+      // Check if we're on the home page and redirect to dashboard
+      if (window.location.pathname === '/') {
+        navigate('/designer-dashboard');
+      }
+    }
+  }, [user, isDesigner, authLoading, designerLoading, navigate]);
+
+  return null;
+};
+
 function App() {
   return (
     <Router>
       <div className="min-h-screen flex flex-col">
+        <DesignerRedirectHandler />
         <Header />
         <main className="flex-grow">
           <Routes>
