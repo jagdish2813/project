@@ -22,7 +22,6 @@ import DesignerDashboard from './pages/DesignerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import DebugPage from './pages/DebugPage';
 import DebugDesignerProfile from './pages/DebugDesignerProfile';
-import DesignTool from './pages/DesignTool';
 
 // Component to handle designer dashboard redirect
 const DesignerRedirectHandler = () => {
@@ -69,7 +68,6 @@ function App() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/debug" element={<DebugPage />} />
             <Route path="/debug-profile" element={<DebugDesignerProfile />} />
-            <Route path="/design-tool" element={<DesignTool />} />
           </Routes>
         </main>
         <Footer />

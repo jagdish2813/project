@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Calendar, MapPin, IndianRupee, Clock, Edit, Eye, Trash2, AlertCircle, Send, Activity, Palette } from 'lucide-react';
+import { Plus, Calendar, MapPin, IndianRupee, Clock, Edit, Eye, Trash2, AlertCircle, Send, Activity } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import type { Customer } from '../lib/supabase';
@@ -191,22 +191,13 @@ const MyProjects = () => {
                 Manage and track your interior design projects
               </p>
             </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => navigate('/design-tool')}
-                className="btn-secondary flex items-center space-x-2"
-              >
-                <Palette className="w-5 h-5" />
-                <span>2D Designer</span>
-              </button>
-              <button
-                onClick={() => navigate('/register-customer')}
-                className="btn-primary flex items-center space-x-2"
-              >
-                <Plus className="w-5 h-5" />
-                <span>New Project</span>
-              </button>
-            </div>
+            <button
+              onClick={() => navigate('/register-customer')}
+              className="btn-primary flex items-center space-x-2"
+            >
+              <Plus className="w-5 h-5" />
+              <span>New Project</span>
+            </button>
           </div>
         </div>
       </div>
@@ -220,24 +211,15 @@ const MyProjects = () => {
               </div>
               <h2 className="text-2xl font-bold text-secondary-800 mb-4">No Projects Yet</h2>
               <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                Start your interior design journey by registering your first project or try our 2D design tool. 
+                Start your interior design journey by registering your first project. 
                 Our expert designers are ready to bring your vision to life.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button
-                  onClick={() => navigate('/design-tool')}
-                  className="btn-secondary flex items-center justify-center space-x-2"
-                >
-                  <Palette className="w-5 h-5" />
-                  <span>Try 2D Designer</span>
-                </button>
-                <button
-                  onClick={() => navigate('/register-customer')}
-                  className="btn-primary"
-                >
-                  Register Your First Project
-                </button>
-              </div>
+              <button
+                onClick={() => navigate('/register-customer')}
+                className="btn-primary"
+              >
+                Register Your First Project
+              </button>
             </div>
           </div>
         ) : (
