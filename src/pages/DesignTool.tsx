@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Square, Circle, Move, RotateCw, Trash2, Save, Download, Upload, Undo, Redo, Grid, Ruler, Palette, Home, Sofa, Bed, ChefHat, Bath, Tv, Lamp, Table, Armchair as Chair, Calculator, IndianRupee, Plus, Minus, ArrowLeft, Eye, EyeOff, Settings, Layers } from 'lucide-react';
+import { Square, Move, Trash2, Save, Undo, Redo, Grid, Calculator, IndianRupee, Plus, Minus, ArrowLeft, Palette, Sofa, Bed, Table, Armchair as Chair, Tv, Lamp } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface Point {
@@ -50,13 +50,12 @@ const DesignTool = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [tool, setTool] = useState<'select' | 'room' | 'wall' | 'furniture'>('select');
+  const [tool, setTool] = useState<'select' | 'room' | 'furniture'>('select');
+  const [selectedFurnitureType, setSelectedFurnitureType] = useState<string>('sofa');
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [showGrid, setShowGrid] = useState(true);
-  const [showRuler, setShowRuler] = useState(true);
-  const [showCostPanel, setShowCostPanel] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   
@@ -68,25 +67,25 @@ const DesignTool = () => {
     scale: 20 // 20 pixels = 1 foot
   });
 
-  const [history, setHistory] = useState<DesignData[]>([designData]);
-  const [historyIndex, setHistoryIndex] = useState(0);
+  const [history, setHistory] = useState<DesignData[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
 
   const furnitureTypes = [
-    { type: 'sofa', name: 'Sofa', icon: Sofa, width: 80, height: 40, price: 25000 },
-    { type: 'bed', name: 'Bed', icon: Bed, width: 60, height: 80, price: 15000 },
-    { type: 'dining-table', name: 'Dining Table', icon: Table, width: 60, height: 40, price: 12000 },
-    { type: 'chair', name: 'Chair', icon: Chair, width: 20, height: 20, price: 3000 },
-    { type: 'tv', name: 'TV Unit', icon: Tv, width: 50, height: 15, price: 8000 },
-    { type: 'lamp', name: 'Lamp', icon: Lamp, width: 15, height: 15, price: 2000 },
+    { type: 'sofa', name: 'Sofa', icon: Sofa, width: 80, height: 40, price: 25000, color: '#8BC34A' },
+    { type: 'bed', name: 'Bed', icon: Bed, width: 60, height: 80, price: 15000, color: '#FF9800' },
+    { type: 'dining-table', name: 'Dining Table', icon: Table, width: 60, height: 40, price: 12000, color: '#795548' },
+    { type: 'chair', name: 'Chair', icon: Chair, width: 20, height: 20, price: 3000, color: '#607D8B' },
+    { type: 'tv', name: 'TV Unit', icon: Tv, width: 50, height: 15, price: 8000, color: '#424242' },
+    { type: 'lamp', name: 'Lamp', icon: Lamp, width: 15, height: 15, price: 2000, color: '#FFC107' },
   ];
 
   const roomTypes = [
-    { type: 'living', name: 'Living Room', color: '#E3F2FD' },
-    { type: 'bedroom', name: 'Bedroom', color: '#F3E5F5' },
-    { type: 'kitchen', name: 'Kitchen', color: '#E8F5E8' },
-    { type: 'bathroom', name: 'Bathroom', color: '#FFF3E0' },
-    { type: 'dining', name: 'Dining Room', color: '#FCE4EC' },
-    { type: 'study', name: 'Study Room', color: '#E1F5FE' },
+    { type: 'living', name: 'Living Room', color: '#E3F2FD', costPerSqFt: 1500 },
+    { type: 'bedroom', name: 'Bedroom', color: '#F3E5F5', costPerSqFt: 1200 },
+    { type: 'kitchen', name: 'Kitchen', color: '#E8F5E8', costPerSqFt: 2000 },
+    { type: 'bathroom', name: 'Bathroom', color: '#FFF3E0', costPerSqFt: 1800 },
+    { type: 'dining', name: 'Dining Room', color: '#FCE4EC', costPerSqFt: 1300 },
+    { type: 'study', name: 'Study Room', color: '#E1F5FE', costPerSqFt: 1100 },
   ];
 
   // Check authentication
@@ -95,6 +94,14 @@ const DesignTool = () => {
       navigate('/');
     }
   }, [user, navigate]);
+
+  // Initialize history
+  useEffect(() => {
+    if (history.length === 0) {
+      setHistory([designData]);
+      setHistoryIndex(0);
+    }
+  }, []);
 
   // Canvas drawing functions
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
@@ -126,8 +133,8 @@ const DesignTool = () => {
     if (room.points.length < 3) return;
     
     ctx.fillStyle = room.color;
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = selectedItem === room.id ? '#2196F3' : '#333';
+    ctx.lineWidth = selectedItem === room.id ? 3 : 2;
     
     ctx.beginPath();
     const firstPoint = room.points[0];
@@ -149,7 +156,7 @@ const DesignTool = () => {
     ctx.font = '14px Inter';
     ctx.textAlign = 'center';
     ctx.fillText(room.name, centerX * zoom + pan.x, centerY * zoom + pan.y);
-  }, [zoom, pan]);
+  }, [zoom, pan, selectedItem]);
 
   const drawFurniture = useCallback((ctx: CanvasRenderingContext2D, furniture: Furniture) => {
     ctx.save();
@@ -224,10 +231,15 @@ const DesignTool = () => {
         ctx.lineTo(point.x * zoom + pan.x, point.y * zoom + pan.y);
       });
       
+      if (tool === 'room' && currentPoints.length > 2) {
+        // Close the shape
+        ctx.lineTo(firstPoint.x * zoom + pan.x, firstPoint.y * zoom + pan.y);
+      }
+      
       ctx.stroke();
       ctx.setLineDash([]);
     }
-  }, [designData, drawGrid, drawRoom, drawWall, drawFurniture, isDrawing, currentPoints, zoom, pan]);
+  }, [designData, drawGrid, drawRoom, drawWall, drawFurniture, isDrawing, currentPoints, zoom, pan, tool]);
 
   // Canvas event handlers
   const getCanvasPoint = (e: React.MouseEvent<HTMLCanvasElement>): Point => {
@@ -258,7 +270,7 @@ const DesignTool = () => {
       }
     } else if (tool === 'furniture') {
       // Add furniture at clicked position
-      const furnitureType = furnitureTypes[0]; // Default to sofa
+      const furnitureType = furnitureTypes.find(f => f.type === selectedFurnitureType) || furnitureTypes[0];
       const newFurniture: Furniture = {
         id: Date.now().toString(),
         type: furnitureType.type,
@@ -268,34 +280,41 @@ const DesignTool = () => {
         width: furnitureType.width,
         height: furnitureType.height,
         rotation: 0,
-        color: '#8BC34A',
+        color: furnitureType.color,
         price: furnitureType.price
       };
       
-      addToHistory({
+      const newDesignData = {
         ...designData,
         furniture: [...designData.furniture, newFurniture]
-      });
+      };
+      
+      setDesignData(newDesignData);
+      addToHistory(newDesignData);
     }
   };
 
   const handleCanvasDoubleClick = () => {
     if (tool === 'room' && isDrawing && currentPoints.length >= 3) {
       // Complete room
+      const roomType = roomTypes[0]; // Default to living room
       const area = calculatePolygonArea(currentPoints);
       const newRoom: Room = {
         id: Date.now().toString(),
-        name: `Room ${designData.rooms.length + 1}`,
+        name: `${roomType.name} ${designData.rooms.length + 1}`,
         points: currentPoints,
-        color: roomTypes[0].color,
+        color: roomType.color,
         area,
-        type: roomTypes[0].type
+        type: roomType.type
       };
       
-      addToHistory({
+      const newDesignData = {
         ...designData,
         rooms: [...designData.rooms, newRoom]
-      });
+      };
+      
+      setDesignData(newDesignData);
+      addToHistory(newDesignData);
       
       setIsDrawing(false);
       setCurrentPoints([]);
@@ -317,11 +336,11 @@ const DesignTool = () => {
   };
 
   const addToHistory = (newData: DesignData) => {
+    // If we're not at the end of the history, remove future states
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(newData);
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
-    setDesignData(newData);
   };
 
   const undo = () => {
@@ -342,34 +361,35 @@ const DesignTool = () => {
     const furnitureCost = designData.furniture.reduce((total, item) => total + item.price, 0);
     const roomCost = designData.rooms.reduce((total, room) => {
       // Basic cost per square foot based on room type
-      const costPerSqFt = {
-        living: 1500,
-        bedroom: 1200,
-        kitchen: 2000,
-        bathroom: 1800,
-        dining: 1300,
-        study: 1100
-      };
-      return total + (room.area * (costPerSqFt[room.type as keyof typeof costPerSqFt] || 1200));
+      const roomTypeObj = roomTypes.find(rt => rt.type === room.type);
+      const costPerSqFt = roomTypeObj ? roomTypeObj.costPerSqFt : 1200;
+      return total + (room.area * costPerSqFt);
     }, 0);
     
     return furnitureCost + roomCost;
   };
 
-  const deleteFurniture = (id: string) => {
-    addToHistory({
-      ...designData,
-      furniture: designData.furniture.filter(f => f.id !== id)
-    });
-    setSelectedItem(null);
-  };
-
-  const deleteRoom = (id: string) => {
-    addToHistory({
-      ...designData,
-      rooms: designData.rooms.filter(r => r.id !== id)
-    });
-    setSelectedItem(null);
+  const handlePanStart = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (tool === 'select') {
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startPan = { ...pan };
+      
+      const handlePanMove = (moveEvent: MouseEvent) => {
+        setPan({
+          x: startPan.x + (moveEvent.clientX - startX),
+          y: startPan.y + (moveEvent.clientY - startY)
+        });
+      };
+      
+      const handlePanEnd = () => {
+        document.removeEventListener('mousemove', handlePanMove);
+        document.removeEventListener('mouseup', handlePanEnd);
+      };
+      
+      document.addEventListener('mousemove', handlePanMove);
+      document.addEventListener('mouseup', handlePanEnd);
+    }
   };
 
   // Canvas resize
@@ -420,7 +440,7 @@ const DesignTool = () => {
             <div className="flex items-center space-x-2">
               <button
                 onClick={undo}
-                disabled={historyIndex === 0}
+                disabled={historyIndex <= 0}
                 className="p-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
                 title="Undo"
               >
@@ -428,20 +448,20 @@ const DesignTool = () => {
               </button>
               <button
                 onClick={redo}
-                disabled={historyIndex === history.length - 1}
+                disabled={historyIndex >= history.length - 1}
                 className="p-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
                 title="Redo"
               >
                 <Redo className="w-5 h-5" />
               </button>
               <button
-                onClick={() => setShowCostPanel(!showCostPanel)}
+                onClick={() => setShowGrid(!showGrid)}
                 className={`p-2 rounded-lg transition-colors ${
-                  showCostPanel ? 'bg-primary-100 text-primary-600' : 'text-gray-600 hover:text-gray-800'
+                  showGrid ? 'bg-primary-100 text-primary-600' : 'text-gray-600 hover:text-gray-800'
                 }`}
-                title="Cost Estimation"
+                title="Toggle Grid"
               >
-                <Calculator className="w-5 h-5" />
+                <Grid className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -490,6 +510,7 @@ const DesignTool = () => {
                     style={{ backgroundColor: roomType.color }}
                   />
                   <span className="text-sm">{roomType.name}</span>
+                  <span className="text-xs text-gray-500 ml-auto">₹{roomType.costPerSqFt}/sqft</span>
                 </div>
               ))}
             </div>
@@ -504,8 +525,13 @@ const DesignTool = () => {
                 return (
                   <button
                     key={furnitureType.type}
-                    onClick={() => setTool('furniture')}
-                    className="w-full flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 text-left"
+                    onClick={() => {
+                      setTool('furniture');
+                      setSelectedFurnitureType(furnitureType.type);
+                    }}
+                    className={`w-full flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 text-left ${
+                      tool === 'furniture' && selectedFurnitureType === furnitureType.type ? 'bg-primary-50' : ''
+                    }`}
                   >
                     <IconComponent className="w-4 h-4 text-gray-600" />
                     <div className="flex-1">
@@ -531,15 +557,6 @@ const DesignTool = () => {
                 />
                 <span className="text-sm">Show Grid</span>
               </label>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={showRuler}
-                  onChange={(e) => setShowRuler(e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                <span className="text-sm">Show Ruler</span>
-              </label>
             </div>
           </div>
         </div>
@@ -550,8 +567,9 @@ const DesignTool = () => {
             ref={canvasRef}
             onClick={handleCanvasClick}
             onDoubleClick={handleCanvasDoubleClick}
-            className="w-full h-full cursor-crosshair"
-            style={{ cursor: tool === 'select' ? 'default' : 'crosshair' }}
+            onMouseDown={handlePanStart}
+            className="w-full h-full"
+            style={{ cursor: tool === 'select' ? 'move' : 'crosshair' }}
           />
           
           {/* Zoom Controls */}
@@ -582,6 +600,14 @@ const DesignTool = () => {
               </p>
             </div>
           )}
+          
+          {tool === 'furniture' && (
+            <div className="absolute top-4 left-4 bg-green-50 border border-green-200 rounded-lg p-3">
+              <p className="text-sm text-green-800">
+                Click to place furniture on the canvas.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Right Panel - Properties & Cost */}
@@ -599,8 +625,25 @@ const DesignTool = () => {
                       const furniture = designData.furniture.find(f => f.id === selectedItem);
                       const room = designData.rooms.find(r => r.id === selectedItem);
                       
-                      if (furniture) deleteFurniture(selectedItem);
-                      if (room) deleteRoom(selectedItem);
+                      if (furniture) {
+                        const newDesignData = {
+                          ...designData,
+                          furniture: designData.furniture.filter(f => f.id !== selectedItem)
+                        };
+                        setDesignData(newDesignData);
+                        addToHistory(newDesignData);
+                      }
+                      
+                      if (room) {
+                        const newDesignData = {
+                          ...designData,
+                          rooms: designData.rooms.filter(r => r.id !== selectedItem)
+                        };
+                        setDesignData(newDesignData);
+                        addToHistory(newDesignData);
+                      }
+                      
+                      setSelectedItem(null);
                     }}
                     className="p-1 text-red-500 hover:bg-red-50 rounded"
                   >
@@ -616,39 +659,53 @@ const DesignTool = () => {
           {/* Rooms List */}
           <div className="p-4 border-b">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Rooms</h3>
-            <div className="space-y-2">
-              {designData.rooms.map(room => (
-                <div
-                  key={room.id}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50"
-                >
-                  <div className="flex items-center space-x-2">
-                    <div
-                      className="w-3 h-3 rounded"
-                      style={{ backgroundColor: room.color }}
-                    />
-                    <span className="text-sm font-medium">{room.name}</span>
+            {designData.rooms.length > 0 ? (
+              <div className="space-y-2">
+                {designData.rooms.map(room => (
+                  <div
+                    key={room.id}
+                    className={`flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer ${
+                      selectedItem === room.id ? 'bg-primary-50' : ''
+                    }`}
+                    onClick={() => setSelectedItem(room.id)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <div
+                        className="w-3 h-3 rounded"
+                        style={{ backgroundColor: room.color }}
+                      />
+                      <span className="text-sm font-medium">{room.name}</span>
+                    </div>
+                    <span className="text-xs text-gray-500">{room.area.toFixed(1)} sq ft</span>
                   </div>
-                  <span className="text-xs text-gray-500">{room.area.toFixed(1)} sq ft</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No rooms added yet. Use the Room tool to create rooms.</p>
+            )}
           </div>
 
           {/* Furniture List */}
           <div className="p-4 border-b">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Furniture</h3>
-            <div className="space-y-2">
-              {designData.furniture.map(furniture => (
-                <div
-                  key={furniture.id}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50"
-                >
-                  <span className="text-sm font-medium">{furniture.name}</span>
-                  <span className="text-xs text-gray-500">₹{furniture.price.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
+            {designData.furniture.length > 0 ? (
+              <div className="space-y-2">
+                {designData.furniture.map(furniture => (
+                  <div
+                    key={furniture.id}
+                    className={`flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer ${
+                      selectedItem === furniture.id ? 'bg-primary-50' : ''
+                    }`}
+                    onClick={() => setSelectedItem(furniture.id)}
+                  >
+                    <span className="text-sm font-medium">{furniture.name}</span>
+                    <span className="text-xs text-gray-500">₹{furniture.price.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No furniture added yet. Select a furniture type and click on the canvas to add.</p>
+            )}
           </div>
 
           {/* Cost Estimation */}
@@ -667,15 +724,9 @@ const DesignTool = () => {
               <div className="flex justify-between text-sm">
                 <span>Room Design Cost:</span>
                 <span>₹{designData.rooms.reduce((total, room) => {
-                  const costPerSqFt = {
-                    living: 1500,
-                    bedroom: 1200,
-                    kitchen: 2000,
-                    bathroom: 1800,
-                    dining: 1300,
-                    study: 1100
-                  };
-                  return total + (room.area * (costPerSqFt[room.type as keyof typeof costPerSqFt] || 1200));
+                  const roomTypeObj = roomTypes.find(rt => rt.type === room.type);
+                  const costPerSqFt = roomTypeObj ? roomTypeObj.costPerSqFt : 1200;
+                  return total + (room.area * costPerSqFt);
                 }, 0).toLocaleString()}</span>
               </div>
               
@@ -690,8 +741,26 @@ const DesignTool = () => {
                 * This is a rough estimation. Actual costs may vary based on materials, labor, and location.
               </div>
               
-              <button className="w-full btn-primary mt-4">
+              <button 
+                className="w-full btn-primary mt-4"
+                onClick={() => {
+                  alert("This feature will connect you with a designer for a detailed quote. Coming soon!");
+                }}
+              >
                 Get Detailed Quote
+              </button>
+              
+              <button 
+                className="w-full btn-secondary mt-2"
+                onClick={() => {
+                  const projectName = prompt("Enter a name for your design project:");
+                  if (projectName) {
+                    alert(`Project "${projectName}" saved successfully!`);
+                  }
+                }}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save Design
               </button>
             </div>
           </div>
