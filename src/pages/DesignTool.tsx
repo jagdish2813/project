@@ -1,38 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Square, 
-  Circle, 
-  Move, 
-  RotateCw, 
-  Trash2, 
-  Save, 
-  Download, 
-  Upload, 
-  Undo, 
-  Redo,
-  Grid,
-  Ruler,
-  Palette,
-  Home,
-  Sofa,
-  Bed,
-  ChefHat,
-  Bath,
-  Tv,
-  Lamp,
-  Table,
-  Chair,
-  Calculator,
-  IndianRupee,
-  Plus,
-  Minus,
-  ArrowLeft,
-  Eye,
-  EyeOff,
-  Settings,
-  Layers
-} from 'lucide-react';
+import { Square, Circle, Move, RotateCw, Trash2, Save, Download, Upload, Undo, Redo, Grid, Ruler, Palette, Home, Sofa, Bed, ChefHat, Bath, Tv, Lamp, Table, Armchair as Chair, Calculator, IndianRupee, Plus, Minus, ArrowLeft, Eye, EyeOff, Settings, Layers } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface Point {
