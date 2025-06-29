@@ -57,7 +57,7 @@ interface Material {
 interface QuoteItem {
   id?: string;
   material_id?: string;
-  item_type: 'material' | 'labor' | 'service' | 'other';
+  item_type: 'material' | 'labor' | 'service' | 'other' | 'component';
   name: string;
   description: string;
   quantity: number;
@@ -82,6 +82,14 @@ interface QuoteData {
   items: QuoteItem[];
 }
 
+interface ComponentType {
+  id: string;
+  name: string;
+  description: string;
+  defaultUnit: string;
+  defaultPrice: number;
+}
+
 const DesignerQuoteGenerator = () => {
   const navigate = useNavigate();
   const { id: projectId } = useParams();
@@ -94,6 +102,65 @@ const DesignerQuoteGenerator = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  const [componentTypes, setComponentTypes] = useState<ComponentType[]>([
+    {
+      id: 'l-shaped-kitchen',
+      name: 'L-Shaped Kitchen',
+      description: 'Complete L-shaped kitchen with cabinets, countertops, and hardware',
+      defaultUnit: 'sq.ft',
+      defaultPrice: 1200
+    },
+    {
+      id: 'tv-unit',
+      name: 'TV Unit',
+      description: 'Custom TV unit with storage and display shelves',
+      defaultUnit: 'running ft',
+      defaultPrice: 1500
+    },
+    {
+      id: 'wardrobe',
+      name: 'Wardrobe',
+      description: 'Custom wardrobe with shelves, hanging space, and drawers',
+      defaultUnit: 'sq.ft',
+      defaultPrice: 950
+    },
+    {
+      id: 'bed',
+      name: 'Bed with Storage',
+      description: 'Custom bed with under-bed storage',
+      defaultUnit: 'unit',
+      defaultPrice: 25000
+    },
+    {
+      id: 'study-table',
+      name: 'Study Table',
+      description: 'Custom study table with storage',
+      defaultUnit: 'unit',
+      defaultPrice: 15000
+    },
+    {
+      id: 'bathroom-vanity',
+      name: 'Bathroom Vanity',
+      description: 'Custom bathroom vanity with sink and storage',
+      defaultUnit: 'unit',
+      defaultPrice: 18000
+    },
+    {
+      id: 'dining-table',
+      name: 'Dining Table',
+      description: 'Custom dining table with chairs',
+      defaultUnit: 'unit',
+      defaultPrice: 35000
+    },
+    {
+      id: 'false-ceiling',
+      name: 'False Ceiling',
+      description: 'Custom false ceiling with LED lighting',
+      defaultUnit: 'sq.ft',
+      defaultPrice: 150
+    }
+  ]);
   
   const [currentStep, setCurrentStep] = useState(1);
   const [quoteData, setQuoteData] = useState<QuoteData>({
@@ -685,6 +752,7 @@ const DesignerQuoteGenerator = () => {
                               <option value="material">Material</option>
                               <option value="labor">Labor</option>
                               <option value="service">Service</option>
+                              <option value="component">Component</option>
                               <option value="other">Other</option>
                             </select>
                           </div>
@@ -708,6 +776,37 @@ const DesignerQuoteGenerator = () => {
                               </select>
                             </div>
                           )}
+
+                          {item.item_type === 'component' && (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Select Component Type
+                              </label>
+                              <select
+                                value={item.name || ''}
+                                onChange={(e) => {
+                                  const selectedComponent = componentTypes.find(c => c.name === e.target.value);
+                                  if (selectedComponent) {
+                                    handleItemChange(index, 'name', selectedComponent.name);
+                                    handleItemChange(index, 'description', selectedComponent.description);
+                                    handleItemChange(index, 'unit', selectedComponent.defaultUnit);
+                                    handleItemChange(index, 'unit_price', selectedComponent.defaultPrice);
+                                    // Recalculate amount
+                                    const amount = item.quantity * selectedComponent.defaultPrice * (1 - (item.discount_percent / 100));
+                                    handleItemChange(index, 'amount', amount);
+                                  }
+                                }}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              >
+                                <option value="">Select a component</option>
+                                {componentTypes.map(component => (
+                                  <option key={component.id} value={component.name}>
+                                    {component.name} - {formatCurrency(component.defaultPrice)}/{component.defaultUnit}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
                           
                           <div className={item.item_type === 'material' ? 'md:col-span-2' : ''}>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -721,9 +820,111 @@ const DesignerQuoteGenerator = () => {
                               placeholder="e.g., Italian Marble, Design Consultation"
                               required
                             />
+                            {item.item_type === 'component' && (
+                              <div className="mt-2 grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Width (ft)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={item.description.includes('Width:') ? 
+                                      parseFloat(item.description.match(/Width: (\d+(\.\d+)?)ft/)?.[1] || '0') : 
+                                      ''}
+                                    onChange={(e) => {
+                                      const width = parseFloat(e.target.value) || 0;
+                                      const heightMatch = item.description.match(/Height: (\d+(\.\d+)?)ft/);
+                                      const height = heightMatch ? parseFloat(heightMatch[1]) : 0;
+                                      const depthMatch = item.description.match(/Depth: (\d+(\.\d+)?)ft/);
+                                      const depth = depthMatch ? parseFloat(depthMatch[1]) : 0;
+                                      
+                                      const newDescription = `Width: ${width}ft, Height: ${height}ft, Depth: ${depth}ft`;
+                                      handleItemChange(index, 'description', newDescription);
+                                      
+                                      // If this is a square footage based component, update quantity
+                                      if (item.unit === 'sq.ft') {
+                                        const newQuantity = width * height;
+                                        handleItemChange(index, 'quantity', newQuantity);
+                                        // Update amount
+                                        const amount = newQuantity * item.unit_price * (1 - (item.discount_percent / 100));
+                                        handleItemChange(index, 'amount', amount);
+                                      }
+                                    }}
+                                    min="0"
+                                    step="0.01"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Height (ft)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={item.description.includes('Height:') ? 
+                                      parseFloat(item.description.match(/Height: (\d+(\.\d+)?)ft/)?.[1] || '0') : 
+                                      ''}
+                                    onChange={(e) => {
+                                      const height = parseFloat(e.target.value) || 0;
+                                      const widthMatch = item.description.match(/Width: (\d+(\.\d+)?)ft/);
+                                      const width = widthMatch ? parseFloat(widthMatch[1]) : 0;
+                                      const depthMatch = item.description.match(/Depth: (\d+(\.\d+)?)ft/);
+                                      const depth = depthMatch ? parseFloat(depthMatch[1]) : 0;
+                                      
+                                      const newDescription = `Width: ${width}ft, Height: ${height}ft, Depth: ${depth}ft`;
+                                      handleItemChange(index, 'description', newDescription);
+                                      
+                                      // If this is a square footage based component, update quantity
+                                      if (item.unit === 'sq.ft') {
+                                        const newQuantity = width * height;
+                                        handleItemChange(index, 'quantity', newQuantity);
+                                        // Update amount
+                                        const amount = newQuantity * item.unit_price * (1 - (item.discount_percent / 100));
+                                        handleItemChange(index, 'amount', amount);
+                                      }
+                                    }}
+                                    min="0"
+                                    step="0.01"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Depth (ft)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={item.description.includes('Depth:') ? 
+                                      parseFloat(item.description.match(/Depth: (\d+(\.\d+)?)ft/)?.[1] || '0') : 
+                                      ''}
+                                    onChange={(e) => {
+                                      const depth = parseFloat(e.target.value) || 0;
+                                      const widthMatch = item.description.match(/Width: (\d+(\.\d+)?)ft/);
+                                      const width = widthMatch ? parseFloat(widthMatch[1]) : 0;
+                                      const heightMatch = item.description.match(/Height: (\d+(\.\d+)?)ft/);
+                                      const height = heightMatch ? parseFloat(heightMatch[1]) : 0;
+                                      
+                                      const newDescription = `Width: ${width}ft, Height: ${height}ft, Depth: ${depth}ft`;
+                                      handleItemChange(index, 'description', newDescription);
+                                    }}
+                                    min="0"
+                                    step="0.01"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Calculated Area
+                                  </label>
+                                  <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-gray-700">
+                                    {item.quantity.toFixed(2)} {item.unit}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                           
-                          <div className="md:col-span-2">
+                          <div className={`md:col-span-2 ${item.item_type === 'component' ? 'hidden' : ''}`}>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Description
                             </label>
