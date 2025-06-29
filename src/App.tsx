@@ -19,6 +19,7 @@ import EditProject from './pages/EditProject';
 import CustomerProjects from './pages/CustomerProjects';
 import ProjectDetailWithTracking from './pages/ProjectDetailWithTracking';
 import DesignerDashboard from './pages/DesignerDashboard';
+import DesignerMaterialPricing from './pages/DesignerMaterialPricing';
 import AdminDashboard from './pages/AdminDashboard';
 import DebugPage from './pages/DebugPage';
 import DebugDesignerProfile from './pages/DebugDesignerProfile';
@@ -65,6 +66,7 @@ function App() {
             <Route path="/project-detail/:id" element={<ProjectDetailWithTracking />} />
             <Route path="/customer-projects" element={<CustomerProjects />} />
             <Route path="/designer-dashboard" element={<DesignerDashboard />} />
+            <Route path="/designer-material-pricing" element={<DesignerMaterialPricing />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/debug" element={<DebugPage />} />
             <Route path="/debug-profile" element={<DebugDesignerProfile />} />
