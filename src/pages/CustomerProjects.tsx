@@ -484,7 +484,7 @@ const CustomerProjects = () => {
                         <span>{project.location}</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <IndianRupee className="w-4 h-4" />
+                        <Rupee className="w-4 h-4" />
                         <span>{project.budget_range}</span>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -639,7 +639,7 @@ const CustomerProjects = () => {
                         <span>{share.project.location}</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <IndianRupee className="w-4 h-4" />
+                        <Rupee className="w-4 h-4" />
                         <span>{share.project.budget_range}</span>
                       </div>
                       <div className="flex items-center space-x-2">
