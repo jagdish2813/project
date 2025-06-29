@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, Bot, User, Minimize2, Maximize2 } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Minimize2, Maximize2, Sparkles, Settings, HelpCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 
@@ -41,12 +41,38 @@ const Chatbot = () => {
   const [isAIEnabled, setIsAIEnabled] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Enhanced quick replies with more relevant options
   const quickReplies: QuickReply[] = [
-    { text: "What services do you offer?", action: "services" },
-    { text: "How much does it cost?", action: "pricing" },
-    { text: "How do I find a designer?", action: "find_designer" },
-    { text: "Which cities do you serve?", action: "locations" },
+    { text: "What interior design services do you offer?", action: "services" },
+    { text: "How much does interior design cost?", action: "pricing" },
+    { text: "How do I find the right designer?", action: "find_designer" },
+    { text: "How does the project process work?", action: "process" },
+    { text: "What cities do you serve?", action: "locations" },
+    { text: "Can I see designer portfolios?", action: "portfolios" },
   ];
+
+  // Additional suggested questions based on context
+  const suggestedFollowUps: Record<string, QuickReply[]> = {
+    services: [
+      { text: "Do you offer 3D visualization?", action: "3d_visualization" },
+      { text: "Can I get partial room design?", action: "partial_design" },
+    ],
+    pricing: [
+      { text: "Are there any ongoing offers?", action: "offers" },
+      { text: "What payment methods do you accept?", action: "payment" },
+    ],
+    find_designer: [
+      { text: "How are designers verified?", action: "verification" },
+      { text: "Can I see designer reviews?", action: "reviews" },
+    ],
+    process: [
+      { text: "How long does a project take?", action: "timeline" },
+      { text: "What if I'm not satisfied?", action: "satisfaction" },
+    ]
+  };
+
+  // Track the last action to show relevant follow-ups
+  const [lastAction, setLastAction] = useState<string | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -82,7 +108,7 @@ const Chatbot = () => {
       // Add welcome message
       const welcomeMessage: Message = {
         id: 'welcome',
-        message: "Hi! I'm your AI assistant for TheHomeDesigners. I'm here to help you with any questions about our interior design services, finding designers, pricing, or anything else you'd like to know. How can I assist you today?",
+        message: "👋 Hi! I'm your AI design assistant for TheHomeDesigners. I can help you with finding the perfect designer, understanding our services, pricing information, or answering any questions about interior design. How can I assist you today?",
         sender: 'bot',
         timestamp: new Date(),
         message_type: 'welcome'
@@ -108,6 +134,13 @@ const Chatbot = () => {
   const handleSendMessage = async (messageText?: string) => {
     const textToSend = messageText || inputMessage.trim();
     if (!textToSend || !conversationId) return;
+    
+    // Extract action from quick replies if this is a predefined message
+    const matchingQuickReply = quickReplies.find(qr => qr.text === textToSend);
+    const action = matchingQuickReply?.action || null;
+    if (action) {
+      setLastAction(action);
+    }
 
     setIsLoading(true);
     setInputMessage('');
@@ -227,18 +260,30 @@ const Chatbot = () => {
     <div className={`fixed bottom-6 right-6 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 transition-all duration-300 ${
       isMinimized ? 'w-80 h-16' : 'w-80 h-96'
     }`}>
-      {/* Header */}
-      <div className="bg-primary-500 text-white p-4 rounded-t-xl flex items-center justify-between">
+      {/* Enhanced Header */}
+      <div className="bg-gradient-to-r from-primary-500 to-secondary-600 text-white p-4 rounded-t-xl flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-            <Bot className="w-5 h-5" />
+          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center relative">
+            <Bot className="w-5 h-5 absolute" style={{ opacity: isAIEnabled ? 1 : 0, transition: 'opacity 0.3s' }} />
+            <User className="w-5 h-5 absolute" style={{ opacity: isAIEnabled ? 0 : 1, transition: 'opacity 0.3s' }} />
+            {isAIEnabled && <Sparkles className="w-3 h-3 absolute -top-1 -right-1 text-yellow-300" />}
           </div>
           <div>
-            <h3 className="font-semibold">AI Support</h3>
-            <p className="text-xs text-primary-100">Online now</p>
+            <h3 className="font-semibold">{isAIEnabled ? 'AI Design Assistant' : 'Support Chat'}</h3>
+            <p className="text-xs text-primary-100 flex items-center">
+              <span className="w-1.5 h-1.5 bg-green-400 rounded-full mr-1"></span>
+              Online now
+            </p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setIsAIEnabled(!isAIEnabled)}
+            className="p-1 hover:bg-white/20 rounded transition-colors"
+            title={isAIEnabled ? "Switch to basic support" : "Enable AI assistant"}
+          >
+            <Settings className="w-4 h-4" />
+          </button>
           <button
             onClick={() => setIsMinimized(!isMinimized)}
             className="p-1 hover:bg-white/20 rounded transition-colors"
@@ -256,8 +301,8 @@ const Chatbot = () => {
 
       {!isMinimized && (
         <>
-          {/* Messages */}
-          <div className="h-64 overflow-y-auto p-4 space-y-4">
+          {/* Enhanced Messages */}
+          <div className="h-64 overflow-y-auto p-4 space-y-4 bg-gray-50">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -276,7 +321,7 @@ const Chatbot = () => {
                   <div className={`p-3 rounded-lg ${
                     message.sender === 'user'
                       ? 'bg-primary-500 text-white'
-                      : 'bg-gray-100 text-gray-800'
+                      : 'bg-white text-gray-800 border border-gray-200 shadow-sm'
                   }`}>
                     <p className="text-sm whitespace-pre-wrap">{message.message}</p>
                   </div>
@@ -290,7 +335,7 @@ const Chatbot = () => {
                   <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
                     <Bot className="w-3 h-3 text-gray-600" />
                   </div>
-                  <div className="bg-gray-100 p-3 rounded-lg">
+                  <div className="bg-white border border-gray-200 p-3 rounded-lg shadow-sm">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -303,43 +348,99 @@ const Chatbot = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Replies */}
-          {messages.length <= 1 && (
+          {/* Enhanced Quick Replies */}
+          {(messages.length <= 1 || (lastAction && suggestedFollowUps[lastAction])) && (
             <div className="px-4 pb-2">
-              <div className="flex flex-wrap gap-2">
-                {quickReplies.map((reply, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleQuickReply(reply)}
-                    className="text-xs bg-primary-50 text-primary-600 px-3 py-1 rounded-full hover:bg-primary-100 transition-colors"
-                  >
-                    {reply.text}
-                  </button>
-                ))}
+              <div className="flex flex-col space-y-2">
+                {messages.length <= 1 && (
+                  <>
+                    <p className="text-xs text-gray-500 mb-1 flex items-center">
+                      <HelpCircle className="w-3 h-3 mr-1" />
+                      Suggested questions:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {quickReplies.map((reply, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleQuickReply(reply)}
+                          className="text-xs bg-primary-50 text-primary-600 px-3 py-1 rounded-full hover:bg-primary-100 transition-colors flex items-center"
+                        >
+                          <span>{reply.text}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                
+                {lastAction && suggestedFollowUps[lastAction] && (
+                  <>
+                    <p className="text-xs text-gray-500 mt-2 mb-1 flex items-center">
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      People also ask:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestedFollowUps[lastAction].map((reply, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleQuickReply(reply)}
+                          className="text-xs bg-accent-50 text-accent-700 px-3 py-1 rounded-full hover:bg-accent-100 transition-colors"
+                        >
+                          {reply.text}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
 
-          {/* Input */}
-          <div className="p-4 border-t border-gray-200">
+          {/* Enhanced Input */}
+          <div className="p-4 border-t border-gray-200 bg-white">
             <div className="flex space-x-2">
               <input
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Type your message..."
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder={isAIEnabled ? "Ask me anything about interior design..." : "Type your message..."}
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-sm"
                 disabled={isLoading}
               />
               <button
                 onClick={() => handleSendMessage()}
                 disabled={!inputMessage.trim() || isLoading}
-                className="bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors"
+                className="bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors shadow-sm"
               >
               <h3 className="font-semibold">Design Assistant</h3>
               </button>
             </div>
+            {isAIEnabled && (
+              <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                <div className="flex items-center">
+                  <Sparkles className="w-3 h-3 mr-1 text-primary-400" />
+                  <span>AI-powered assistant</span>
+                </div>
+                <button 
+                  onClick={() => setIsAIEnabled(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  Switch to basic mode
+                </button>
+              </div>
+            )}
+            {!isAIEnabled && (
+              <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                <span>Basic support mode</span>
+                <button 
+                  onClick={() => setIsAIEnabled(true)}
+                  className="text-primary-500 hover:text-primary-600 flex items-center"
+                >
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  Enable AI assistant
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}
