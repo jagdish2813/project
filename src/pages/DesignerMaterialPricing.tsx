@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save, ArrowLeft, Search, Filter, AlertCircle, CheckCircle, Edit, Package, Rupee } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, Search, Filter, AlertCircle, CheckCircle, Edit, Package, IndianRupee as Rupee } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';

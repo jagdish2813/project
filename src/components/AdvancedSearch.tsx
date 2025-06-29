@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, MapPin, Star, Rupee, Calendar, Sliders, X } from 'lucide-react';
+import { Search, Filter, MapPin, Star, IndianRupee as Rupee, Calendar, Sliders, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Designer } from '../lib/supabase';
 
