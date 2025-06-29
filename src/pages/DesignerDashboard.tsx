@@ -14,8 +14,7 @@ import {
   MessageSquare,
   Award,
   Target,
-  Activity,
-  FileText
+  Activity
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
