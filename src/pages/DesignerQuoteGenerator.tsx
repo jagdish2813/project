@@ -17,7 +17,13 @@ import {
   CheckCircle,
   Search,
   X,
-  Edit
+  Edit,
+  Home,
+  Phone,
+  Mail,
+  User,
+  MapPin,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
@@ -111,6 +117,7 @@ const DesignerQuoteGenerator = () => {
   const [showMaterialSelector, setShowMaterialSelector] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [activeStep, setActiveStep] = useState<'details' | 'items' | 'preview'>('details');
   
   const [quote, setQuote] = useState<Quote>({
     designer_id: '',
@@ -144,6 +151,12 @@ const DesignerQuoteGenerator = () => {
     'Labor',
     'Services',
     'Other'
+  ];
+
+  const steps = [
+    { id: 'details', label: 'Quote Details' },
+    { id: 'items', label: 'Add Items' },
+    { id: 'preview', label: 'Preview & Send' }
   ];
 
   const itemTypes = [
@@ -612,24 +625,56 @@ const DesignerQuoteGenerator = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Success/Error Messages */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2 animate-fadeIn">
             <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2">
+          <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2 animate-fadeIn">
             <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
             <span>{success}</span>
           </div>
         )}
 
+        {/* Steps Navigation */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => (
+              <React.Fragment key={step.id}>
+                <button
+                  onClick={() => setActiveStep(step.id as any)}
+                  className={`flex flex-col items-center space-y-2 ${
+                    activeStep === step.id ? 'text-primary-600' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  disabled={loading}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    activeStep === step.id 
+                      ? 'bg-primary-100 text-primary-600 border-2 border-primary-500' 
+                      : 'bg-gray-100 text-gray-500 border-2 border-gray-200'
+                  }`}>
+                    {index + 1}
+                  </div>
+                  <span className="text-sm font-medium">{step.label}</span>
+                </button>
+                
+                {index < steps.length - 1 && (
+                  <div className={`flex-1 h-0.5 ${
+                    index < steps.findIndex(s => s.id === activeStep) ? 'bg-primary-500' : 'bg-gray-200'
+                  }`}></div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Quote Form */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Quote Details */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            {/* Quote Details Step */}
+            {activeStep === 'details' && <div className="bg-white rounded-xl shadow-lg p-6 animate-fadeIn">
               <h2 className="text-xl font-semibold text-secondary-800 mb-6">Quote Details</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -693,10 +738,19 @@ const DesignerQuoteGenerator = () => {
                   />
                 </div>
               </div>
-            </div>
+              
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => setActiveStep('items')}
+                  className="btn-primary"
+                >
+                  Continue to Add Items
+                </button>
+              </div>
+            </div>}
 
-            {/* Quote Items */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            {/* Quote Items Step */}
+            {activeStep === 'items' && <div className="bg-white rounded-xl shadow-lg p-6 animate-fadeIn">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-secondary-800">Quote Items</h2>
                 <div className="flex space-x-2">
@@ -840,10 +894,26 @@ const DesignerQuoteGenerator = () => {
                   </table>
                 </div>
               )}
-            </div>
+              
+              <div className="flex justify-between mt-6">
+                <button
+                  onClick={() => setActiveStep('details')}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Back to Details
+                </button>
+                <button
+                  onClick={() => setActiveStep('preview')}
+                  className="btn-primary"
+                  disabled={quote.items.length === 0}
+                >
+                  Continue to Preview
+                </button>
+              </div>
+            </div>}
 
-            {/* Terms and Notes */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            {/* Terms and Notes (in Items step) */}
+            {activeStep === 'items' && <div className="bg-white rounded-xl shadow-lg p-6 animate-fadeIn">
               <h2 className="text-xl font-semibold text-secondary-800 mb-6">Terms and Notes</h2>
               
               <div className="space-y-6">
@@ -875,7 +945,206 @@ const DesignerQuoteGenerator = () => {
                   />
                 </div>
               </div>
-            </div>
+            </div>}
+            
+            {/* Quote Preview Step */}
+            {activeStep === 'preview' && (
+              <div className="bg-white rounded-xl shadow-lg p-8 animate-fadeIn">
+                <div className="border-b border-gray-200 pb-6 mb-6">
+                  <div className="flex justify-between items-start">
+                    {/* Designer Info */}
+                    <div>
+                      <h2 className="text-2xl font-bold text-secondary-800">{designer?.name}</h2>
+                      <p className="text-gray-600">{designer?.specialization}</p>
+                      <div className="mt-2 space-y-1 text-sm">
+                        <p className="flex items-center text-gray-600">
+                          <Mail className="w-4 h-4 mr-2" />
+                          {designer?.email}
+                        </p>
+                        {designer?.phone && (
+                          <p className="flex items-center text-gray-600">
+                            <Phone className="w-4 h-4 mr-2" />
+                            {designer?.phone}
+                          </p>
+                        )}
+                        <p className="flex items-center text-gray-600">
+                          <MapPin className="w-4 h-4 mr-2" />
+                          {designer?.location}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Quote Info */}
+                    <div className="text-right">
+                      <div className="inline-block bg-primary-100 text-primary-800 px-3 py-1 rounded-lg text-sm font-medium mb-2">
+                        QUOTATION
+                      </div>
+                      <p className="text-lg font-semibold text-secondary-800">{quote.quote_number}</p>
+                      <p className="text-sm text-gray-600">Date: {new Date().toLocaleDateString()}</p>
+                      <p className="text-sm text-gray-600">Valid Until: {new Date(quote.valid_until).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Quote Title */}
+                <div className="mb-8">
+                  <h1 className="text-3xl font-bold text-secondary-800 mb-2">{quote.title}</h1>
+                  {quote.description && (
+                    <p className="text-gray-600">{quote.description}</p>
+                  )}
+                </div>
+                
+                {/* Customer Info */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-8">
+                  <h3 className="text-lg font-semibold text-secondary-800 mb-3">Customer Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Customer Name</p>
+                      <p className="font-medium">{project?.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Project</p>
+                      <p className="font-medium">{project?.project_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Email</p>
+                      <p className="font-medium">{project?.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Phone</p>
+                      <p className="font-medium">{project?.phone}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Location</p>
+                      <p className="font-medium">{project?.location}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Property Type</p>
+                      <p className="font-medium">{project?.property_type}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Quote Items */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold text-secondary-800 mb-4">Quote Items</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left py-3 px-4 font-semibold text-secondary-800">Item</th>
+                          <th className="text-center py-3 px-4 font-semibold text-secondary-800">Qty</th>
+                          <th className="text-center py-3 px-4 font-semibold text-secondary-800">Unit</th>
+                          <th className="text-right py-3 px-4 font-semibold text-secondary-800">Unit Price</th>
+                          <th className="text-center py-3 px-4 font-semibold text-secondary-800">Discount</th>
+                          <th className="text-right py-3 px-4 font-semibold text-secondary-800">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {quote.items.map((item, index) => (
+                          <tr key={index} className="border-b border-gray-100">
+                            <td className="py-4 px-4">
+                              <div>
+                                <p className="font-medium text-secondary-800">{item.name}</p>
+                                {item.description && (
+                                  <p className="text-sm text-gray-600">{item.description}</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-4 px-4 text-center">{item.quantity}</td>
+                            <td className="py-4 px-4 text-center">{item.unit}</td>
+                            <td className="py-4 px-4 text-right">{formatCurrency(item.unit_price)}</td>
+                            <td className="py-4 px-4 text-center">
+                              {item.discount_percent > 0 ? `${item.discount_percent}%` : '-'}
+                            </td>
+                            <td className="py-4 px-4 text-right font-medium">{formatCurrency(item.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                {/* Quote Summary */}
+                <div className="flex justify-end mb-8">
+                  <div className="w-full md:w-64">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-gray-600">
+                        <span>Subtotal:</span>
+                        <span>{formatCurrency(quote.subtotal)}</span>
+                      </div>
+                      
+                      {quote.discount_amount > 0 && (
+                        <div className="flex justify-between text-gray-600">
+                          <span>Discount:</span>
+                          <span>-{formatCurrency(quote.discount_amount)}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between text-gray-600">
+                        <span>Tax ({quote.tax_rate}%):</span>
+                        <span>{formatCurrency(quote.tax_amount)}</span>
+                      </div>
+                      
+                      <div className="border-t pt-2 mt-2">
+                        <div className="flex justify-between font-bold text-lg">
+                          <span className="text-secondary-800">Total:</span>
+                          <span className="text-primary-600">{formatCurrency(quote.total_amount)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Terms and Notes */}
+                <div className="space-y-6">
+                  {quote.terms_and_conditions && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-secondary-800 mb-2">Terms and Conditions</h3>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <p className="text-gray-600 whitespace-pre-line">{quote.terms_and_conditions}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {quote.notes && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-secondary-800 mb-2">Additional Notes</h3>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <p className="text-gray-600 whitespace-pre-line">{quote.notes}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex justify-between mt-8">
+                  <button
+                    onClick={() => setActiveStep('items')}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    Back to Items
+                  </button>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => saveQuote('draft')}
+                      className="btn-secondary flex items-center space-x-2"
+                      disabled={loading}
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Save Draft</span>
+                    </button>
+                    <button
+                      onClick={() => saveQuote('sent')}
+                      className="btn-primary flex items-center space-x-2"
+                      disabled={loading}
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>Send to Customer</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Quote Summary */}
@@ -937,36 +1206,38 @@ const DesignerQuoteGenerator = () => {
                 </div>
               </div>
               
-              <div className="mt-8 space-y-3">
-                <button
-                  onClick={() => saveQuote('draft')}
-                  className="w-full btn-secondary flex items-center justify-center space-x-2"
-                  disabled={loading}
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Save Draft</span>
-                </button>
-                
-                <button
-                  onClick={() => saveQuote('sent')}
-                  className="w-full btn-primary flex items-center justify-center space-x-2"
-                  disabled={loading}
-                >
-                  <Send className="w-4 h-4" />
-                  <span>Send to Customer</span>
-                </button>
-                
-                <button
-                  onClick={() => {
-                    // In a real app, this would generate a PDF
-                    alert('PDF download functionality would be implemented here');
-                  }}
-                  className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download PDF</span>
-                </button>
-              </div>
+              {activeStep !== 'preview' && (
+                <div className="mt-8 space-y-3">
+                  <button
+                    onClick={() => saveQuote('draft')}
+                    className="w-full btn-secondary flex items-center justify-center space-x-2"
+                    disabled={loading}
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Save Draft</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveStep('preview')}
+                    className="w-full btn-primary flex items-center justify-center space-x-2"
+                    disabled={quote.items.length === 0}
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>Preview Quote</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      // In a real app, this would generate a PDF
+                      alert('PDF download functionality would be implemented here');
+                    }}
+                    className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download PDF</span>
+                  </button>
+                </div>
+              )}
             </div>
             
             {/* Customer Info */}
