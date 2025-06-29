@@ -3,27 +3,25 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Plus, 
-  Trash2, 
+  Minus, 
   Save, 
   Send, 
   Download, 
+  Trash2, 
+  AlertCircle, 
+  CheckCircle, 
+  FileText, 
   Package, 
   DollarSign, 
   Calendar, 
-  FileText, 
-  Hammer, 
-  Briefcase,
-  AlertCircle,
-  CheckCircle,
-  Search,
-  X,
-  Edit,
-  Home,
-  Phone,
-  Mail,
-  User,
-  MapPin,
-  Clock
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Clock, 
+  ChevronRight, 
+  ChevronLeft,
+  Home
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
@@ -31,42 +29,29 @@ import { supabase } from '../lib/supabase';
 
 interface Customer {
   id: string;
-  user_id: string;
   name: string;
   email: string;
   phone: string;
   location: string;
   project_name: string;
   property_type: string;
-  project_area?: string;
+  project_area: string | null;
   budget_range: string;
   timeline: string;
   requirements: string;
-  preferred_designer?: string;
-  layout_image_url?: string;
-  inspiration_links: string[];
-  room_types: string[];
-  special_requirements?: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  assigned_designer_id?: string;
-  assignment_status?: string;
 }
 
-interface MaterialPrice {
+interface Material {
   id: string;
-  designer_id: string;
   category: string;
   name: string;
-  description: string;
+  description: string | null;
   unit: string;
   base_price: number;
   discount_price: number | null;
   is_discounted: boolean;
-  brand: string;
+  brand: string | null;
   quality_grade: string;
-  is_available: boolean;
 }
 
 interface QuoteItem {
@@ -80,25 +65,20 @@ interface QuoteItem {
   unit_price: number;
   discount_percent: number;
   amount: number;
-  material?: MaterialPrice;
 }
 
-interface Quote {
-  id?: string;
-  designer_id: string;
-  project_id: string;
-  quote_number: string;
+interface QuoteData {
   title: string;
   description: string;
+  quote_number: string;
+  valid_until: string;
+  terms_and_conditions: string;
+  notes: string;
   subtotal: number;
   discount_amount: number;
   tax_rate: number;
   tax_amount: number;
   total_amount: number;
-  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
-  valid_until: string;
-  terms_and_conditions: string;
-  notes: string;
   items: QuoteItem[];
 }
 
@@ -108,74 +88,43 @@ const DesignerQuoteGenerator = () => {
   const { user } = useAuth();
   const { designer, isDesigner, loading: designerLoading } = useDesignerProfile();
   
-  const [project, setProject] = useState<Customer | null>(null);
-  const [materials, setMaterials] = useState<MaterialPrice[]>([]);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
-  const [showMaterialSelector, setShowMaterialSelector] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [activeStep, setActiveStep] = useState<'details' | 'items' | 'preview'>('details');
-  
-  const [quote, setQuote] = useState<Quote>({
-    designer_id: '',
-    project_id: '',
-    quote_number: '',
+  const [currentStep, setCurrentStep] = useState(1);
+  const [quoteData, setQuoteData] = useState<QuoteData>({
     title: '',
     description: '',
+    quote_number: `QT-${Date.now().toString().slice(-6)}`,
+    valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+    terms_and_conditions: 'This quote is valid for 30 days from the date of issue. A 50% advance payment is required to begin work. The remaining balance is due upon completion. Any changes to the scope of work may result in additional charges.',
+    notes: '',
     subtotal: 0,
     discount_amount: 0,
-    tax_rate: 18, // Default GST rate
+    tax_rate: 18,
     tax_amount: 0,
     total_amount: 0,
-    status: 'draft',
-    valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
-    terms_and_conditions: 'This quote is valid for 30 days from the date of issue. 50% advance payment required to begin work. Balance payment due upon completion.',
-    notes: '',
     items: []
   });
 
-  const categories = [
-    'Plywood & Boards',
-    'Hardware',
-    'Channels & Profiles',
-    'Laminates & Veneers',
-    'Countertops',
-    'Flooring',
-    'Lighting',
-    'Paints & Finishes',
-    'Fabrics & Upholstery',
-    'Accessories',
-    'Labor',
-    'Services',
-    'Other'
-  ];
-
-  const steps = [
-    { id: 'details', label: 'Quote Details' },
-    { id: 'items', label: 'Add Items' },
-    { id: 'preview', label: 'Preview & Send' }
-  ];
-
-  const itemTypes = [
-    { value: 'material', label: 'Material', icon: Package },
-    { value: 'labor', label: 'Labor', icon: Hammer },
-    { value: 'service', label: 'Service', icon: Briefcase },
-    { value: 'other', label: 'Other', icon: FileText }
-  ];
-
   useEffect(() => {
     if (!designerLoading && designer && projectId) {
-      fetchProject();
+      fetchProjectDetails();
       fetchMaterials();
-      generateQuoteNumber();
     }
   }, [designer, designerLoading, projectId]);
 
-  const fetchProject = async () => {
-    if (!designer || !projectId) return;
+  useEffect(() => {
+    // Recalculate totals whenever items change
+    calculateTotals();
+  }, [quoteData.items, quoteData.tax_rate, quoteData.discount_amount]);
+
+  const fetchProjectDetails = async () => {
+    if (!projectId || !designer) return;
 
     try {
       setLoading(true);
@@ -194,19 +143,17 @@ const DesignerQuoteGenerator = () => {
         throw new Error('Project not found or you do not have access to this project');
       }
       
-      setProject(data);
+      setCustomer(data);
       
-      // Initialize quote with project data
-      setQuote(prev => ({
+      // Set quote title based on project name
+      setQuoteData(prev => ({
         ...prev,
-        designer_id: designer.id,
-        project_id: data.id,
         title: `Quote for ${data.project_name}`,
         description: `Interior design services for ${data.property_type} in ${data.location}`
       }));
     } catch (error: any) {
-      console.error('Error fetching project:', error);
-      setError(error.message || 'Failed to load project');
+      console.error('Error fetching project details:', error);
+      setError(error.message || 'Failed to load project details');
     } finally {
       setLoading(false);
     }
@@ -238,237 +185,156 @@ const DesignerQuoteGenerator = () => {
     }
   };
 
-  const generateQuoteNumber = () => {
-    const today = new Date();
-    const year = today.getFullYear().toString().slice(-2);
-    const month = (today.getMonth() + 1).toString().padStart(2, '0');
-    const day = today.getDate().toString().padStart(2, '0');
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  const calculateTotals = () => {
+    const subtotal = quoteData.items.reduce((sum, item) => sum + item.amount, 0);
+    const taxAmount = (subtotal - quoteData.discount_amount) * (quoteData.tax_rate / 100);
+    const total = subtotal - quoteData.discount_amount + taxAmount;
     
-    const quoteNumber = `Q${year}${month}${day}-${random}`;
-    setQuote(prev => ({ ...prev, quote_number: quoteNumber }));
+    setQuoteData(prev => ({
+      ...prev,
+      subtotal,
+      tax_amount: taxAmount,
+      total_amount: total
+    }));
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
     if (name === 'tax_rate' || name === 'discount_amount') {
-      setQuote(prev => {
-        const newQuote = { ...prev, [name]: parseFloat(value) || 0 };
-        return calculateTotals(newQuote);
-      });
+      setQuoteData(prev => ({
+        ...prev,
+        [name]: parseFloat(value) || 0
+      }));
     } else {
-      setQuote(prev => ({ ...prev, [name]: value }));
+      setQuoteData(prev => ({
+        ...prev,
+        [name]: value
+      }));
     }
   };
 
-  const addCustomItem = () => {
+  const addItem = () => {
     const newItem: QuoteItem = {
-      item_type: 'other',
-      name: 'Custom Item',
+      item_type: 'material',
+      name: '',
       description: '',
       quantity: 1,
-      unit: 'item',
+      unit: 'sq.ft',
       unit_price: 0,
       discount_percent: 0,
       amount: 0
     };
     
-    setQuote(prev => {
-      const newQuote = {
-        ...prev,
-        items: [...prev.items, newItem]
-      };
-      return calculateTotals(newQuote);
-    });
-  };
-
-  const addMaterialItem = (material: MaterialPrice) => {
-    const price = material.is_discounted && material.discount_price 
-      ? material.discount_price 
-      : material.base_price;
-    
-    const newItem: QuoteItem = {
-      material_id: material.id,
-      item_type: 'material',
-      name: material.name,
-      description: material.description,
-      quantity: 1,
-      unit: material.unit,
-      unit_price: price,
-      discount_percent: 0,
-      amount: price,
-      material: material
-    };
-    
-    setQuote(prev => {
-      const newQuote = {
-        ...prev,
-        items: [...prev.items, newItem]
-      };
-      return calculateTotals(newQuote);
-    });
-    
-    setShowMaterialSelector(false);
-    setSearchTerm('');
-    setCategoryFilter('');
-  };
-
-  const updateItem = (index: number, field: string, value: any) => {
-    setQuote(prev => {
-      const newItems = [...prev.items];
-      const item = { ...newItems[index], [field]: value };
-      
-      // Recalculate amount if quantity, unit_price, or discount_percent changes
-      if (field === 'quantity' || field === 'unit_price' || field === 'discount_percent') {
-        const quantity = field === 'quantity' ? value : item.quantity;
-        const unitPrice = field === 'unit_price' ? value : item.unit_price;
-        const discountPercent = field === 'discount_percent' ? value : item.discount_percent;
-        
-        const discountMultiplier = 1 - (discountPercent / 100);
-        item.amount = quantity * unitPrice * discountMultiplier;
-      }
-      
-      newItems[index] = item;
-      
-      const newQuote = {
-        ...prev,
-        items: newItems
-      };
-      
-      return calculateTotals(newQuote);
-    });
+    setQuoteData(prev => ({
+      ...prev,
+      items: [...prev.items, newItem]
+    }));
   };
 
   const removeItem = (index: number) => {
-    setQuote(prev => {
-      const newItems = prev.items.filter((_, i) => i !== index);
-      const newQuote = {
-        ...prev,
-        items: newItems
+    setQuoteData(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleItemChange = (index: number, field: keyof QuoteItem, value: any) => {
+    setQuoteData(prev => {
+      const updatedItems = [...prev.items];
+      updatedItems[index] = {
+        ...updatedItems[index],
+        [field]: value
       };
-      return calculateTotals(newQuote);
+      
+      // Recalculate amount if quantity, unit_price, or discount_percent changes
+      if (field === 'quantity' || field === 'unit_price' || field === 'discount_percent') {
+        const item = updatedItems[index];
+        const discountMultiplier = 1 - (item.discount_percent / 100);
+        item.amount = item.quantity * item.unit_price * discountMultiplier;
+      }
+      
+      // If material_id changes, update other fields from the selected material
+      if (field === 'material_id' && value) {
+        const material = materials.find(m => m.id === value);
+        if (material) {
+          updatedItems[index] = {
+            ...updatedItems[index],
+            material_id: material.id,
+            name: material.name,
+            description: material.description || '',
+            unit: material.unit,
+            unit_price: material.is_discounted && material.discount_price !== null 
+              ? material.discount_price 
+              : material.base_price,
+            amount: updatedItems[index].quantity * (
+              material.is_discounted && material.discount_price !== null 
+                ? material.discount_price 
+                : material.base_price
+            ) * (1 - (updatedItems[index].discount_percent / 100))
+          };
+        }
+      }
+      
+      return {
+        ...prev,
+        items: updatedItems
+      };
     });
   };
 
-  const calculateTotals = (quoteData: Quote): Quote => {
-    // Calculate subtotal
-    const subtotal = quoteData.items.reduce((sum, item) => sum + item.amount, 0);
-    
-    // Apply discount
-    const discountAmount = quoteData.discount_amount || 0;
-    
-    // Calculate tax
-    const taxableAmount = subtotal - discountAmount;
-    const taxRate = quoteData.tax_rate || 0;
-    const taxAmount = (taxableAmount * taxRate) / 100;
-    
-    // Calculate total
-    const totalAmount = taxableAmount + taxAmount;
-    
-    return {
-      ...quoteData,
-      subtotal,
-      tax_amount: taxAmount,
-      total_amount: totalAmount
-    };
-  };
-
-  const validateQuote = (): boolean => {
-    if (!quote.title.trim()) {
-      setError('Quote title is required');
-      return false;
-    }
-    
-    if (quote.items.length === 0) {
-      setError('At least one item is required');
-      return false;
-    }
-    
-    if (!quote.valid_until) {
-      setError('Valid until date is required');
-      return false;
-    }
-    
-    // Check if all items have valid values
-    for (const item of quote.items) {
-      if (!item.name.trim()) {
-        setError('All items must have a name');
-        return false;
-      }
-      
-      if (item.quantity <= 0) {
-        setError('All items must have a quantity greater than zero');
-        return false;
-      }
-      
-      if (item.unit_price < 0) {
-        setError('All items must have a non-negative unit price');
-        return false;
-      }
-    }
-    
-    return true;
-  };
-
-  const saveQuote = async (status: 'draft' | 'sent' = 'draft') => {
-    if (!designer || !project) return;
-    
-    if (!validateQuote()) {
-      return;
-    }
+  const handleSaveQuote = async (status: 'draft' | 'sent' = 'draft') => {
+    if (!designer || !customer) return;
     
     try {
-      setLoading(true);
+      setSaving(true);
       setError(null);
       setSuccess(null);
       
-      // Prepare quote data
-      const quoteData = {
-        ...quote,
-        status
-      };
-      
-      // Extract items to insert separately
-      const { items, ...quoteWithoutItems } = quoteData;
-      
-      // Insert or update quote
-      let quoteId = quote.id;
-      
-      if (quoteId) {
-        // Update existing quote
-        const { error: updateError } = await supabase
-          .from('designer_quotes')
-          .update(quoteWithoutItems)
-          .eq('id', quoteId);
-          
-        if (updateError) throw updateError;
-        
-        // Delete existing items
-        const { error: deleteError } = await supabase
-          .from('quote_items')
-          .delete()
-          .eq('quote_id', quoteId);
-          
-        if (deleteError) throw deleteError;
-      } else {
-        // Insert new quote
-        const { data: insertedQuote, error: insertError } = await supabase
-          .from('designer_quotes')
-          .insert(quoteWithoutItems)
-          .select()
-          .single();
-          
-        if (insertError) throw insertError;
-        if (!insertedQuote) throw new Error('Failed to create quote');
-        
-        quoteId = insertedQuote.id;
-        setQuote(prev => ({ ...prev, id: quoteId }));
+      // Validate form
+      if (!quoteData.title.trim()) {
+        throw new Error('Quote title is required');
+      }
+      if (quoteData.items.length === 0) {
+        throw new Error('At least one item is required');
+      }
+      if (!quoteData.valid_until) {
+        throw new Error('Valid until date is required');
       }
       
-      // Insert items
-      const itemsToInsert = items.map(item => ({
-        quote_id: quoteId,
+      // Check if all items have names and prices
+      const invalidItems = quoteData.items.filter(item => !item.name.trim() || item.unit_price <= 0);
+      if (invalidItems.length > 0) {
+        throw new Error('All items must have a name and price greater than zero');
+      }
+      
+      // Create quote
+      const { data: quote, error: quoteError } = await supabase
+        .from('designer_quotes')
+        .insert([{
+          designer_id: designer.id,
+          project_id: customer.id,
+          quote_number: quoteData.quote_number,
+          title: quoteData.title,
+          description: quoteData.description,
+          subtotal: quoteData.subtotal,
+          discount_amount: quoteData.discount_amount,
+          tax_rate: quoteData.tax_rate,
+          tax_amount: quoteData.tax_amount,
+          total_amount: quoteData.total_amount,
+          status: status,
+          valid_until: quoteData.valid_until,
+          terms_and_conditions: quoteData.terms_and_conditions,
+          notes: quoteData.notes
+        }])
+        .select()
+        .single();
+      
+      if (quoteError) throw quoteError;
+      
+      // Create quote items
+      const quoteItems = quoteData.items.map(item => ({
+        quote_id: quote.id,
         material_id: item.material_id,
         item_type: item.item_type,
         name: item.name,
@@ -482,36 +348,23 @@ const DesignerQuoteGenerator = () => {
       
       const { error: itemsError } = await supabase
         .from('quote_items')
-        .insert(itemsToInsert);
-        
+        .insert(quoteItems);
+      
       if (itemsError) throw itemsError;
       
-      setSuccess(status === 'draft' 
-        ? 'Quote saved as draft successfully!' 
-        : 'Quote sent to customer successfully!');
-        
-      // If sent, navigate back to projects after a delay
-      if (status === 'sent') {
-        setTimeout(() => {
-          navigate('/designer-quotes');
-        }, 2000);
-      }
+      setSuccess(`Quote ${status === 'sent' ? 'sent' : 'saved'} successfully!`);
+      
+      // Redirect after a short delay
+      setTimeout(() => {
+        navigate('/designer-quotes');
+      }, 1500);
     } catch (error: any) {
       console.error('Error saving quote:', error);
       setError(error.message || 'Failed to save quote');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
-
-  const filteredMaterials = materials.filter(material => {
-    const matchesSearch = !searchTerm || 
-                         material.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         material.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         material.brand?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !categoryFilter || material.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -521,7 +374,21 @@ const DesignerQuoteGenerator = () => {
     }).format(amount);
   };
 
-  if (designerLoading) {
+  const nextStep = () => {
+    if (currentStep < 3) {
+      setCurrentStep(currentStep + 1);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  if (designerLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -549,25 +416,15 @@ const DesignerQuoteGenerator = () => {
     );
   }
 
-  if (loading && !project) {
+  if (!customer) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading project details...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error && !project) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-lg mb-4">
-            <p className="font-medium">Error loading project</p>
-            <p className="text-sm">{error}</p>
-          </div>
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Project Not Found</h2>
+          <p className="text-gray-600 mb-4">
+            {error || "The project you're looking for doesn't exist or you don't have access to it."}
+          </p>
           <button
             onClick={() => navigate('/customer-projects')}
             className="btn-primary"
@@ -587,36 +444,18 @@ const DesignerQuoteGenerator = () => {
           <div className="flex items-center justify-between">
             <div>
               <button
-                onClick={() => navigate('/customer-projects')}
+                onClick={() => navigate('/designer-quotes')}
                 className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Projects
+                Back to Quotes
               </button>
               <h1 className="text-3xl font-bold text-secondary-800 mb-2">
-                Generate Quote
+                Create Quote
               </h1>
               <p className="text-gray-600">
-                Create a detailed quote for {project?.project_name}
+                Generate a professional quote for {customer.project_name}
               </p>
-            </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => saveQuote('draft')}
-                className="btn-secondary flex items-center space-x-2"
-                disabled={loading}
-              >
-                <Save className="w-4 h-4" />
-                <span>Save Draft</span>
-              </button>
-              <button
-                onClick={() => saveQuote('sent')}
-                className="btn-primary flex items-center space-x-2"
-                disabled={loading}
-              >
-                <Send className="w-4 h-4" />
-                <span>Send to Customer</span>
-              </button>
             </div>
           </div>
         </div>
@@ -625,777 +464,596 @@ const DesignerQuoteGenerator = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Success/Error Messages */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2 animate-fadeIn">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2">
             <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2 animate-fadeIn">
+          <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2">
             <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
             <span>{success}</span>
           </div>
         )}
 
-        {/* Steps Navigation */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+        {/* Steps Progress */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
           <div className="flex items-center justify-between">
-            {steps.map((step, index) => (
-              <React.Fragment key={step.id}>
-                <button
-                  onClick={() => setActiveStep(step.id as any)}
-                  className={`flex flex-col items-center space-y-2 ${
-                    activeStep === step.id ? 'text-primary-600' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                  disabled={loading}
-                >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    activeStep === step.id 
-                      ? 'bg-primary-100 text-primary-600 border-2 border-primary-500' 
-                      : 'bg-gray-100 text-gray-500 border-2 border-gray-200'
-                  }`}>
-                    {index + 1}
-                  </div>
-                  <span className="text-sm font-medium">{step.label}</span>
-                </button>
-                
-                {index < steps.length - 1 && (
-                  <div className={`flex-1 h-0.5 ${
-                    index < steps.findIndex(s => s.id === activeStep) ? 'bg-primary-500' : 'bg-gray-200'
-                  }`}></div>
-                )}
-              </React.Fragment>
-            ))}
+            <div className="flex items-center space-x-2">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                currentStep >= 1 ? 'bg-primary-500 text-white' : 'bg-gray-200 text-gray-500'
+              }`}>
+                <span>1</span>
+              </div>
+              <span className={`font-medium ${
+                currentStep === 1 ? 'text-primary-600' : 'text-gray-500'
+              }`}>Quote Details</span>
+            </div>
+            <div className={`flex-1 h-1 mx-4 ${
+              currentStep >= 2 ? 'bg-primary-500' : 'bg-gray-200'
+            }`}></div>
+            <div className="flex items-center space-x-2">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                currentStep >= 2 ? 'bg-primary-500 text-white' : 'bg-gray-200 text-gray-500'
+              }`}>
+                <span>2</span>
+              </div>
+              <span className={`font-medium ${
+                currentStep === 2 ? 'text-primary-600' : 'text-gray-500'
+              }`}>Add Items</span>
+            </div>
+            <div className={`flex-1 h-1 mx-4 ${
+              currentStep >= 3 ? 'bg-primary-500' : 'bg-gray-200'
+            }`}></div>
+            <div className="flex items-center space-x-2">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                currentStep >= 3 ? 'bg-primary-500 text-white' : 'bg-gray-200 text-gray-500'
+              }`}>
+                <span>3</span>
+              </div>
+              <span className={`font-medium ${
+                currentStep === 3 ? 'text-primary-600' : 'text-gray-500'
+              }`}>Preview & Send</span>
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Quote Form */}
+          {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Quote Details Step */}
-            {activeStep === 'details' && <div className="bg-white rounded-xl shadow-lg p-6 animate-fadeIn">
-              <h2 className="text-xl font-semibold text-secondary-800 mb-6">Quote Details</h2>
+            {/* Step 1: Quote Details */}
+            {currentStep === 1 && (
+              <div className="bg-white rounded-xl shadow-lg p-6 animate-fadeIn">
+                <h2 className="text-xl font-semibold text-secondary-800 mb-6">Quote Details</h2>
+                
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Quote Title *
+                      </label>
+                      <input
+                        type="text"
+                        name="title"
+                        value={quoteData.title}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        placeholder="e.g., Interior Design Services for 3BHK Apartment"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Quote Number
+                      </label>
+                      <input
+                        type="text"
+                        name="quote_number"
+                        value={quoteData.quote_number}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                        readOnly
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Valid Until *
+                      </label>
+                      <input
+                        type="date"
+                        name="valid_until"
+                        value={quoteData.valid_until}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tax Rate (%)
+                      </label>
+                      <input
+                        type="number"
+                        name="tax_rate"
+                        value={quoteData.tax_rate}
+                        onChange={handleInputChange}
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      name="description"
+                      value={quoteData.description}
+                      onChange={handleInputChange}
+                      rows={3}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="Describe the scope of work covered by this quote"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Terms and Conditions
+                    </label>
+                    <textarea
+                      name="terms_and_conditions"
+                      value={quoteData.terms_and_conditions}
+                      onChange={handleInputChange}
+                      rows={4}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Notes
+                    </label>
+                    <textarea
+                      name="notes"
+                      value={quoteData.notes}
+                      onChange={handleInputChange}
+                      rows={3}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="Any additional notes or special instructions"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Add Items */}
+            {currentStep === 2 && (
+              <div className="bg-white rounded-xl shadow-lg p-6 animate-fadeIn">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-secondary-800">Quote Items</h2>
+                  <button
+                    onClick={addItem}
+                    className="bg-primary-500 hover:bg-primary-600 text-white px-3 py-2 rounded-lg font-medium transition-colors flex items-center space-x-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Item</span>
+                  </button>
+                </div>
+                
+                {quoteData.items.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 mb-4">No items added yet</p>
+                    <button
+                      onClick={addItem}
+                      className="btn-primary"
+                    >
+                      Add Your First Item
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {quoteData.items.map((item, index) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-medium text-secondary-800">Item #{index + 1}</h3>
+                          <button
+                            onClick={() => removeItem(index)}
+                            className="text-red-500 hover:text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Item Type
+                            </label>
+                            <select
+                              value={item.item_type}
+                              onChange={(e) => handleItemChange(index, 'item_type', e.target.value)}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            >
+                              <option value="material">Material</option>
+                              <option value="labor">Labor</option>
+                              <option value="service">Service</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </div>
+                          
+                          {item.item_type === 'material' && (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Select Material
+                              </label>
+                              <select
+                                value={item.material_id || ''}
+                                onChange={(e) => handleItemChange(index, 'material_id', e.target.value)}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              >
+                                <option value="">Select a material</option>
+                                {materials.map(material => (
+                                  <option key={material.id} value={material.id}>
+                                    {material.name} ({material.category}) - {formatCurrency(material.is_discounted && material.discount_price !== null ? material.discount_price : material.base_price)}/{material.unit}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                          
+                          <div className={item.item_type === 'material' ? 'md:col-span-2' : ''}>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Item Name *
+                            </label>
+                            <input
+                              type="text"
+                              value={item.name}
+                              onChange={(e) => handleItemChange(index, 'name', e.target.value)}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              placeholder="e.g., Italian Marble, Design Consultation"
+                              required
+                            />
+                          </div>
+                          
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Description
+                            </label>
+                            <textarea
+                              value={item.description}
+                              onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                              rows={2}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              placeholder="Describe the item, specifications, or scope of work"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Quantity *
+                            </label>
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)}
+                              min="0.01"
+                              step="0.01"
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              required
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Unit
+                            </label>
+                            <input
+                              type="text"
+                              value={item.unit}
+                              onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              placeholder="e.g., sq.ft, hours, piece"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Unit Price (₹) *
+                            </label>
+                            <input
+                              type="number"
+                              value={item.unit_price}
+                              onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                              min="0"
+                              step="0.01"
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              required
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Discount (%)
+                            </label>
+                            <input
+                              type="number"
+                              value={item.discount_percent}
+                              onChange={(e) => handleItemChange(index, 'discount_percent', parseFloat(e.target.value) || 0)}
+                              min="0"
+                              max="100"
+                              step="0.01"
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Amount:</span>
+                            <span className="font-semibold text-secondary-800">{formatCurrency(item.amount)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <button
+                      onClick={addItem}
+                      className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-gray-500 hover:text-primary-600 hover:border-primary-500 transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <Plus className="w-5 h-5" />
+                      <span>Add Another Item</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 3: Preview & Send */}
+            {currentStep === 3 && (
+              <div className="bg-white rounded-xl shadow-lg p-6 animate-fadeIn">
+                <h2 className="text-xl font-semibold text-secondary-800 mb-6">Quote Preview</h2>
+                
+                <div className="border border-gray-200 rounded-lg p-8 mb-6">
+                  {/* Quote Header */}
+                  <div className="flex flex-col md:flex-row justify-between items-start mb-8">
+                    <div>
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center">
+                          <Home className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-secondary-800">{designer?.name}</h3>
+                          <p className="text-gray-600">{designer?.specialization}</p>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p>{designer?.email}</p>
+                        <p>{designer?.phone}</p>
+                        <p>{designer?.location}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-6 md:mt-0 text-right">
+                      <h3 className="text-2xl font-bold text-primary-600 mb-2">QUOTATION</h3>
+                      <p className="text-gray-600 mb-1"><span className="font-medium">Quote #:</span> {quoteData.quote_number}</p>
+                      <p className="text-gray-600 mb-1"><span className="font-medium">Date:</span> {new Date().toLocaleDateString()}</p>
+                      <p className="text-gray-600"><span className="font-medium">Valid Until:</span> {new Date(quoteData.valid_until).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Client Info */}
+                  <div className="bg-gray-50 rounded-lg p-4 mb-8">
+                    <h4 className="font-semibold text-secondary-800 mb-3">Client Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500">Client Name</p>
+                        <p className="font-medium">{customer.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Project</p>
+                        <p className="font-medium">{customer.project_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Email</p>
+                        <p className="font-medium">{customer.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Phone</p>
+                        <p className="font-medium">{customer.phone}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Location</p>
+                        <p className="font-medium">{customer.location}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Property Type</p>
+                        <p className="font-medium">{customer.property_type}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Quote Description */}
+                  <div className="mb-8">
+                    <h4 className="font-semibold text-secondary-800 mb-3">Quote Description</h4>
+                    <p className="text-gray-600">{quoteData.description || 'No description provided.'}</p>
+                  </div>
+                  
+                  {/* Items Table */}
+                  <div className="mb-8">
+                    <h4 className="font-semibold text-secondary-800 mb-3">Quote Items</h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left py-3 px-4 font-semibold text-secondary-800">Item</th>
+                            <th className="text-left py-3 px-4 font-semibold text-secondary-800">Description</th>
+                            <th className="text-right py-3 px-4 font-semibold text-secondary-800">Qty</th>
+                            <th className="text-right py-3 px-4 font-semibold text-secondary-800">Unit</th>
+                            <th className="text-right py-3 px-4 font-semibold text-secondary-800">Unit Price</th>
+                            <th className="text-right py-3 px-4 font-semibold text-secondary-800">Discount</th>
+                            <th className="text-right py-3 px-4 font-semibold text-secondary-800">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {quoteData.items.map((item, index) => (
+                            <tr key={index} className="border-b border-gray-100">
+                              <td className="py-3 px-4 font-medium text-secondary-800">{item.name}</td>
+                              <td className="py-3 px-4 text-gray-600">{item.description || '-'}</td>
+                              <td className="py-3 px-4 text-right">{item.quantity}</td>
+                              <td className="py-3 px-4 text-right">{item.unit}</td>
+                              <td className="py-3 px-4 text-right">{formatCurrency(item.unit_price)}</td>
+                              <td className="py-3 px-4 text-right">{item.discount_percent}%</td>
+                              <td className="py-3 px-4 text-right font-medium">{formatCurrency(item.amount)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  
+                  {/* Totals */}
+                  <div className="flex justify-end mb-8">
+                    <div className="w-full md:w-64">
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Subtotal:</span>
+                          <span className="font-medium">{formatCurrency(quoteData.subtotal)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Discount:</span>
+                          <span className="font-medium">- {formatCurrency(quoteData.discount_amount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Tax ({quoteData.tax_rate}%):</span>
+                          <span className="font-medium">{formatCurrency(quoteData.tax_amount)}</span>
+                        </div>
+                        <div className="border-t border-gray-200 pt-2 mt-2">
+                          <div className="flex justify-between font-bold text-lg">
+                            <span className="text-secondary-800">Total:</span>
+                            <span className="text-primary-600">{formatCurrency(quoteData.total_amount)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Terms and Notes */}
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="font-semibold text-secondary-800 mb-3">Terms and Conditions</h4>
+                      <p className="text-gray-600 text-sm whitespace-pre-line">{quoteData.terms_and_conditions || 'No terms and conditions specified.'}</p>
+                    </div>
+                    
+                    {quoteData.notes && (
+                      <div>
+                        <h4 className="font-semibold text-secondary-800 mb-3">Notes</h4>
+                        <p className="text-gray-600 text-sm">{quoteData.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Summary */}
+            <div className="bg-white rounded-xl shadow-lg p-6 sticky top-24">
+              <h3 className="text-lg font-semibold text-secondary-800 mb-4">Quote Summary</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quote Number
-                  </label>
-                  <input
-                    type="text"
-                    name="quote_number"
-                    value={quote.quote_number}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-100"
-                    readOnly
-                  />
+              <div className="space-y-4 mb-6">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="font-medium">{formatCurrency(quoteData.subtotal)}</span>
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Valid Until *
+                    Discount Amount
                   </label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
-                      type="date"
-                      name="valid_until"
-                      value={quote.valid_until}
+                      type="number"
+                      name="discount_amount"
+                      value={quoteData.discount_amount}
                       onChange={handleInputChange}
+                      min="0"
+                      step="0.01"
                       className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
                     />
                   </div>
                 </div>
                 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quote Title *
-                  </label>
-                  <input
-                    type="text"
-                    name="title"
-                    value={quote.title}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="e.g., Interior Design Services for 3BHK Apartment"
-                    required
-                  />
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tax ({quoteData.tax_rate}%):</span>
+                  <span className="font-medium">{formatCurrency(quoteData.tax_amount)}</span>
                 </div>
                 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    name="description"
-                    value={quote.description}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="Provide a brief description of the services covered in this quote"
-                  />
+                <div className="border-t border-gray-200 pt-4">
+                  <div className="flex justify-between font-bold">
+                    <span className="text-secondary-800">Total:</span>
+                    <span className="text-primary-600">{formatCurrency(quoteData.total_amount)}</span>
+                  </div>
                 </div>
               </div>
               
-              <div className="flex justify-end mt-6">
-                <button
-                  onClick={() => setActiveStep('items')}
-                  className="btn-primary"
-                >
-                  Continue to Add Items
-                </button>
-              </div>
-            </div>}
-
-            {/* Quote Items Step */}
-            {activeStep === 'items' && <div className="bg-white rounded-xl shadow-lg p-6 animate-fadeIn">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-secondary-800">Quote Items</h2>
-                <div className="flex space-x-2">
+              <div className="space-y-3">
+                {currentStep > 1 && (
                   <button
-                    onClick={() => setShowMaterialSelector(true)}
-                    className="bg-primary-500 hover:bg-primary-600 text-white px-3 py-2 rounded-lg font-medium transition-colors flex items-center space-x-1"
+                    onClick={prevStep}
+                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                   >
-                    <Package className="w-4 h-4" />
-                    <span>Add Material</span>
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Previous Step</span>
                   </button>
+                )}
+                
+                {currentStep < 3 && (
                   <button
-                    onClick={addCustomItem}
-                    className="bg-secondary-500 hover:bg-secondary-600 text-white px-3 py-2 rounded-lg font-medium transition-colors flex items-center space-x-1"
+                    onClick={nextStep}
+                    className="w-full btn-primary flex items-center justify-center space-x-2"
                   >
-                    <Plus className="w-4 h-4" />
-                    <span>Add Custom</span>
+                    <span>Next Step</span>
+                    <ChevronRight className="w-4 h-4" />
                   </button>
-                </div>
-              </div>
-
-              {quote.items.length === 0 ? (
-                <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                  <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Items Added</h3>
-                  <p className="text-gray-500 mb-4">
-                    Add materials from your catalog or custom items to your quote.
-                  </p>
-                  <div className="flex justify-center space-x-3">
+                )}
+                
+                {currentStep === 3 && (
+                  <>
                     <button
-                      onClick={() => setShowMaterialSelector(true)}
-                      className="bg-primary-100 text-primary-700 hover:bg-primary-200 px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-1"
-                    >
-                      <Package className="w-4 h-4" />
-                      <span>Add Material</span>
-                    </button>
-                    <button
-                      onClick={addCustomItem}
-                      className="bg-secondary-100 text-secondary-700 hover:bg-secondary-200 px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-1"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Add Custom Item</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="text-left py-3 px-4 font-semibold text-secondary-800">Item</th>
-                        <th className="text-center py-3 px-4 font-semibold text-secondary-800">Qty</th>
-                        <th className="text-center py-3 px-4 font-semibold text-secondary-800">Unit</th>
-                        <th className="text-right py-3 px-4 font-semibold text-secondary-800">Unit Price</th>
-                        <th className="text-center py-3 px-4 font-semibold text-secondary-800">Discount %</th>
-                        <th className="text-right py-3 px-4 font-semibold text-secondary-800">Amount</th>
-                        <th className="text-center py-3 px-4 font-semibold text-secondary-800">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {quote.items.map((item, index) => (
-                        <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-4 px-4">
-                            <div>
-                              <input
-                                type="text"
-                                value={item.name}
-                                onChange={(e) => updateItem(index, 'name', e.target.value)}
-                                className="font-medium text-secondary-800 w-full border-0 bg-transparent focus:ring-0 p-0"
-                                placeholder="Item name"
-                              />
-                              <textarea
-                                value={item.description || ''}
-                                onChange={(e) => updateItem(index, 'description', e.target.value)}
-                                className="text-sm text-gray-600 w-full border-0 bg-transparent focus:ring-0 p-0 resize-none"
-                                placeholder="Description (optional)"
-                                rows={1}
-                              />
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <input
-                              type="number"
-                              value={item.quantity}
-                              onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
-                              min="0.01"
-                              step="0.01"
-                              className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-center focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            />
-                          </td>
-                          <td className="py-4 px-4 text-center">
-                            <input
-                              type="text"
-                              value={item.unit}
-                              onChange={(e) => updateItem(index, 'unit', e.target.value)}
-                              className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-center focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            />
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center justify-end">
-                              <span className="text-gray-500 mr-1">₹</span>
-                              <input
-                                type="number"
-                                value={item.unit_price}
-                                onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                                min="0"
-                                step="0.01"
-                                className="w-24 border border-gray-300 rounded-lg px-2 py-1 text-right focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                              />
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center justify-center">
-                              <input
-                                type="number"
-                                value={item.discount_percent}
-                                onChange={(e) => updateItem(index, 'discount_percent', parseFloat(e.target.value) || 0)}
-                                min="0"
-                                max="100"
-                                step="0.1"
-                                className="w-16 border border-gray-300 rounded-lg px-2 py-1 text-center focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                              />
-                              <span className="text-gray-500 ml-1">%</span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4 text-right font-medium text-secondary-800">
-                            {formatCurrency(item.amount)}
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center justify-center">
-                              <button
-                                onClick={() => removeItem(index)}
-                                className="p-1 text-red-500 hover:bg-red-50 rounded"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              
-              <div className="flex justify-between mt-6">
-                <button
-                  onClick={() => setActiveStep('details')}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                >
-                  Back to Details
-                </button>
-                <button
-                  onClick={() => setActiveStep('preview')}
-                  className="btn-primary"
-                  disabled={quote.items.length === 0}
-                >
-                  Continue to Preview
-                </button>
-              </div>
-            </div>}
-
-            {/* Terms and Notes (in Items step) */}
-            {activeStep === 'items' && <div className="bg-white rounded-xl shadow-lg p-6 animate-fadeIn">
-              <h2 className="text-xl font-semibold text-secondary-800 mb-6">Terms and Notes</h2>
-              
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Terms and Conditions
-                  </label>
-                  <textarea
-                    name="terms_and_conditions"
-                    value={quote.terms_and_conditions}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="Enter terms and conditions for this quote"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Additional Notes
-                  </label>
-                  <textarea
-                    name="notes"
-                    value={quote.notes}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="Add any additional notes or comments for the customer"
-                  />
-                </div>
-              </div>
-            </div>}
-            
-            {/* Quote Preview Step */}
-            {activeStep === 'preview' && (
-              <div className="bg-white rounded-xl shadow-lg p-8 animate-fadeIn">
-                <div className="border-b border-gray-200 pb-6 mb-6">
-                  <div className="flex justify-between items-start">
-                    {/* Designer Info */}
-                    <div>
-                      <h2 className="text-2xl font-bold text-secondary-800">{designer?.name}</h2>
-                      <p className="text-gray-600">{designer?.specialization}</p>
-                      <div className="mt-2 space-y-1 text-sm">
-                        <p className="flex items-center text-gray-600">
-                          <Mail className="w-4 h-4 mr-2" />
-                          {designer?.email}
-                        </p>
-                        {designer?.phone && (
-                          <p className="flex items-center text-gray-600">
-                            <Phone className="w-4 h-4 mr-2" />
-                            {designer?.phone}
-                          </p>
-                        )}
-                        <p className="flex items-center text-gray-600">
-                          <MapPin className="w-4 h-4 mr-2" />
-                          {designer?.location}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Quote Info */}
-                    <div className="text-right">
-                      <div className="inline-block bg-primary-100 text-primary-800 px-3 py-1 rounded-lg text-sm font-medium mb-2">
-                        QUOTATION
-                      </div>
-                      <p className="text-lg font-semibold text-secondary-800">{quote.quote_number}</p>
-                      <p className="text-sm text-gray-600">Date: {new Date().toLocaleDateString()}</p>
-                      <p className="text-sm text-gray-600">Valid Until: {new Date(quote.valid_until).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Quote Title */}
-                <div className="mb-8">
-                  <h1 className="text-3xl font-bold text-secondary-800 mb-2">{quote.title}</h1>
-                  {quote.description && (
-                    <p className="text-gray-600">{quote.description}</p>
-                  )}
-                </div>
-                
-                {/* Customer Info */}
-                <div className="bg-gray-50 rounded-lg p-4 mb-8">
-                  <h3 className="text-lg font-semibold text-secondary-800 mb-3">Customer Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Customer Name</p>
-                      <p className="font-medium">{project?.name}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Project</p>
-                      <p className="font-medium">{project?.project_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Email</p>
-                      <p className="font-medium">{project?.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Phone</p>
-                      <p className="font-medium">{project?.phone}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Location</p>
-                      <p className="font-medium">{project?.location}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Property Type</p>
-                      <p className="font-medium">{project?.property_type}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Quote Items */}
-                <div className="mb-8">
-                  <h3 className="text-lg font-semibold text-secondary-800 mb-4">Quote Items</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="text-left py-3 px-4 font-semibold text-secondary-800">Item</th>
-                          <th className="text-center py-3 px-4 font-semibold text-secondary-800">Qty</th>
-                          <th className="text-center py-3 px-4 font-semibold text-secondary-800">Unit</th>
-                          <th className="text-right py-3 px-4 font-semibold text-secondary-800">Unit Price</th>
-                          <th className="text-center py-3 px-4 font-semibold text-secondary-800">Discount</th>
-                          <th className="text-right py-3 px-4 font-semibold text-secondary-800">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {quote.items.map((item, index) => (
-                          <tr key={index} className="border-b border-gray-100">
-                            <td className="py-4 px-4">
-                              <div>
-                                <p className="font-medium text-secondary-800">{item.name}</p>
-                                {item.description && (
-                                  <p className="text-sm text-gray-600">{item.description}</p>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-4 px-4 text-center">{item.quantity}</td>
-                            <td className="py-4 px-4 text-center">{item.unit}</td>
-                            <td className="py-4 px-4 text-right">{formatCurrency(item.unit_price)}</td>
-                            <td className="py-4 px-4 text-center">
-                              {item.discount_percent > 0 ? `${item.discount_percent}%` : '-'}
-                            </td>
-                            <td className="py-4 px-4 text-right font-medium">{formatCurrency(item.amount)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                
-                {/* Quote Summary */}
-                <div className="flex justify-end mb-8">
-                  <div className="w-full md:w-64">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-gray-600">
-                        <span>Subtotal:</span>
-                        <span>{formatCurrency(quote.subtotal)}</span>
-                      </div>
-                      
-                      {quote.discount_amount > 0 && (
-                        <div className="flex justify-between text-gray-600">
-                          <span>Discount:</span>
-                          <span>-{formatCurrency(quote.discount_amount)}</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex justify-between text-gray-600">
-                        <span>Tax ({quote.tax_rate}%):</span>
-                        <span>{formatCurrency(quote.tax_amount)}</span>
-                      </div>
-                      
-                      <div className="border-t pt-2 mt-2">
-                        <div className="flex justify-between font-bold text-lg">
-                          <span className="text-secondary-800">Total:</span>
-                          <span className="text-primary-600">{formatCurrency(quote.total_amount)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Terms and Notes */}
-                <div className="space-y-6">
-                  {quote.terms_and_conditions && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-secondary-800 mb-2">Terms and Conditions</h3>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-gray-600 whitespace-pre-line">{quote.terms_and_conditions}</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {quote.notes && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-secondary-800 mb-2">Additional Notes</h3>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-gray-600 whitespace-pre-line">{quote.notes}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex justify-between mt-8">
-                  <button
-                    onClick={() => setActiveStep('items')}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                  >
-                    Back to Items
-                  </button>
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={() => saveQuote('draft')}
-                      className="btn-secondary flex items-center space-x-2"
-                      disabled={loading}
+                      onClick={() => handleSaveQuote('draft')}
+                      disabled={saving}
+                      className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
                     >
                       <Save className="w-4 h-4" />
-                      <span>Save Draft</span>
+                      <span>{saving ? 'Saving...' : 'Save as Draft'}</span>
                     </button>
+                    
                     <button
-                      onClick={() => saveQuote('sent')}
-                      className="btn-primary flex items-center space-x-2"
-                      disabled={loading}
+                      onClick={() => handleSaveQuote('sent')}
+                      disabled={saving}
+                      className="w-full btn-primary flex items-center justify-center space-x-2 disabled:opacity-50"
                     >
                       <Send className="w-4 h-4" />
-                      <span>Send to Customer</span>
+                      <span>{saving ? 'Sending...' : 'Send to Customer'}</span>
                     </button>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
-            )}
-          </div>
-
-          {/* Quote Summary */}
-          <div className="space-y-8">
-            <div className="bg-white rounded-xl shadow-lg p-6 sticky top-8">
-              <h2 className="text-xl font-semibold text-secondary-800 mb-6">Quote Summary</h2>
-              
-              <div className="space-y-4">
-                <div className="flex justify-between text-gray-600">
-                  <span>Subtotal:</span>
-                  <span>{formatCurrency(quote.subtotal)}</span>
-                </div>
-                
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-600">Discount:</span>
-                    <div className="flex items-center">
-                      <span className="text-gray-500 mr-1">₹</span>
-                      <input
-                        type="number"
-                        name="discount_amount"
-                        value={quote.discount_amount}
-                        onChange={handleInputChange}
-                        min="0"
-                        step="1"
-                        className="w-24 border border-gray-300 rounded-lg px-2 py-1 text-right focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Tax Rate (GST):</span>
-                    <div className="flex items-center">
-                      <input
-                        type="number"
-                        name="tax_rate"
-                        value={quote.tax_rate}
-                        onChange={handleInputChange}
-                        min="0"
-                        max="100"
-                        step="0.1"
-                        className="w-16 border border-gray-300 rounded-lg px-2 py-1 text-right focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      />
-                      <span className="text-gray-500 ml-1">%</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex justify-between text-gray-600">
-                  <span>Tax Amount:</span>
-                  <span>{formatCurrency(quote.tax_amount)}</span>
-                </div>
-                
-                <div className="border-t pt-4 mt-4">
-                  <div className="flex justify-between font-bold text-lg">
-                    <span className="text-secondary-800">Total:</span>
-                    <span className="text-primary-600">{formatCurrency(quote.total_amount)}</span>
-                  </div>
-                </div>
-              </div>
-              
-              {activeStep !== 'preview' && (
-                <div className="mt-8 space-y-3">
-                  <button
-                    onClick={() => saveQuote('draft')}
-                    className="w-full btn-secondary flex items-center justify-center space-x-2"
-                    disabled={loading}
-                  >
-                    <Save className="w-4 h-4" />
-                    <span>Save Draft</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => setActiveStep('preview')}
-                    className="w-full btn-primary flex items-center justify-center space-x-2"
-                    disabled={quote.items.length === 0}
-                  >
-                    <Eye className="w-4 h-4" />
-                    <span>Preview Quote</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      // In a real app, this would generate a PDF
-                      alert('PDF download functionality would be implemented here');
-                    }}
-                    className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Download PDF</span>
-                  </button>
-                </div>
-              )}
             </div>
-            
-            {/* Customer Info */}
-            {project && (
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h2 className="text-xl font-semibold text-secondary-800 mb-4">Customer Information</h2>
-                
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-500">Name</p>
-                    <p className="font-medium">{project.name}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">Email</p>
-                    <p className="font-medium">{project.email}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">Phone</p>
-                    <p className="font-medium">{project.phone}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">Project</p>
-                    <p className="font-medium">{project.project_name}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">Property Type</p>
-                    <p className="font-medium">{project.property_type}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">Budget Range</p>
-                    <p className="font-medium">{project.budget_range}</p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
-
-      {/* Material Selector Modal */}
-      {showMaterialSelector && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-secondary-800">Select Material</h2>
-              <button
-                onClick={() => {
-                  setShowMaterialSelector(false);
-                  setSearchTerm('');
-                  setCategoryFilter('');
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="p-6">
-              {/* Search and Filter */}
-              <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-6">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search materials..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="w-full md:w-48 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  <option value="">All Categories</option>
-                  {categories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Materials Grid */}
-              {filteredMaterials.length === 0 ? (
-                <div className="text-center py-12">
-                  <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Materials Found</h3>
-                  <p className="text-gray-500 mb-4">
-                    {materials.length === 0 
-                      ? "You haven't added any materials to your pricing catalog yet."
-                      : "No materials match your current search filters."}
-                  </p>
-                  {materials.length === 0 && (
-                    <button
-                      onClick={() => {
-                        setShowMaterialSelector(false);
-                        navigate('/designer-material-pricing');
-                      }}
-                      className="btn-primary"
-                    >
-                      Add Materials to Catalog
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredMaterials.map((material) => (
-                    <div 
-                      key={material.id} 
-                      className="border border-gray-200 rounded-lg p-4 hover:border-primary-500 hover:shadow-md transition-all cursor-pointer"
-                      onClick={() => addMaterialItem(material)}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h3 className="font-medium text-secondary-800">{material.name}</h3>
-                          <p className="text-sm text-gray-500">{material.category}</p>
-                        </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          material.quality_grade === 'Budget' ? 'bg-green-100 text-green-800' :
-                          material.quality_grade === 'Standard' ? 'bg-blue-100 text-blue-800' :
-                          material.quality_grade === 'Premium' ? 'bg-purple-100 text-purple-800' :
-                          'bg-amber-100 text-amber-800'
-                        }`}>
-                          {material.quality_grade}
-                        </span>
-                      </div>
-                      
-                      {material.description && (
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{material.description}</p>
-                      )}
-                      
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">{material.unit}</span>
-                        <div>
-                          {material.is_discounted && material.discount_price ? (
-                            <div className="text-right">
-                              <p className="font-medium text-primary-600">₹{material.discount_price.toLocaleString()}</p>
-                              <p className="text-xs text-gray-500 line-through">₹{material.base_price.toLocaleString()}</p>
-                            </div>
-                          ) : (
-                            <p className="font-medium text-secondary-800">₹{material.base_price.toLocaleString()}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
