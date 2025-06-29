@@ -172,10 +172,14 @@ const Chatbot = () => {
           
           const data = await response.json();
           
-          if (data.success) {
-            botResponse = data.message;
+          if (response.ok) {
+            if (data.response) {
+              botResponse = data.response;
+            } else {
+              throw new Error('No response received from AI service');
+            }
           } else {
-            throw new Error(data.error || 'Failed to get AI response');
+            throw new Error(data.error || `AI service error: ${response.status} ${response.statusText}`);
           }
         } catch (aiError) {
           console.error('Error calling AI service:', aiError);
