@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, MapPin, Star, IndianRupee, Calendar, Sliders, X } from 'lucide-react';
+import { Search, Filter, MapPin, Star, Rupee, Calendar, Sliders, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Designer } from '../lib/supabase';
 
@@ -373,7 +373,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({ onResults, onLoading })
           {/* Budget Range */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              <IndianRupee className="w-4 h-4 inline mr-1" />
+              <Rupee className="w-4 h-4 inline mr-1" />
               Budget Range
             </label>
             <div className="grid grid-cols-2 gap-4">
