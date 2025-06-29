@@ -1,203 +1,156 @@
-import { createClient } from "npm:@supabase/supabase-js@2.39.0";
+import { createClient } from 'npm:@supabase/supabase-js@2'
 
-// Define CORS headers for cross-origin requests
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-interface ChatRequest {
-  message: string;
-  conversation_id: string;
-  user_id?: string;
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-// Sample design-specific responses for common queries
-const designResponses = {
-  styles: "We offer a wide range of interior design styles including Modern, Contemporary, Traditional Indian, Minimalist, Industrial, Scandinavian, and more. Our designers specialize in different aesthetics to match your preferences.",
-  process: "Our design process typically includes: 1) Initial consultation, 2) Requirement gathering, 3) Concept development, 4) Design presentation, 5) Revisions, 6) Final design approval, 7) Execution and installation, and 8) Final handover.",
-  timeline: "Project timelines vary based on scope. Typically, a single room design takes 2-4 weeks, while a full home interior can take 2-6 months from concept to completion.",
-  materials: "We work with premium materials including Italian marble, engineered wood, teak, oak, quartz countertops, and more. Our designers can help you select materials that fit your budget and lifestyle needs.",
-  budget: "Our design services start from ₹50,000 for a single room. Full home interiors typically range from ₹5-50 lakhs depending on size, materials, and complexity. We can work with you to create a design that fits your budget.",
-};
+interface ChatMessage {
+  message: string
+  sender: 'user' | 'assistant'
+  timestamp: string
+}
 
-Deno.serve(async (req: Request) => {
+interface ChatRequest {
+  message: string
+  conversationId?: string
+  sessionId?: string
+}
+
+Deno.serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Missing Supabase environment variables");
-    }
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Parse request
-    const { message, conversation_id, user_id } = await req.json() as ChatRequest;
+    // Parse request body
+    const { message, conversationId, sessionId }: ChatRequest = await req.json()
 
-    if (!message || !conversation_id) {
-      throw new Error("Missing required fields: message and conversation_id");
-    }
-    
-    // Check for design-specific keywords to provide more accurate responses
-    const messageLower = message.toLowerCase();
-    let specializedResponse = null;
-    
-    if (messageLower.includes("style") || messageLower.includes("design style") || messageLower.includes("aesthetic")) {
-      specializedResponse = designResponses.styles;
-    } else if (messageLower.includes("process") || messageLower.includes("how does it work") || messageLower.includes("steps")) {
-      specializedResponse = designResponses.process;
-    } else if (messageLower.includes("how long") || messageLower.includes("timeline") || messageLower.includes("duration")) {
-      specializedResponse = designResponses.timeline;
-    } else if (messageLower.includes("material") || messageLower.includes("quality") || messageLower.includes("wood") || messageLower.includes("marble")) {
-      specializedResponse = designResponses.materials;
-    } else if (messageLower.includes("cost") || messageLower.includes("price") || messageLower.includes("budget") || messageLower.includes("expensive")) {
-      specializedResponse = designResponses.budget;
+    if (!message) {
+      return new Response(
+        JSON.stringify({ error: 'Message is required' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
-    // Save user message to database
-    await supabase
-      .from('chat_messages')
-      .insert({
-        conversation_id,
-        message,
-        sender: 'user',
-      });
-
-    // Fetch relevant knowledge from the database
-    const { data: knowledgeData } = await supabase
+    // Get knowledge base for context
+    const { data: knowledgeBase } = await supabase
       .from('chatbot_knowledge')
       .select('*')
       .eq('is_active', true)
-      .order('priority', { ascending: false });
+      .order('priority', { ascending: false })
 
-    // Find best matching knowledge entry
-    let bestMatch = null;
-    let highestScore = 0;
-    const messageLower = message.toLowerCase();
+    // Simple keyword matching for responses
+    const userMessage = message.toLowerCase()
+    let response = "I'm here to help you with interior design questions! Could you please provide more details about what you're looking for?"
 
-    if (knowledgeData) {
-      for (const item of knowledgeData) {
-        let score = 0;
+    // Check knowledge base for relevant responses
+    if (knowledgeBase) {
+      for (const item of knowledgeBase) {
+        const keywords = item.keywords || []
+        const hasKeyword = keywords.some((keyword: string) => 
+          userMessage.includes(keyword.toLowerCase())
+        )
         
-        // Check if question matches
-        if (item.question.toLowerCase().includes(messageLower) || 
-            messageLower.includes(item.question.toLowerCase())) {
-          score += 10;
-        }
-
-        // Check keywords
-        for (const keyword of item.keywords) {
-          if (messageLower.includes(keyword.toLowerCase())) {
-            score += 5;
-          }
-        }
-
-        // Check category match
-        if (messageLower.includes(item.category.toLowerCase())) {
-          score += 3;
-        }
-
-        // Add priority bonus
-        score += item.priority;
-
-        if (score > highestScore) {
-          highestScore = score;
-          bestMatch = item;
+        if (hasKeyword || userMessage.includes(item.question.toLowerCase())) {
+          response = item.answer
+          break
         }
       }
     }
 
-    // Generate response
-    let botResponse;
-    
-    // Use specialized response if available
-    if (specializedResponse) {
-      botResponse = specializedResponse;
-    } else if (bestMatch && highestScore > 5) {
-      botResponse = bestMatch.answer;
-    } else {
-      // Default response if no good match found
-      botResponse = "I'd be happy to help you with that! For specific questions about our interior design services, pricing, or to connect with our team, you can:\n\n• Browse our designer profiles\n• Register your project to get matched with designers\n• Contact our support team at info@thehomedesigners.com or +91 98765 43210\n\nIs there anything specific about our services you'd like to know more about?";
+    // Handle specific design-related queries
+    if (userMessage.includes('cost') || userMessage.includes('price') || userMessage.includes('budget')) {
+      response = "Interior design costs vary based on project scope, room size, and material choices. Typically, residential projects range from ₹1,200 to ₹3,000 per square foot. Would you like me to connect you with a designer for a detailed quote?"
+    } else if (userMessage.includes('designer') || userMessage.includes('find')) {
+      response = "I can help you find the perfect interior designer! We have verified designers specializing in residential, commercial, and luxury projects. What type of space are you looking to design?"
+    } else if (userMessage.includes('material') || userMessage.includes('furniture')) {
+      response = "We work with a wide range of materials and furniture options. Our designers can help you choose the best materials based on your budget, style preferences, and durability requirements. Would you like to explore our material catalog?"
+    } else if (userMessage.includes('timeline') || userMessage.includes('time')) {
+      response = "Project timelines depend on scope and complexity. Typically: Room design (2-4 weeks), Full home design (6-12 weeks), Commercial projects (8-16 weeks). This includes planning, procurement, and execution phases."
     }
-    
-    // Add personalization if user_id is provided
-    if (user_id) {
-      try {
-        // Get user details
-        const { data: userData } = await supabase
-          .from('users')
-          .select('user_metadata')
-          .eq('id', user_id)
-          .single();
-          
-        if (userData?.user_metadata?.name) {
-          // Add personalized greeting if this is one of the first messages
-          const { data: messageCount } = await supabase
-            .from('chat_messages')
-            .select('id', { count: 'exact' })
-            .eq('conversation_id', conversation_id);
-            
-          if (messageCount && messageCount.length < 4) {
-            botResponse = `Hi ${userData.user_metadata.name}, ${botResponse.charAt(0).toLowerCase()}${botResponse.slice(1)}`;
-          }
-        }
-      } catch (error) {
-        // Silently continue if personalization fails
-        console.log("Personalization failed:", error);
+
+    // Store conversation if sessionId provided
+    let conversationRecord = null
+    if (sessionId) {
+      // Check if conversation exists
+      const { data: existingConv } = await supabase
+        .from('chat_conversations')
+        .select('*')
+        .eq('session_id', sessionId)
+        .single()
+
+      if (existingConv) {
+        conversationRecord = existingConv
+      } else {
+        // Create new conversation
+        const { data: newConv } = await supabase
+          .from('chat_conversations')
+          .insert({
+            session_id: sessionId,
+            title: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+            status: 'active'
+          })
+          .select()
+          .single()
+        
+        conversationRecord = newConv
       }
+
+      // Store user message
+      await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: conversationRecord?.id,
+          message: message,
+          sender: 'user',
+          message_type: 'text'
+        })
+
+      // Store assistant response
+      await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: conversationRecord?.id,
+          message: response,
+          sender: 'assistant',
+          message_type: 'text'
+        })
     }
 
-    // Save bot response to database
-    await supabase
-      .from('chat_messages')
-      .insert({
-        conversation_id,
-        message: botResponse,
-        sender: 'bot'
-      });
-
-    // Return response
     return new Response(
-      JSON.stringify({ 
-        message: botResponse,
-        success: true,
-        isAI: true
+      JSON.stringify({
+        response,
+        conversationId: conversationRecord?.id,
+        sessionId: sessionId || crypto.randomUUID()
       }),
       {
-        headers: { 
-          ...corsHeaders,
-          "Content-Type": "application/json" 
-        },
-        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
-    );
+    )
+
   } catch (error) {
-    console.error("Error processing chat request:", error);
+    console.error('Error in chat-ai function:', error)
     
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        success: false,
-        isAI: false
+        error: 'Internal server error',
+        details: error.message 
       }),
-      {
-        headers: { 
-          ...corsHeaders,
-          "Content-Type": "application/json" 
-        },
-        status: 500,
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    );
+    )
   }
-});
+})
