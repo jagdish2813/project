@@ -45,7 +45,7 @@ interface Quote {
     email: string;
     property_type: string;
   };
-  items_count: number;
+  items_count: { count: number } | null;
 }
 
 const DesignerQuotes = () => {
@@ -358,7 +358,7 @@ const DesignerQuotes = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-500">Items</p>
-                      <p className="font-medium text-secondary-800">{quote.items_count}</p>
+                      <p className="font-medium text-secondary-800">{quote.items_count?.count || 0}</p>
                     </div>
                   </div>
 
