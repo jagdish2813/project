@@ -389,6 +389,13 @@ const DesignerDashboard = () => {
                   <span className="font-medium text-gray-700">Manage Material Pricing</span>
                 </button>
                 <button
+                  onClick={() => navigate('/designer-quotes')}
+                  className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors flex items-center space-x-3"
+                >
+                  <FileText className="w-5 h-5 text-primary-600" />
+                  <span className="font-medium text-gray-700">Manage Quotes</span>
+                </button>
+                <button
                   onClick={() => navigate('/edit-designer-profile')}
                   className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors flex items-center space-x-3"
                 >

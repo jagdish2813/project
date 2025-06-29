@@ -566,6 +566,20 @@ const CustomerProjects = () => {
                       >
                         View Details
                       </button>
+                      <button
+                        onClick={() => navigate(`/generate-quote/${project.id}`)}
+                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
+                        title="Generate Quote"
+                      >
+                        View Details
+                      </button>
+                      <button
+                        onClick={() => navigate(`/generate-quote/${project.id}`)}
+                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
+                        title="Generate Quote"
+                      >
+                        View Details
+                      </button>
                       <a
                         href={`tel:${project.phone}`}
                         className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
