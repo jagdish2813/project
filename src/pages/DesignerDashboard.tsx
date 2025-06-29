@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  BarChart3, 
+  BarChart3,
   Users, 
   Calendar,
   Star, 
@@ -16,7 +16,7 @@ import {
   Target,
   Activity,
   FileText
-} from 'react-feather';
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
