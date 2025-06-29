@@ -14,7 +14,9 @@ import {
   MessageSquare,
   Award,
   Target,
-  Activity
+  Activity,
+  FileText
+} from 'react-feather';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
