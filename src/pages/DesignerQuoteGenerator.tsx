@@ -480,7 +480,7 @@ const DesignerQuoteGenerator = () => {
       // If sent, navigate back to projects after a delay
       if (status === 'sent') {
         setTimeout(() => {
-          navigate('/customer-projects');
+          navigate('/designer-quotes');
         }, 2000);
       }
     } catch (error: any) {

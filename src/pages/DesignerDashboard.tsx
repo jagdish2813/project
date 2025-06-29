@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   BarChart3, 
   Users, 
-  Calendar, 
+  Calendar,
   Star, 
   TrendingUp, 
   Clock, 
@@ -15,7 +15,6 @@ import {
   Award,
   Target,
   Activity
-} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -394,6 +393,20 @@ const DesignerDashboard = () => {
                 >
                   <Eye className="w-5 h-5 text-primary-600" />
                   <span className="font-medium text-gray-700">View Public Profile</span>
+                </button>
+                <button
+                  onClick={() => navigate('/designer-material-pricing')}
+                  className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors flex items-center space-x-3"
+                >
+                  <DollarSign className="w-5 h-5 text-primary-600" />
+                  <span className="font-medium text-gray-700">Manage Material Pricing</span>
+                </button>
+                <button
+                  onClick={() => navigate('/designer-quotes')}
+                  className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors flex items-center space-x-3"
+                >
+                  <FileText className="w-5 h-5 text-primary-600" />
+                  <span className="font-medium text-gray-700">Manage Quotes</span>
                 </button>
               </div>
             </div>

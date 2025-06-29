@@ -364,7 +364,7 @@ const DesignerQuotes = () => {
 
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => navigate(`/quote/${quote.id}`)}
+                      onClick={() => navigate(`/generate-quote/${quote.project_id}`)}
                       className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1"
                     >
                       <Eye className="w-4 h-4" />
@@ -374,7 +374,7 @@ const DesignerQuotes = () => {
                     {quote.status === 'draft' && (
                       <>
                         <button
-                          onClick={() => navigate(`/edit-quote/${quote.id}`)}
+                          onClick={() => navigate(`/generate-quote/${quote.project_id}`)}
                           className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
                           title="Edit"
                         >
