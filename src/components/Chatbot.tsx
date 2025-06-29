@@ -16,6 +16,19 @@ interface QuickReply {
   action: string;
 }
 
+interface Message {
+  id: string;
+  message: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
+  message_type?: string;
+}
+
+interface QuickReply {
+  text: string;
+  action: string;
+}
+
 const Chatbot = () => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -25,6 +38,7 @@ const Chatbot = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [isAIEnabled, setIsAIEnabled] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const quickReplies: QuickReply[] = [
@@ -91,63 +105,6 @@ const Chatbot = () => {
     }
   };
 
-  const findBestAnswer = async (userMessage: string): Promise<string> => {
-    try {
-      const { data: knowledge, error } = await supabase
-        .from('chatbot_knowledge')
-        .select('*')
-        .eq('is_active', true)
-        .order('priority', { ascending: false });
-
-      if (error) throw error;
-
-      const userMessageLower = userMessage.toLowerCase();
-      let bestMatch = null;
-      let highestScore = 0;
-
-      for (const item of knowledge) {
-        let score = 0;
-        
-        // Check if question matches
-        if (item.question.toLowerCase().includes(userMessageLower) || 
-            userMessageLower.includes(item.question.toLowerCase())) {
-          score += 10;
-        }
-
-        // Check keywords
-        for (const keyword of item.keywords) {
-          if (userMessageLower.includes(keyword.toLowerCase())) {
-            score += 5;
-          }
-        }
-
-        // Check category match
-        if (userMessageLower.includes(item.category.toLowerCase())) {
-          score += 3;
-        }
-
-        // Add priority bonus
-        score += item.priority;
-
-        if (score > highestScore) {
-          highestScore = score;
-          bestMatch = item;
-        }
-      }
-
-      if (bestMatch && highestScore > 5) {
-        return bestMatch.answer;
-      }
-
-      // Default response if no good match found
-      return "I'd be happy to help you with that! For specific questions about our interior design services, pricing, or to connect with our team, you can:\n\n• Browse our designer profiles\n• Register your project to get matched with designers\n• Contact our support team at info@thehomedesigners.com or +91 98765 43210\n\nIs there anything specific about our services you'd like to know more about?";
-
-    } catch (error) {
-      console.error('Error finding answer:', error);
-      return "I'm sorry, I'm having trouble accessing my knowledge base right now. Please try again in a moment, or contact our support team directly at info@thehomedesigners.com for immediate assistance.";
-    }
-  };
-
   const handleSendMessage = async (messageText?: string) => {
     const textToSend = messageText || inputMessage.trim();
     if (!textToSend || !conversationId) return;
@@ -164,7 +121,7 @@ const Chatbot = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
-
+    
     try {
       // Save user message to database
       await supabase
@@ -175,8 +132,40 @@ const Chatbot = () => {
           sender: 'user'
         });
 
-      // Get AI response
-      const botResponse = await findBestAnswer(textToSend);
+      let botResponse;
+      
+      if (isAIEnabled) {
+        try {
+          // Call the AI edge function
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-ai`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+              message: textToSend,
+              conversation_id: conversationId,
+              user_id: user?.id
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            botResponse = data.message;
+          } else {
+            throw new Error(data.error || 'Failed to get AI response');
+          }
+        } catch (aiError) {
+          console.error('Error calling AI service:', aiError);
+          // Fallback to basic response if AI fails
+          botResponse = "I'm sorry, I'm having trouble connecting to our AI service right now. Please try again in a moment, or contact our support team directly at info@thehomedesigners.com for immediate assistance.";
+        }
+      } else {
+        // Basic response when AI is disabled
+        botResponse = "Thank you for your message. Our team will review it and get back to you soon. For immediate assistance, please contact our support team at info@thehomedesigners.com or +91 98765 43210.";
+      }
 
       // Add bot message
       const botMessage: Message = {
@@ -348,7 +337,7 @@ const Chatbot = () => {
                 disabled={!inputMessage.trim() || isLoading}
                 className="bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors"
               >
-                <Send className="w-4 h-4" />
+              <h3 className="font-semibold">Design Assistant</h3>
               </button>
             </div>
           </div>
