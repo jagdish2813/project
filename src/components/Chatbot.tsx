@@ -16,19 +16,6 @@ interface QuickReply {
   action: string;
 }
 
-interface Message {
-  id: string;
-  message: string;
-  sender: 'user' | 'bot';
-  timestamp: Date;
-  message_type?: string;
-}
-
-interface QuickReply {
-  text: string;
-  action: string;
-}
-
 const Chatbot = () => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -412,7 +399,7 @@ const Chatbot = () => {
                 disabled={!inputMessage.trim() || isLoading}
                 className="bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors shadow-sm"
               >
-              <h3 className="font-semibold">Design Assistant</h3>
+                <Send className="w-4 h-4" />
               </button>
             </div>
             {isAIEnabled && (
