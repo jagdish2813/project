@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, User, Filter, Tag } from 'lucide-react';
+import { Calendar, MapPin, User, Filter, Tag, Rupee } from 'lucide-react';
 
 const Projects = () => {
   const [selectedCategory, setSelectedCategory] = useState('');

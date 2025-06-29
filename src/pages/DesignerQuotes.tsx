@@ -15,7 +15,8 @@ import {
   Eye, 
   Edit, 
   Trash2,
-  AlertCircle
+  AlertCircle,
+  Rupee
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';

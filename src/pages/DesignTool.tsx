@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Square, Move, Trash2, Save, Undo, Redo, Grid, Calculator, IndianRupee, Plus, Minus, ArrowLeft, Palette, Sofa, Bed, Table, Armchair as Chair, Tv, Lamp } from 'lucide-react';
+import { Square, Move, Trash2, Save, Undo, Redo, Grid, Calculator, Rupee, Plus, Minus, ArrowLeft, Palette, Sofa, Bed, Table, Armchair as Chair, Tv, Lamp } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface Point {
@@ -711,7 +711,7 @@ const DesignTool = () => {
           {/* Cost Estimation */}
           <div className="p-4">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-              <IndianRupee className="w-5 h-5 mr-2" />
+              <Rupee className="w-5 h-5 mr-2" />
               Cost Estimation
             </h3>
             

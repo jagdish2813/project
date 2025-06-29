@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Calendar, MapPin, User, ArrowLeft, Clock, Ruler, IndianRupee, Tag, ExternalLink } from 'lucide-react';
+import { Calendar, MapPin, User, ArrowLeft, Clock, Ruler, Rupee, Tag, ExternalLink } from 'lucide-react';
 
 const ProjectDetail = () => {
   const { id } = useParams();

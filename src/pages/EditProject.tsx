@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Home, FileText, Upload, X, Plus, ExternalLink, ArrowLeft, Save, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Edit, UserPlus, Clock, MapPin, Rupee, User, Phone, Mail, AlertCircle, Save } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';

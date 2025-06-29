@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save, ArrowLeft, Search, Filter, AlertCircle, CheckCircle, Edit, Package, DollarSign } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, Search, Filter, AlertCircle, CheckCircle, Edit, Package, Rupee } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -494,7 +494,7 @@ const DesignerMaterialPricing = () => {
                     Base Price (₹) *
                   </label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Rupee className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type="number"
                       name="base_price"

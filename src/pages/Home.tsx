@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Award, Users, ArrowRight, Play, Palette, UserPlus, Percent, Clock, Gift, ExternalLink } from 'lucide-react';
+import { Star, Award, Users, ArrowRight, Play, Palette, UserPlus, Percent, Clock, Gift, ExternalLink, Rupee } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
 import VideoModal from '../components/VideoModal';

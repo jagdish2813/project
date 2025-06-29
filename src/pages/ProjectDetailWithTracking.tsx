@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, UserPlus, Clock, MapPin, IndianRupee, User, Phone, Mail, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Edit, UserPlus, Clock, MapPin, Rupee, User, Phone, Mail, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useProjectTracking } from '../hooks/useProjectTracking';
@@ -141,7 +141,7 @@ const ProjectDetailWithTracking = () => {
                   <span>{project.location}</span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <IndianRupee className="w-4 h-4" />
+                  <Rupee className="w-4 h-4" />
                   <span>{project.budget_range}</span>
                 </div>
                 <div className="flex items-center space-x-1">
