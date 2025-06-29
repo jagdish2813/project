@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Rupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle, RefreshCw, FileText } from 'lucide-react';
+import { Calendar, MapPin, IndianRupee as Rupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle, RefreshCw, FileText } from 'lucide-react'react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -484,7 +484,7 @@ const CustomerProjects = () => {
                         <span>{project.location}</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Rupee className="w-4 h-4" />
+                        <IndianRupee className="w-4 h-4" />
                         <span>{project.budget_range}</span>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -639,7 +639,7 @@ const CustomerProjects = () => {
                         <span>{share.project.location}</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Rupee className="w-4 h-4" />
+                        <IndianRupee className="w-4 h-4" />
                         <span>{share.project.budget_range}</span>
                       </div>
                       <div className="flex items-center space-x-2">

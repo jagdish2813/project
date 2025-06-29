@@ -1,23 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Plus, 
-  Search, 
-  Filter, 
-  FileText, 
-  Calendar, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  Download, 
-  Send, 
-  Eye, 
-  Edit, 
-  Trash2,
-  AlertCircle,
-  Rupee
-} from 'lucide-react';
+import { ArrowLeft, Plus, Search, Filter, FileText, Calendar, CheckCircle, XCircle, Clock, Download, Send, Eye, Edit, Trash2, AlertCircle, IndianRupee as Rupee } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';

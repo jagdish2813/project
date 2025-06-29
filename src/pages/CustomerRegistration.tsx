@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Home, FileText, Upload, X, Plus, ExternalLink, Heart, CheckCircle, Rupee } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Home, FileText, Upload, X, Plus, ExternalLink, Heart, CheckCircle, IndianRupee as Rupee } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import WelcomeModal from '../components/WelcomeModal';

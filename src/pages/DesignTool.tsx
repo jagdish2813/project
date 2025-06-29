@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Square, Move, Trash2, Save, Undo, Redo, Grid, Calculator, Rupee, Plus, Minus, ArrowLeft, Palette, Sofa, Bed, Table, Armchair as Chair, Tv, Lamp } from 'lucide-react';
+import { Square, Move, Trash2, Save, Undo, Redo, Grid, Calculator, IndianRupee as Rupee, Plus, Minus, ArrowLeft, Palette, Sofa, Bed, Table, Armchair as Chair, Tv, Lamp } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface Point {

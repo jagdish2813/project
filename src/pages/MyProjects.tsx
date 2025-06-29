@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Calendar, MapPin, Rupee, Clock, Edit, Eye, Trash2, AlertCircle, Send, Activity } from 'lucide-react';
+import { Plus, Calendar, MapPin, IndianRupee as Rupee, Clock, Edit, Eye, Trash2, AlertCircle, Send, Activity } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import type { Customer } from '../lib/supabase';
