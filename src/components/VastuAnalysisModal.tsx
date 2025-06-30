@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { X, Upload, Compass, Sun, Wind, Heater as Water, Home, Check, AlertTriangle, Loader } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 
 interface VastuAnalysisModalProps {
   isOpen: boolean;
@@ -264,7 +263,7 @@ const VastuAnalysisModal: React.FC<VastuAnalysisModalProps> = ({
         </div>
 
         <div className="p-6">
-          {step === 'upload' && (
+          {step === 'upload' && !existingLayoutUrl && (
             <div className="text-center py-8">
               <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Upload className="w-10 h-10 text-primary-600" />
