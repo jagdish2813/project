@@ -33,6 +33,7 @@ const VastuAnalysisModal: React.FC<VastuAnalysisModalProps> = ({
   // Simulate analysis when existing layout is provided
   React.useEffect(() => {
     if (existingLayoutUrl && step === 'analyzing') {
+      // Start analysis immediately when modal opens with existing layout
       simulateAnalysis();
     }
   }, [existingLayoutUrl, step]);
@@ -83,6 +84,8 @@ const VastuAnalysisModal: React.FC<VastuAnalysisModalProps> = ({
   
   const simulateAnalysis = () => {
     // Simulate AI analysis delay
+    // Use shorter delay when existing image is provided
+    const delay = existingLayoutUrl ? 1500 : 3000;
     setTimeout(() => {
       // Generate Vastu score between 65-95
       const score = Math.floor(Math.random() * 31) + 65;
@@ -165,7 +168,7 @@ const VastuAnalysisModal: React.FC<VastuAnalysisModalProps> = ({
       if (projectId) {
         saveAnalysisToProject(projectId, score, mockRecommendations);
       }
-    }, 3000);
+    }, delay);
   };
   
   const saveAnalysisToProject = async (projectId: string, score: number, recommendations: VastuRecommendation[]) => {
@@ -334,7 +337,7 @@ const VastuAnalysisModal: React.FC<VastuAnalysisModalProps> = ({
                   <div className="relative rounded-lg overflow-hidden border border-gray-200">
                     <img 
                       src={uploadedImage} 
-                      alt="Uploaded floor plan" 
+                      alt="Floor plan" 
                       className="w-full h-48 object-contain bg-gray-50"
                     />
                     <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
