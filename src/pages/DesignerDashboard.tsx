@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   BarChart3,
-  BarChart as BarChartIcon,
   Users, 
   Calendar,
   Star, 
@@ -16,10 +15,11 @@ import {
   Award,
   Target,
   Activity,
-  TrendingUp as TrendingUpIcon,
-  DollarSign as DollarSignIcon,
+  FileText,
+  X,
+  BarChart as BarChartIcon,
   PieChart as PieChartIcon,
-  FileText
+  LineChart as LineChartIcon
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -77,6 +77,350 @@ interface RecentActivity {
   projectName?: string;
 }
 
+interface AnalyticsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  type: 'projects' | 'active' | 'rating' | 'revenue';
+  stats: DashboardStats;
+  projectData: ProjectData[];
+  revenueData: RevenueData[];
+  projectTypeData: ProjectTypeData[];
+}
+
+const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  type, 
+  stats, 
+  projectData, 
+  revenueData, 
+  projectTypeData 
+}) => {
+  const [activeChart, setActiveChart] = useState<'bar' | 'line' | 'pie'>('bar');
+  const COLORS = ['#E07A5F', '#3D5A80', '#F2CC8F', '#81B29A', '#F4A261'];
+  
+  if (!isOpen) return null;
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+  
+  let title = '';
+  let description = '';
+  
+  switch (type) {
+    case 'projects':
+      title = 'Projects Analytics';
+      description = `You have completed ${stats.completedProjects} projects out of ${stats.totalProjects} total projects.`;
+      break;
+    case 'active':
+      title = 'Active Projects Analytics';
+      description = `You have ${stats.activeProjects} active projects and ${stats.pendingAssignments} pending assignments.`;
+      break;
+    case 'rating':
+      title = 'Rating Analytics';
+      description = `Your average rating is ${stats.averageRating.toFixed(1)} from ${stats.totalReviews} reviews.`;
+      break;
+    case 'revenue':
+      title = 'Revenue Analytics';
+      description = `Your total revenue is ${formatCurrency(stats.totalRevenue)} with an 8% increase from last month.`;
+      break;
+  }
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-secondary-800">{title}</h2>
+            <p className="text-gray-600 mt-1">{description}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-secondary-800">Visualization</h3>
+            <div className="flex space-x-2 bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => setActiveChart('bar')}
+                className={`p-2 rounded-lg transition-colors ${
+                  activeChart === 'bar' 
+                    ? 'bg-white text-primary-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <BarChartIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setActiveChart('line')}
+                className={`p-2 rounded-lg transition-colors ${
+                  activeChart === 'line' 
+                    ? 'bg-white text-primary-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <LineChartIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setActiveChart('pie')}
+                className={`p-2 rounded-lg transition-colors ${
+                  activeChart === 'pie' 
+                    ? 'bg-white text-primary-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <PieChartIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          
+          <div className="h-80 w-full">
+            {activeChart === 'bar' && (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={type === 'revenue' ? revenueData : projectData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip 
+                    formatter={(value, name) => {
+                      if (type === 'revenue') return [formatCurrency(value as number), 'Revenue'];
+                      return [`${value} projects`, name];
+                    }}
+                    labelStyle={{ color: '#333' }}
+                    contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #ddd' }}
+                  />
+                  <Legend />
+                  {type === 'revenue' ? (
+                    <Bar dataKey="amount" name="Monthly Revenue" fill="#E07A5F" />
+                  ) : (
+                    <>
+                      <Bar dataKey="completed" name="Completed Projects" fill="#3D5A80" />
+                      <Bar dataKey="active" name="Active Projects" fill="#E07A5F" />
+                    </>
+                  )}
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+            
+            {activeChart === 'line' && (
+              <ResponsiveContainer width="100%" height="100%">
+                {type === 'revenue' ? (
+                  <LineChart
+                    data={revenueData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value) => [formatCurrency(value as number), 'Revenue']}
+                      labelStyle={{ color: '#333' }}
+                      contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #ddd' }}
+                    />
+                    <Legend />
+                    <Line type="monotone" dataKey="amount" name="Monthly Revenue" stroke="#E07A5F" activeDot={{ r: 8 }} />
+                  </LineChart>
+                ) : (
+                  <LineChart
+                    data={projectData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value) => [`${value} projects`, '']}
+                      labelStyle={{ color: '#333' }}
+                      contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #ddd' }}
+                    />
+                    <Legend />
+                    <Line type="monotone" dataKey="completed" name="Completed Projects" stroke="#3D5A80" activeDot={{ r: 8 }} />
+                    <Line type="monotone" dataKey="active" name="Active Projects" stroke="#E07A5F" activeDot={{ r: 8 }} />
+                  </LineChart>
+                )}
+              </ResponsiveContainer>
+            )}
+            
+            {activeChart === 'pie' && (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={type === 'projects' || type === 'active' ? projectTypeData : [
+                      { name: '5 Stars', value: Math.round(stats.totalReviews * 0.6) },
+                      { name: '4 Stars', value: Math.round(stats.totalReviews * 0.3) },
+                      { name: '3 Stars', value: Math.round(stats.totalReviews * 0.08) },
+                      { name: '2 Stars', value: Math.round(stats.totalReviews * 0.015) },
+                      { name: '1 Star', value: Math.round(stats.totalReviews * 0.005) }
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={120}
+                    fill="#8884d8"
+                    dataKey="value"
+                    nameKey="name"
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {projectTypeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value) => [`${value} ${type === 'rating' ? 'reviews' : 'projects'}`, '']}
+                    labelStyle={{ color: '#333' }}
+                    contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #ddd' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-secondary-800 mb-4">Key Insights</h3>
+              {type === 'projects' && (
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Your project completion rate is {Math.round((stats.completedProjects / stats.totalProjects) * 100)}%</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Residential projects make up {Math.round((projectTypeData[0]?.value / stats.totalProjects) * 100)}% of your portfolio</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>You've completed {stats.completedProjects} projects in the last 6 months</span>
+                  </li>
+                </ul>
+              )}
+              
+              {type === 'active' && (
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>You have {stats.activeProjects} active projects requiring attention</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>{stats.pendingAssignments} projects are waiting for your acceptance</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Your current workload is {stats.activeProjects > 5 ? 'high' : 'manageable'}</span>
+                  </li>
+                </ul>
+              )}
+              
+              {type === 'rating' && (
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Your rating of {stats.averageRating.toFixed(1)} is {stats.averageRating > 4.5 ? 'excellent' : 'good'}</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>You've received {stats.totalReviews} client reviews</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Most clients rate your work 5 stars (60%)</span>
+                  </li>
+                </ul>
+              )}
+              
+              {type === 'revenue' && (
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Your total revenue is {formatCurrency(stats.totalRevenue)}</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Average revenue per project: {formatCurrency(stats.totalRevenue / (stats.completedProjects || 1))}</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Revenue has grown 8% compared to last month</span>
+                  </li>
+                </ul>
+              )}
+            </div>
+            
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-secondary-800 mb-4">Recommendations</h3>
+              {type === 'projects' && (
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Focus on increasing commercial projects to diversify your portfolio</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Showcase your completed projects in your portfolio to attract similar clients</span>
+                  </li>
+                </ul>
+              )}
+              
+              {type === 'active' && (
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Respond to pending assignments within 24 hours to improve acceptance rate</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Consider hiring an assistant if your active projects exceed 8</span>
+                  </li>
+                </ul>
+              )}
+              
+              {type === 'rating' && (
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Encourage more clients to leave reviews to build credibility</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Respond to all reviews to show engagement and professionalism</span>
+                  </li>
+                </ul>
+              )}
+              
+              {type === 'revenue' && (
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Consider offering premium packages to increase average project value</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>Focus on high-value projects like luxury homes and commercial spaces</span>
+                  </li>
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const DesignerDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -96,7 +440,8 @@ const DesignerDashboard = () => {
   const [projectData, setProjectData] = useState<ProjectData[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [projectTypeData, setProjectTypeData] = useState<ProjectTypeData[]>([]);
-  const [activeChart, setActiveChart] = useState<'projects' | 'revenue' | 'types'>('projects');
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [analyticsType, setAnalyticsType] = useState<'projects' | 'active' | 'rating' | 'revenue'>('projects');
   
   // Colors for charts
   const COLORS = ['#E07A5F', '#3D5A80', '#F2CC8F', '#81B29A', '#F4A261'];
@@ -241,6 +586,11 @@ const DesignerDashboard = () => {
     setProjectTypeData(projectTypeData);
   };
 
+  const handleStatClick = (type: 'projects' | 'active' | 'rating' | 'revenue') => {
+    setAnalyticsType(type);
+    setShowAnalyticsModal(true);
+  };
+
   if (!user || designerLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -325,7 +675,10 @@ const DesignerDashboard = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-lg p-6">
+          <div 
+            className="bg-white rounded-xl shadow-lg p-6 cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+            onClick={() => handleStatClick('projects')}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Projects</p>
@@ -341,7 +694,10 @@ const DesignerDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6">
+          <div 
+            className="bg-white rounded-xl shadow-lg p-6 cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+            onClick={() => handleStatClick('active')}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Active Projects</p>
@@ -356,7 +712,10 @@ const DesignerDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6">
+          <div 
+            className="bg-white rounded-xl shadow-lg p-6 cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+            onClick={() => handleStatClick('rating')}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Average Rating</p>
@@ -371,7 +730,10 @@ const DesignerDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6">
+          <div 
+            className="bg-white rounded-xl shadow-lg p-6 cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+            onClick={() => handleStatClick('revenue')}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Revenue</p>
@@ -389,127 +751,8 @@ const DesignerDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Dashboard Analytics */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
-            <div className="flex flex-col space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-secondary-800">Dashboard Analytics</h2>
-                <div className="flex space-x-2">
-                  <button 
-                    onClick={() => setActiveChart('projects')}
-                    className={`p-2 rounded-lg transition-colors ${
-                      activeChart === 'projects' 
-                        ? 'bg-primary-100 text-primary-600' 
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <BarChartIcon className="w-5 h-5" />
-                  </button>
-                  <button 
-                    onClick={() => setActiveChart('revenue')}
-                    className={`p-2 rounded-lg transition-colors ${
-                      activeChart === 'revenue' 
-                        ? 'bg-primary-100 text-primary-600' 
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <DollarSignIcon className="w-5 h-5" />
-                  </button>
-                  <button 
-                    onClick={() => setActiveChart('types')}
-                    className={`p-2 rounded-lg transition-colors ${
-                      activeChart === 'types' 
-                        ? 'bg-primary-100 text-primary-600' 
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <PieChartIcon className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-              
-              <div className="h-64 w-full">
-                {activeChart === 'projects' && (
-                  <div className="h-full">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Project Trends</h3>
-                    <ResponsiveContainer width="100%" height="90%">
-                      <BarChart
-                        data={projectData}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value) => [`${value} projects`, '']}
-                          labelStyle={{ color: '#333' }}
-                          contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #ddd' }}
-                        />
-                        <Legend />
-                        <Bar dataKey="completed" name="Completed Projects" fill="#3D5A80" />
-                        <Bar dataKey="active" name="Active Projects" fill="#E07A5F" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-                
-                {activeChart === 'revenue' && (
-                  <div className="h-full">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Revenue Growth</h3>
-                    <ResponsiveContainer width="100%" height="90%">
-                      <AreaChart
-                        data={revenueData}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']}
-                          labelStyle={{ color: '#333' }}
-                          contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #ddd' }}
-                        />
-                        <Area type="monotone" dataKey="amount" name="Monthly Revenue" fill="#F2CC8F" stroke="#E07A5F" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-                
-                {activeChart === 'types' && (
-                  <div className="h-full">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Project Types</h3>
-                    <ResponsiveContainer width="100%" height="90%">
-                      <PieChart>
-                        <Pie
-                          data={projectTypeData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          nameKey="name"
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {projectTypeData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          formatter={(value) => [`${value} projects`, '']}
-                          labelStyle={{ color: '#333' }}
-                          contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #ddd' }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
           {/* Recent Activity */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+          <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-secondary-800">Recent Activity</h2>
               <button
@@ -562,7 +805,7 @@ const DesignerDashboard = () => {
           </div>
 
           {/* Quick Actions & Profile Summary */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6">
             {/* Profile Summary */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-lg font-bold text-secondary-800 mb-4">Profile Summary</h3>
@@ -598,9 +841,9 @@ const DesignerDashboard = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-lg p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-lg font-bold text-secondary-800 mb-4">Quick Actions</h3>
-              <div className="space-y-3 md:col-span-2">
+              <div className="space-y-3">
                 <button
                   onClick={() => navigate('/customer-projects')}
                   className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors flex items-center space-x-3"
@@ -638,27 +881,39 @@ const DesignerDashboard = () => {
                 </button>
               </div>
               
-              {/* Performance Tips */}
-              <div className="bg-gradient-to-br from-primary-50 to-accent-50 rounded-xl p-6 md:col-span-2">
-                <h3 className="text-lg font-bold text-secondary-800 mb-4">Performance Tips</h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-start space-x-2">
-                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                    <span className="text-gray-700">Complete your profile with portfolio images</span>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                    <span className="text-gray-700">Respond to project assignments quickly</span>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                    <span className="text-gray-700">Maintain high-quality project delivery</span>
-                  </div>
+            </div>
+            
+            {/* Performance Tips */}
+            <div className="bg-gradient-to-br from-primary-50 to-accent-50 rounded-xl p-6">
+              <h3 className="text-lg font-bold text-secondary-800 mb-4">Performance Tips</h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-start space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                  <span className="text-gray-700">Complete your profile with portfolio images</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                  <span className="text-gray-700">Respond to project assignments quickly</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                  <span className="text-gray-700">Maintain high-quality project delivery</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
+        
+        {/* Analytics Modal */}
+        <AnalyticsModal 
+          isOpen={showAnalyticsModal}
+          onClose={() => setShowAnalyticsModal(false)}
+          type={analyticsType}
+          stats={stats}
+          projectData={projectData}
+          revenueData={revenueData}
+          projectTypeData={projectTypeData}
+        />
       </div>
     </div>
   );

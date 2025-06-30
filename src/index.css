@@ -44,6 +44,47 @@
     opacity: 1;
     transform: translateY(0);
   }
+
+/* Analytics modal animation */
+.analytics-modal-enter {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.analytics-modal-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.analytics-modal-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.analytics-modal-exit-active {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Stat card hover effect */
+.stat-card {
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.stat-card:hover .stat-icon {
+  transform: scale(1.1);
+}
+
+.stat-icon {
+  transition: transform 0.3s ease;
+}
 }
 
 /* Chatbot input focus styles */
