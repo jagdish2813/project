@@ -22,20 +22,25 @@ const VastuAnalysisModal: React.FC<VastuAnalysisModalProps> = ({
   projectId,
   existingLayoutUrl
 }) => {
-  const [step, setStep] = useState<'upload' | 'analyzing' | 'results'>(existingLayoutUrl ? 'analyzing' : 'upload');
+  const [step, setStep] = useState<'upload' | 'analyzing' | 'results'>('upload');
   const [uploadedImage, setUploadedImage] = useState<string | null>(existingLayoutUrl || null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [vastuScore, setVastuScore] = useState(0);
   const [recommendations, setRecommendations] = useState<VastuRecommendation[]>([]);
   
-  // Simulate analysis when existing layout is provided
+  // Initialize state and start analysis when modal opens with existing layout
   React.useEffect(() => {
-    if (existingLayoutUrl && step === 'analyzing') {
-      // Start analysis immediately when modal opens with existing layout
-      simulateAnalysis();
+    if (isOpen) {
+      if (existingLayoutUrl) {
+        setUploadedImage(existingLayoutUrl);
+        setStep('analyzing');
+        simulateAnalysis();
+      } else {
+        setStep('upload');
+      }
     }
-  }, [existingLayoutUrl, step]);
+  }, [isOpen, existingLayoutUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -83,8 +88,7 @@ const VastuAnalysisModal: React.FC<VastuAnalysisModalProps> = ({
   
   const simulateAnalysis = () => {
     // Simulate AI analysis delay
-    // Use shorter delay when existing image is provided
-    const delay = existingLayoutUrl ? 1500 : 3000;
+    const delay = 2000;
     setTimeout(() => {
       // Generate Vastu score between 65-95
       const score = Math.floor(Math.random() * 31) + 65;
