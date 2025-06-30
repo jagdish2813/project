@@ -479,7 +479,7 @@ const CustomerRegistration = () => {
                         className="bg-accent-500 hover:bg-accent-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2 mx-auto"
                       >
                         <Compass className="w-4 h-4" />
-                        <span>Run Vastu Analysis</span>
+                        <span>Run Vastu Analysis on Layout</span>
                       </button>
                     </div>
                   )}
