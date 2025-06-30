@@ -264,25 +264,7 @@ const ProjectDetailWithTracking = () => {
                       )}
                       <div>
                         <p className="text-sm font-medium text-gray-700">Status</p>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="url"
-                          name="layout_image_url"
-                          value={formData.layout_image_url}
-                          onChange={handleInputChange}
-                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                          placeholder="https://example.com/your-layout-image.jpg"
-                        />
-                        {project.layout_image_url && (
-                          <button
-                            type="button"
-                            onClick={() => setShowVastuModal(true)}
-                            className="bg-accent-500 hover:bg-accent-600 text-white px-3 py-2 rounded-lg font-medium transition-colors flex items-center space-x-1"
-                          >
-                            <Compass className="w-4 h-4" />
-                            <span>Vastu</span>
-                          </button>
-                        )}
+                        <p className="text-gray-600">{project.status}</p>
                       </div>
                     </div>
                   </div>
