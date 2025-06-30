@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, UserPlus, Clock, MapPin, IndianRupee as Rupee, User, Phone, Mail, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Edit, UserPlus, Clock, MapPin, IndianRupee as Rupee, User, Phone, Mail, AlertCircle, Compass } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useProjectTracking } from '../hooks/useProjectTracking';
@@ -9,6 +9,7 @@ import type { Customer } from '../lib/supabase';
 import ProjectActivityLog from '../components/ProjectActivityLog';
 import ProjectVersionHistory from '../components/ProjectVersionHistory';
 import AssignProjectModal from '../components/AssignProjectModal';
+import VastuAnalysisModal from '../components/VastuAnalysisModal';
 
 const ProjectDetailWithTracking = () => {
   const { id } = useParams();
@@ -21,6 +22,7 @@ const ProjectDetailWithTracking = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showVastuModal, setShowVastuModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'versions'>('details');
 
   useEffect(() => {
@@ -171,6 +173,16 @@ const ProjectDetailWithTracking = () => {
                   <span>Assign Designer</span>
                 </button>
               )}
+              
+              {project.layout_image_url && (
+                <button
+                  onClick={() => setShowVastuModal(true)}
+                  className="bg-accent-500 hover:bg-accent-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center space-x-2"
+                >
+                  <Compass className="w-4 h-4" />
+                  <span>Vastu Analysis</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -252,13 +264,25 @@ const ProjectDetailWithTracking = () => {
                       )}
                       <div>
                         <p className="text-sm font-medium text-gray-700">Status</p>
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                          project.assignment_status === 'assigned' 
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {project.assignment_status || 'Unassigned'}
-                        </span>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="url"
+                          name="layout_image_url"
+                          value={formData.layout_image_url}
+                          onChange={handleInputChange}
+                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          placeholder="https://example.com/your-layout-image.jpg"
+                        />
+                        {project.layout_image_url && (
+                          <button
+                            type="button"
+                            onClick={() => setShowVastuModal(true)}
+                            className="bg-accent-500 hover:bg-accent-600 text-white px-3 py-2 rounded-lg font-medium transition-colors flex items-center space-x-1"
+                          >
+                            <Compass className="w-4 h-4" />
+                            <span>Vastu</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -349,6 +373,14 @@ const ProjectDetailWithTracking = () => {
         onClose={() => setShowAssignModal(false)}
         project={project}
         onSuccess={handleAssignSuccess}
+      />
+      
+      {/* Vastu Analysis Modal */}
+      <VastuAnalysisModal
+        isOpen={showVastuModal}
+        onClose={() => setShowVastuModal(false)}
+        projectId={project.id}
+        existingLayoutUrl={project.layout_image_url || undefined}
       />
     </div>
   );

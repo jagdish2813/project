@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Home, FileText, Upload, X, Plus, ExternalLink, Heart, CheckCircle, IndianRupee as Rupee } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Home, FileText, Upload, X, Plus, ExternalLink, Heart, CheckCircle, IndianRupee as Rupee, Compass } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import WelcomeModal from '../components/WelcomeModal';
+import VastuAnalysisModal from '../components/VastuAnalysisModal';
 
 const CustomerRegistration = () => {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ const CustomerRegistration = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showVastuModal, setShowVastuModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -471,9 +473,17 @@ const CustomerRegistration = () => {
                       name="layout_image_url"
                       value={formData.layout_image_url}
                       onChange={handleInputChange}
-                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent pr-32"
                       placeholder="https://example.com/your-layout-image.jpg"
                     />
+                    <button
+                      type="button"
+                      onClick={() => formData.layout_image_url ? setShowVastuModal(true) : alert('Please enter a layout image URL first')}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-accent-500 hover:bg-accent-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                    >
+                      <Compass className="w-3 h-3" />
+                      <span>Vastu Check</span>
+                    </button>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     Upload your floor plan to a cloud service and paste the URL here. This helps designers understand your space better.
@@ -574,6 +584,13 @@ const CustomerRegistration = () => {
         isOpen={showWelcomeModal}
         onClose={handleWelcomeModalClose}
         userType="customer"
+      />
+      
+      {/* Vastu Analysis Modal */}
+      <VastuAnalysisModal
+        isOpen={showVastuModal}
+        onClose={() => setShowVastuModal(false)}
+        existingLayoutUrl={formData.layout_image_url || undefined}
       />
     </>
   );

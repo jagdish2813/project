@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Calendar, MapPin, IndianRupee as Rupee, Clock, Edit, Eye, Trash2, AlertCircle, Send, Activity } from 'lucide-react';
+import { Plus, Calendar, MapPin, IndianRupee as Rupee, Clock, Edit, Eye, Trash2, AlertCircle, Send, Activity, Compass } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import type { Customer } from '../lib/supabase';
 import AssignProjectModal from '../components/AssignProjectModal';
+import VastuAnalysisModal from '../components/VastuAnalysisModal';
 
 const MyProjects = () => {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ const MyProjects = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<Customer | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showVastuModal, setShowVastuModal] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -81,6 +83,11 @@ const MyProjects = () => {
   const handleAssignToDesigner = (project: Customer) => {
     setSelectedProject(project);
     setShowAssignModal(true);
+  };
+
+  const handleVastuAnalysis = (project: Customer) => {
+    setSelectedProject(project);
+    setShowVastuModal(true);
   };
 
   const handleAssignSuccess = () => {
@@ -327,6 +334,15 @@ const MyProjects = () => {
                         <Activity className="w-4 h-4" />
                         <span>View Details</span>
                       </button>
+                      {project.layout_image_url && (
+                        <button
+                          onClick={() => handleVastuAnalysis(project)}
+                          className="bg-accent-500 hover:bg-accent-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
+                          title="Vastu Analysis"
+                        >
+                          <Compass className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => navigate(`/edit-project/${project.id}`)}
                         className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
@@ -368,6 +384,19 @@ const MyProjects = () => {
           }}
           project={selectedProject}
           onSuccess={handleAssignSuccess}
+        />
+      )}
+      
+      {/* Vastu Analysis Modal */}
+      {selectedProject && (
+        <VastuAnalysisModal
+          isOpen={showVastuModal}
+          onClose={() => {
+            setShowVastuModal(false);
+            setSelectedProject(null);
+          }}
+          projectId={selectedProject.id}
+          existingLayoutUrl={selectedProject.layout_image_url || undefined}
         />
       )}
     </div>
