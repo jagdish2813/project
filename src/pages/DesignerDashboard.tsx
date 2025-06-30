@@ -478,15 +478,20 @@ const DesignerDashboard = () => {
       // Fetch recent activities
       const { data: activities, error: activitiesError } = await supabase
         .from('project_activities')
-        .select(`
-          *,
-          project:customers(project_name)
-        `)
+        .select('*')
         .in('project_id', projects?.map(p => p.id) || [])
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (activitiesError) throw activitiesError;
+
+      // Get project names for activities
+      const projectNames: { [key: string]: string } = {};
+      if (projects && projects.length > 0) {
+        projects.forEach(project => {
+          projectNames[project.id] = project.project_name;
+        });
+      }
 
       // Calculate stats
       const activeProjects = projects?.filter(p => 
@@ -516,11 +521,23 @@ const DesignerDashboard = () => {
         type: activity.activity_type,
         description: activity.description,
         timestamp: activity.created_at,
-        projectName: (activity as any).project?.project_name
+        projectName: projectNames[activity.project_id] || 'Unknown Project'
       })) || []);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      // Set default values to prevent UI errors
+      setStats({
+        totalProjects: 0,
+        activeProjects: 0,
+        completedProjects: 0,
+        totalRevenue: 0,
+        averageRating: designer?.rating || 0,
+        totalReviews: designer?.total_reviews || 0,
+        pendingAssignments: 0,
+        profileViews: 0
+      });
+      setRecentActivity([]);
     } finally {
       setLoading(false);
     }
