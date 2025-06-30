@@ -237,18 +237,20 @@ const Chatbot = () => {
 
   if (!isOpen) {
     return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 bg-primary-500 hover:bg-primary-600 text-white p-4 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 z-50"
-        aria-label="Open chat support"
-      >
-        <MessageCircle className="w-6 h-6" />
-      </button>
+      <div className="fixed bottom-6 right-6 z-50">
+        <button
+          onClick={() => setIsOpen(true)}
+          className="bg-primary-500 hover:bg-primary-600 text-white p-4 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110"
+          aria-label="Open chat support"
+        >
+          <MessageCircle className="w-6 h-6" />
+        </button>
+      </div>
     );
   }
 
   return (
-    <div className={`fixed bottom-6 right-6 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 transition-all duration-300 ${
+    <div className={`fixed bottom-6 right-6 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 transition-all duration-300 overflow-hidden ${
       isMinimized ? 'w-80 h-16' : 'w-80 h-96'
     }`}>
       {/* Enhanced Header */}
@@ -387,15 +389,15 @@ const Chatbot = () => {
           )}
 
           {/* Enhanced Input */}
-          <div className="p-4 border-t border-gray-200 bg-white relative">
-            <div className="flex space-x-2">
+          <div className="p-4 border-t border-gray-200 bg-white relative chatbot-input-container">
+            <div className="flex space-x-2 items-center">
               <input
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder={isAIEnabled ? "Ask me anything about interior design..." : "Type your message..."}
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-sm"
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm shadow-sm"
                 aria-label="Chat message"
                 autoComplete="off"
                 disabled={isLoading}
@@ -404,7 +406,7 @@ const Chatbot = () => {
               <button
                 onClick={() => handleSendMessage()}
                 disabled={!inputMessage.trim() || isLoading}
-                className="bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors shadow-sm"
+                className="bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors shadow-sm flex-shrink-0"
                 aria-label="Send message"
               >
                 <Send className="w-4 h-4" />
@@ -440,7 +442,7 @@ const Chatbot = () => {
             
             {/* Accessibility helper text */}
             <div className="text-xs text-gray-400 mt-1 text-center">
-              Press Enter to send your message
+              Press Enter to send message
             </div>
           </div>
         </>

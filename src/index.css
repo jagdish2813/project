@@ -48,13 +48,31 @@
 
 /* Chatbot input focus styles */
 #chatbot-input:focus {
-  outline: none;
+  outline: 2px solid #E07A5F;
   border-color: #E07A5F;
-  box-shadow: 0 0 0 3px rgba(224, 122, 95, 0.2);
+  box-shadow: 0 0 8px rgba(224, 122, 95, 0.3);
 }
 
 /* Ensure chatbot input is always visible and accessible */
 .chatbot-input-container {
   position: relative;
   z-index: 60;
+  background-color: white;
+}
+
+/* Make the chatbot more visible */
+.chatbot-button {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(224, 122, 95, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(224, 122, 95, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(224, 122, 95, 0);
+  }
 }
