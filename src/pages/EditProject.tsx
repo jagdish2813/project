@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Edit, UserPlus, Clock, MapPin, IndianRupee as Rupee, User, Phone, Mail, AlertCircle, Save, Plus, X, Upload, ExternalLink, Compass, Home, FileText } from 'lucide-react';
+import { ArrowLeft, Edit, UserPlus, Clock, MapPin, IndianRupee as Rupee, User, Phone, Mail, AlertCircle, Save, Plus, X, ExternalLink, Compass, Home, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import type { Customer } from '../lib/supabase';
 import VastuAnalysisModal from '../components/VastuAnalysisModal';
+import ImageUploader from '../components/ImageUploader';
 
 const EditProject = () => {
   const navigate = useNavigate();
@@ -632,33 +633,25 @@ const EditProject = () => {
             <div className="bg-gray-50 rounded-lg p-6">
               <h2 className="text-xl font-semibold text-secondary-800 mb-4">Home Layout</h2>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  2D Home Layout Image URL
-                </label>
-                <div className="relative flex items-center">
-                  <Upload className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="url"
-                    name="layout_image_url"
-                    value={formData.layout_image_url}
-                    onChange={handleInputChange}
-                    className="pl-10 flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="https://example.com/your-layout-image.jpg"
-                  />
-                  {formData.layout_image_url && (
+                <ImageUploader
+                  onImageUploaded={(url) => setFormData(prev => ({ ...prev, layout_image_url: url }))}
+                  existingImageUrl={formData.layout_image_url}
+                  label="2D Home Layout Image"
+                  helpText="Upload your floor plan to help designers understand your space better. You can also run a Vastu analysis on your layout."
+                />
+                
+                {formData.layout_image_url && (
+                  <div className="mt-4">
                     <button
                       type="button"
                       onClick={() => setShowVastuModal(true)}
-                      className="ml-2 bg-accent-500 hover:bg-accent-600 text-white px-3 py-2 rounded-lg font-medium transition-colors flex items-center space-x-1"
+                      className="bg-accent-500 hover:bg-accent-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2 mx-auto"
                     >
                       <Compass className="w-4 h-4" />
-                      <span>Vastu Check</span>
+                      <span>Run Vastu Analysis</span>
                     </button>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Upload your floor plan to a cloud service and paste the URL here. This helps designers understand your space better.
-                </p>
+                  </div>
+                )}
               </div>
             </div>
 
