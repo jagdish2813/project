@@ -6,6 +6,7 @@ import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useProjectTracking } from '../hooks/useProjectTracking';
 import { supabase } from '../lib/supabase';
 import type { Customer } from '../lib/supabase';
+import ProjectStatusUpdate from '../components/ProjectStatusUpdate';
 import ProjectActivityLog from '../components/ProjectActivityLog';
 import ProjectVersionHistory from '../components/ProjectVersionHistory';
 import AssignProjectModal from '../components/AssignProjectModal';
@@ -24,12 +25,13 @@ const ProjectDetailWithTracking = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showVastuModal, setShowVastuModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'versions'>('details');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (id && user && !designerLoading) {
+    if (id && user && !designerLoading && refreshKey >= 0) {
       fetchProject();
     }
-  }, [id, user, designerLoading, isDesigner, designer]);
+  }, [id, user, designerLoading, isDesigner, designer, refreshKey]);
 
   const fetchProject = async () => {
     if (!id || !user) return;
@@ -80,6 +82,13 @@ const ProjectDetailWithTracking = () => {
   const handleAssignSuccess = () => {
     fetchProject();
     refreshData();
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleStatusUpdate = () => {
+    fetchProject();
+    refreshData();
+    setRefreshKey(prev => prev + 1);
   };
 
   const isProjectOwner = project?.user_id === user?.id;
@@ -212,6 +221,15 @@ const ProjectDetailWithTracking = () => {
           <div className="p-6">
             {activeTab === 'details' && (
               <div className="space-y-6">
+                {/* Project Status Update - Only visible to assigned designers */}
+                {isAssignedDesigner && (
+                  <ProjectStatusUpdate 
+                    projectId={project.id} 
+                    currentStatus={project.assignment_status || 'assigned'} 
+                    onStatusUpdate={handleStatusUpdate}
+                  />
+                )}
+
                 {/* Project Status */}
                 {project.assigned_designer_id && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -264,7 +282,16 @@ const ProjectDetailWithTracking = () => {
                       )}
                       <div>
                         <p className="text-sm font-medium text-gray-700">Status</p>
-                        <p className="text-gray-600">{project.status}</p>
+                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                          project.assignment_status === 'completed' ? 'bg-green-100 text-green-800' :
+                          project.assignment_status === 'in_progress' ? 'bg-orange-100 text-orange-800' :
+                          project.assignment_status === 'finalized' ? 'bg-purple-100 text-purple-800' :
+                          project.assignment_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          project.assignment_status === 'assigned' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {project.assignment_status ? project.assignment_status.replace('_', ' ').charAt(0).toUpperCase() + project.assignment_status.replace('_', ' ').slice(1) : 'Unassigned'}
+                        </span>
                       </div>
                     </div>
                   </div>
