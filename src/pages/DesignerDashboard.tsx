@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   BarChart3,
+  BarChart as BarChartIcon,
   Users, 
   Calendar,
   Star, 
@@ -15,8 +16,28 @@ import {
   Award,
   Target,
   Activity,
+  TrendingUp as TrendingUpIcon,
+  DollarSign as DollarSignIcon,
+  PieChart as PieChartIcon,
   FileText
 } from 'lucide-react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  AreaChart,
+  Area
+} from 'recharts';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -30,6 +51,22 @@ interface DashboardStats {
   totalReviews: number;
   pendingAssignments: number;
   profileViews: number;
+}
+
+interface ProjectData {
+  month: string;
+  completed: number;
+  active: number;
+}
+
+interface RevenueData {
+  month: string;
+  amount: number;
+}
+
+interface ProjectTypeData {
+  name: string;
+  value: number;
 }
 
 interface RecentActivity {
@@ -56,6 +93,13 @@ const DesignerDashboard = () => {
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [projectData, setProjectData] = useState<ProjectData[]>([]);
+  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [projectTypeData, setProjectTypeData] = useState<ProjectTypeData[]>([]);
+  const [activeChart, setActiveChart] = useState<'projects' | 'revenue' | 'types'>('projects');
+  
+  // Colors for charts
+  const COLORS = ['#E07A5F', '#3D5A80', '#F2CC8F', '#81B29A', '#F4A261'];
 
   useEffect(() => {
     if (!designerLoading && designer) {
@@ -118,6 +162,9 @@ const DesignerDashboard = () => {
         pendingAssignments: assignments?.length || 0,
         profileViews: Math.floor(Math.random() * 500) + 100 // Mock data
       });
+      
+      // Generate mock data for charts
+      generateMockChartData(projects?.length || 0, activeProjects, completedProjects);
 
       setRecentActivity(activities?.map(activity => ({
         id: activity.id,
@@ -132,6 +179,66 @@ const DesignerDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const generateMockChartData = (totalProjects: number, activeProjects: number, completedProjects: number) => {
+    // Generate project data for the last 6 months
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    const projectData: ProjectData[] = [];
+    
+    // Distribute projects across months with a growth trend
+    let totalCompleted = completedProjects;
+    let totalActive = activeProjects;
+    
+    for (let i = 0; i < months.length; i++) {
+      const completedThisMonth = Math.max(1, Math.floor(totalCompleted * (0.1 + (i * 0.05))));
+      const activeThisMonth = Math.max(1, Math.floor(totalActive * (0.1 + (i * 0.03))));
+      
+      projectData.push({
+        month: months[i],
+        completed: completedThisMonth,
+        active: activeThisMonth
+      });
+      
+      totalCompleted -= completedThisMonth;
+      totalActive -= activeThisMonth;
+      
+      // Ensure we don't go negative
+      if (totalCompleted <= 0) totalCompleted = 1;
+      if (totalActive <= 0) totalActive = 1;
+    }
+    
+    // Reverse to show most recent months last (right side of chart)
+    setProjectData(projectData.reverse());
+    
+    // Generate revenue data with growth trend
+    const revenueData: RevenueData[] = [];
+    let baseRevenue = stats.totalRevenue / 6; // Distribute total revenue
+    
+    for (let i = 0; i < months.length; i++) {
+      // Add some randomness and growth trend
+      const growthFactor = 1 + (i * 0.1);
+      const randomFactor = 0.8 + (Math.random() * 0.4);
+      const monthlyRevenue = Math.round(baseRevenue * growthFactor * randomFactor);
+      
+      revenueData.push({
+        month: months[i],
+        amount: monthlyRevenue
+      });
+    }
+    
+    setRevenueData(revenueData.reverse());
+    
+    // Generate project type data
+    const projectTypeData: ProjectTypeData[] = [
+      { name: 'Residential', value: Math.round(totalProjects * 0.6) },
+      { name: 'Commercial', value: Math.round(totalProjects * 0.2) },
+      { name: 'Office', value: Math.round(totalProjects * 0.1) },
+      { name: 'Retail', value: Math.round(totalProjects * 0.05) },
+      { name: 'Other', value: Math.round(totalProjects * 0.05) }
+    ];
+    
+    setProjectTypeData(projectTypeData);
   };
 
   if (!user || designerLoading) {
@@ -281,7 +388,126 @@ const DesignerDashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Dashboard Analytics */}
+          <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+            <div className="flex flex-col space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-secondary-800">Dashboard Analytics</h2>
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={() => setActiveChart('projects')}
+                    className={`p-2 rounded-lg transition-colors ${
+                      activeChart === 'projects' 
+                        ? 'bg-primary-100 text-primary-600' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <BarChartIcon className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => setActiveChart('revenue')}
+                    className={`p-2 rounded-lg transition-colors ${
+                      activeChart === 'revenue' 
+                        ? 'bg-primary-100 text-primary-600' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <DollarSignIcon className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => setActiveChart('types')}
+                    className={`p-2 rounded-lg transition-colors ${
+                      activeChart === 'types' 
+                        ? 'bg-primary-100 text-primary-600' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <PieChartIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="h-64 w-full">
+                {activeChart === 'projects' && (
+                  <div className="h-full">
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">Project Trends</h3>
+                    <ResponsiveContainer width="100%" height="90%">
+                      <BarChart
+                        data={projectData}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip 
+                          formatter={(value) => [`${value} projects`, '']}
+                          labelStyle={{ color: '#333' }}
+                          contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #ddd' }}
+                        />
+                        <Legend />
+                        <Bar dataKey="completed" name="Completed Projects" fill="#3D5A80" />
+                        <Bar dataKey="active" name="Active Projects" fill="#E07A5F" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+                
+                {activeChart === 'revenue' && (
+                  <div className="h-full">
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">Revenue Growth</h3>
+                    <ResponsiveContainer width="100%" height="90%">
+                      <AreaChart
+                        data={revenueData}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip 
+                          formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']}
+                          labelStyle={{ color: '#333' }}
+                          contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #ddd' }}
+                        />
+                        <Area type="monotone" dataKey="amount" name="Monthly Revenue" fill="#F2CC8F" stroke="#E07A5F" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+                
+                {activeChart === 'types' && (
+                  <div className="h-full">
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">Project Types</h3>
+                    <ResponsiveContainer width="100%" height="90%">
+                      <PieChart>
+                        <Pie
+                          data={projectTypeData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          nameKey="name"
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {projectTypeData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value) => [`${value} projects`, '']}
+                          labelStyle={{ color: '#333' }}
+                          contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #ddd' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
           {/* Recent Activity */}
           <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
@@ -336,7 +562,7 @@ const DesignerDashboard = () => {
           </div>
 
           {/* Quick Actions & Profile Summary */}
-          <div className="space-y-6">
+          <div className="lg:col-span-2 space-y-6">
             {/* Profile Summary */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-lg font-bold text-secondary-800 mb-4">Profile Summary</h3>
@@ -372,9 +598,9 @@ const DesignerDashboard = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="bg-white rounded-xl shadow-lg p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
               <h3 className="text-lg font-bold text-secondary-800 mb-4">Quick Actions</h3>
-              <div className="space-y-3">
+              <div className="space-y-3 md:col-span-2">
                 <button
                   onClick={() => navigate('/customer-projects')}
                   className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors flex items-center space-x-3"
@@ -411,23 +637,23 @@ const DesignerDashboard = () => {
                   <span className="font-medium text-gray-700">Manage Quotes</span>
                 </button>
               </div>
-            </div>
-
-            {/* Performance Tips */}
-            <div className="bg-gradient-to-br from-primary-50 to-accent-50 rounded-xl p-6">
-              <h3 className="text-lg font-bold text-secondary-800 mb-4">Performance Tips</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-start space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                  <span className="text-gray-700">Complete your profile with portfolio images</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                  <span className="text-gray-700">Respond to project assignments quickly</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                  <span className="text-gray-700">Maintain high-quality project delivery</span>
+              
+              {/* Performance Tips */}
+              <div className="bg-gradient-to-br from-primary-50 to-accent-50 rounded-xl p-6 md:col-span-2">
+                <h3 className="text-lg font-bold text-secondary-800 mb-4">Performance Tips</h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                    <span className="text-gray-700">Complete your profile with portfolio images</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                    <span className="text-gray-700">Respond to project assignments quickly</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                    <span className="text-gray-700">Maintain high-quality project delivery</span>
+                  </div>
                 </div>
               </div>
             </div>
