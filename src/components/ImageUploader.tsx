@@ -55,7 +55,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       // Generate a unique file name
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-      const filePath = `layouts/${user?.id || 'anonymous'}/${fileName}`;
+      const filePath = `${user?.id || 'anonymous'}/${fileName}`;
       
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
