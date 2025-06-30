@@ -387,7 +387,7 @@ const Chatbot = () => {
           )}
 
           {/* Enhanced Input */}
-          <div className="p-4 border-t border-gray-200 bg-white">
+          <div className="p-4 border-t border-gray-200 bg-white relative">
             <div className="flex space-x-2">
               <input
                 type="text"
@@ -396,16 +396,21 @@ const Chatbot = () => {
                 onKeyPress={handleKeyPress}
                 placeholder={isAIEnabled ? "Ask me anything about interior design..." : "Type your message..."}
                 className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-sm"
+                aria-label="Chat message"
+                autoComplete="off"
                 disabled={isLoading}
+                id="chatbot-input"
               />
               <button
                 onClick={() => handleSendMessage()}
                 disabled={!inputMessage.trim() || isLoading}
                 className="bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors shadow-sm"
+                aria-label="Send message"
               >
                 <Send className="w-4 h-4" />
               </button>
             </div>
+            
             {isAIEnabled && (
               <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
                 <div className="flex items-center">
@@ -432,6 +437,11 @@ const Chatbot = () => {
                 </button>
               </div>
             )}
+            
+            {/* Accessibility helper text */}
+            <div className="text-xs text-gray-400 mt-1 text-center">
+              Press Enter to send your message
+            </div>
           </div>
         </>
       )}

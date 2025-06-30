@@ -45,3 +45,16 @@
     transform: translateY(0);
   }
 }
+
+/* Chatbot input focus styles */
+#chatbot-input:focus {
+  outline: none;
+  border-color: #E07A5F;
+  box-shadow: 0 0 0 3px rgba(224, 122, 95, 0.2);
+}
+
+/* Ensure chatbot input is always visible and accessible */
+.chatbot-input-container {
+  position: relative;
+  z-index: 60;
+}
