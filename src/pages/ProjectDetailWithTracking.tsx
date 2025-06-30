@@ -7,6 +7,7 @@ import { useProjectTracking } from '../hooks/useProjectTracking';
 import { supabase } from '../lib/supabase';
 import type { Customer } from '../lib/supabase';
 import ProjectStatusUpdate from '../components/ProjectStatusUpdate';
+import ProjectTeamManagement from '../components/ProjectTeamManagement';
 import ProjectActivityLog from '../components/ProjectActivityLog';
 import ProjectVersionHistory from '../components/ProjectVersionHistory';
 import AssignProjectModal from '../components/AssignProjectModal';
@@ -227,6 +228,14 @@ const ProjectDetailWithTracking = () => {
                     projectId={project.id} 
                     currentStatus={project.assignment_status || 'assigned'} 
                     onStatusUpdate={handleStatusUpdate}
+                  />
+                )}
+                
+                {/* Project Team Management - Only visible to assigned designers when project is finalized */}
+                {isAssignedDesigner && (
+                  <ProjectTeamManagement 
+                    projectId={project.id} 
+                    currentStatus={project.assignment_status || 'assigned'} 
                   />
                 )}
 
