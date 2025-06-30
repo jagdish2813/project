@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, Loader2, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
@@ -20,6 +20,15 @@ const ProjectStatusUpdate: React.FC<ProjectStatusUpdateProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Define status progression logic
+  const isStatusDisabled = (status: string) => {
+    // Once a project is finalized, it cannot go back to assigned or pending
+    if (['finalized', 'in_progress', 'completed'].includes(currentStatus)) {
+      return ['assigned', 'pending'].includes(status);
+    }
+    return false;
+  };
 
   const statusOptions = [
     { value: 'assigned', label: 'Assigned', color: 'bg-blue-100 text-blue-800' },
@@ -100,11 +109,13 @@ const ProjectStatusUpdate: React.FC<ProjectStatusUpdateProps> = ({
           <button
             key={status.value}
             onClick={() => handleStatusChange(status.value)}
-            disabled={loading || status.value === currentStatus}
+            disabled={loading || status.value === currentStatus || isStatusDisabled(status.value)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               status.value === currentStatus
                 ? `${status.color} border border-current`
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : isStatusDisabled(status.value)
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {status.value === currentStatus && loading ? (
@@ -115,9 +126,19 @@ const ProjectStatusUpdate: React.FC<ProjectStatusUpdateProps> = ({
         ))}
       </div>
 
-      <div className="mt-4 text-sm text-gray-500">
+      <div className="mt-4 text-sm text-gray-500 space-y-2">
         <p>Current status: <span className="font-medium">{currentStatus || 'Not set'}</span></p>
         <p className="mt-1">Last updated: {new Date().toLocaleString()}</p>
+        
+        {['finalized', 'in_progress', 'completed'].includes(currentStatus) && (
+          <div className="flex items-start space-x-2 text-blue-600 bg-blue-50 p-3 rounded-lg mt-3">
+            <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <p>
+              Once a project is finalized, it cannot be moved back to assigned or pending status.
+              This ensures project continuity and maintains the integrity of the workflow.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
