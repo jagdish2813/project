@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, Compass, Sun, Wind, Water, Home, Check, AlertTriangle, Loader } from 'lucide-react';
+import { X, Upload, Compass, Sun, Wind, Heater as Water, Home, Check, AlertTriangle, Loader } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface VastuAnalysisModalProps {
