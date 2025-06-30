@@ -34,13 +34,17 @@ const VastuAnalysisModal: React.FC<VastuAnalysisModalProps> = ({
     if (isOpen) {
       if (existingLayoutUrl) {
         setUploadedImage(existingLayoutUrl);
+  // Start analysis immediately when modal opens with existing layout
+  useEffect(() => {
+    if (isOpen && existingLayoutUrl) {
+      if (step === 'upload') {
         setStep('analyzing');
+      }
+      if (step === 'analyzing') {
         simulateAnalysis();
-      } else {
-        setStep('upload');
       }
     }
-  }, [isOpen, existingLayoutUrl]);
+  }, [isOpen, existingLayoutUrl, step]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,9 +91,8 @@ const VastuAnalysisModal: React.FC<VastuAnalysisModalProps> = ({
   };
   
   const simulateAnalysis = () => {
-    // Simulate AI analysis delay
-    const delay = 2000;
-    setTimeout(() => {
+    // Use shorter delay when existing image is provided to improve UX
+    const delay = existingLayoutUrl ? 1200 : 3000;
       // Generate Vastu score between 65-95
       const score = Math.floor(Math.random() * 31) + 65;
       setVastuScore(score);
@@ -244,6 +247,20 @@ const VastuAnalysisModal: React.FC<VastuAnalysisModalProps> = ({
   };
 
   if (!isOpen) return null;
+  
+  // If we have an existing layout URL and we're still in upload step, skip to analyzing
+  if (existingLayoutUrl && step === 'upload') {
+    setStep('analyzing');
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-6 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
