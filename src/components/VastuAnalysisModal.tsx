@@ -34,8 +34,12 @@ const VastuAnalysisModal: React.FC<VastuAnalysisModalProps> = ({
     if (isOpen) {
       if (existingLayoutUrl) {
         setUploadedImage(existingLayoutUrl);
+      }
+    }
+  }, [isOpen, existingLayoutUrl]);
+
   // Start analysis immediately when modal opens with existing layout
-  useEffect(() => {
+  React.useEffect(() => {
     if (isOpen && existingLayoutUrl) {
       if (step === 'upload') {
         setStep('analyzing');
@@ -93,6 +97,7 @@ const VastuAnalysisModal: React.FC<VastuAnalysisModalProps> = ({
   const simulateAnalysis = () => {
     // Use shorter delay when existing image is provided to improve UX
     const delay = existingLayoutUrl ? 1200 : 3000;
+    setTimeout(() => {
       // Generate Vastu score between 65-95
       const score = Math.floor(Math.random() * 31) + 65;
       setVastuScore(score);
