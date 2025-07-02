@@ -407,23 +407,12 @@ const ProjectDetailWithTracking = () => {
               <div className="space-y-6">
                 {/* Show update form button for assigned designers */}
                 {isAssignedDesigner && (
-                  <div className="mb-6">
-                    {!showUpdateForm ? (
-                      <button
-                        onClick={() => setShowUpdateForm(true)}
-                        className="btn-primary"
-                      >
-                        Add Project Update
-                      </button>
-                    ) : (
-                      <ProjectUpdateForm
-                        projectId={project.id}
-                        designerId={designer!.id}
-                        onSuccess={handleUpdateSuccess}
-                        onCancel={() => setShowUpdateForm(false)}
-                      />
-                    )}
-                  </div>
+                  <ProjectUpdateForm 
+                    projectId={project.id} 
+                    designerId={designer!.id}
+                    onSuccess={handleUpdateSuccess}
+                    onCancel={() => setShowUpdateForm(false)}
+                  />
                 )}
                 
                 {/* Project Updates List */}
@@ -440,35 +429,6 @@ const ProjectDetailWithTracking = () => {
 
             {activeTab === 'versions' && (
               <ProjectVersionHistory versions={versions} loading={trackingLoading} />
-            )}
-            
-            {activeTab === 'updates' && (
-              <div className="space-y-6">
-                {isAssignedDesigner && (
-                  <ProjectUpdateForm 
-                    projectId={project.id} 
-                    onUpdateSubmitted={() => {
-                      setRefreshKey(prev => prev + 1);
-                    }}
-                  />
-                )}
-                
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-secondary-800">Project Updates</h3>
-                  <button
-                    onClick={() => setRefreshKey(prev => prev + 1)}
-                    className="text-primary-600 hover:text-primary-700 flex items-center space-x-1"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    <span>Refresh</span>
-                  </button>
-                </div>
-                
-                <ProjectUpdates 
-                  projectId={project.id}
-                  refreshTrigger={refreshKey}
-                />
-              </div>
             )}
           </div>
         </div>
