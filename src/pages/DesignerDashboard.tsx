@@ -860,21 +860,7 @@ const DesignerDashboard = () => {
             {/* Quick Actions */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-lg font-bold text-secondary-800 mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <button
-                  onClick={() => navigate('/customer-projects')}
-                  className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors flex items-center space-x-3"
-                >
-                  <Users className="w-5 h-5 text-primary-600" />
-                  <span className="font-medium text-gray-700">View Customer Projects</span>
-                </button>
-                <button
-                  onClick={() => navigate('/edit-designer-profile')}
-                  className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors flex items-center space-x-3"
-                >
-                  <Users className="w-5 h-5 text-primary-600" />
-                  <span className="font-medium text-gray-700">Update Profile</span>
-                </button>
+              <div className="space-y-3">               
                 <button
                   onClick={() => navigate(`/designers/${designer.id}`)}
                   className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors flex items-center space-x-3"
