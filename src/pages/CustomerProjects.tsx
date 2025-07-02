@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, IndianRupee as Rupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle, RefreshCw, FileText } from 'lucide-react';
+import { Calendar, MapPin, IndianRupee as Rupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle, RefreshCw, FileText, Camera } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -572,7 +572,14 @@ const CustomerProjects = () => {
                         onClick={() => navigate(`/project-detail/${project.id}`)}
                         className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors text-center"
                       >
-                        View Details
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => navigate(`/project-detail/${project.id}?tab=updates`)}
+                        className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
+                        title="Add Updates"
+                      >
+                        <Camera className="w-4 h-4" />
                       </button>
                       <a
                         href={`/generate-quote/${project.id}`}

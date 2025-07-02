@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, UserPlus, Clock, MapPin, IndianRupee as Rupee, User, Phone, Mail, AlertCircle, Compass } from 'lucide-react';
+import { ArrowLeft, Edit, UserPlus, Clock, MapPin, IndianRupee as Rupee, User, Phone, Mail, AlertCircle, Compass, Camera } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useProjectTracking } from '../hooks/useProjectTracking';
@@ -27,6 +27,15 @@ const ProjectDetailWithTracking = () => {
   const [showVastuModal, setShowVastuModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'versions'>('details');
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Check if there's a tab parameter in the URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab && ['details', 'activity', 'versions', 'updates'].includes(tab)) {
+      setActiveTab(tab as any);
+    }
+  }, []);
 
   useEffect(() => {
     if (id && user && !designerLoading && refreshKey >= 0) {
@@ -167,10 +176,20 @@ const ProjectDetailWithTracking = () => {
               {canEdit && (
                 <button
                   onClick={() => navigate(`/edit-project/${project.id}`)}
-                  className="btn-secondary flex items-center space-x-2"
+                  className="bg-secondary-500 hover:bg-secondary-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center space-x-2"
                 >
                   <Edit className="w-4 h-4" />
                   <span>Edit Project</span>
+                </button>
+              )}
+              
+              {isAssignedDesigner && (
+                <button
+                  onClick={() => setActiveTab('updates')}
+                  className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center space-x-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Add Updates</span>
                 </button>
               )}
               
