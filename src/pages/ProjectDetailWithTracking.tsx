@@ -14,8 +14,6 @@ import ProjectActivityLog from '../components/ProjectActivityLog';
 import ProjectVersionHistory from '../components/ProjectVersionHistory';
 import AssignProjectModal from '../components/AssignProjectModal';
 import VastuAnalysisModal from '../components/VastuAnalysisModal';
-import ProjectUpdateForm from '../components/ProjectUpdateForm';
-import ProjectUpdates from '../components/ProjectUpdates';
 
 const ProjectDetailWithTracking = () => {
   const { id } = useParams();

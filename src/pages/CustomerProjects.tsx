@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, IndianRupee as Rupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle, RefreshCw, FileText, Camera } from 'lucide-react';
+import { Calendar, MapPin, IndianRupee as Rupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle, RefreshCw, FileText, Camera, Eye } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -574,20 +574,6 @@ const CustomerProjects = () => {
                       >
                         View Details
                       </button>
-                      <a
-                        href={`/project-detail/${project.id}?tab=updates`}
-                        className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center"
-                        title="View Updates"
-                      >
-                        <Camera className="w-4 h-4" />
-                      </a>
-                      <a
-                        href={`/generate-quote/${project.id}`}
-                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center"
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>View Details</span>
-                      </button>
                       <button
                         onClick={() => navigate(`/project-detail/${project.id}?tab=updates`)}
                         className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
@@ -600,12 +586,6 @@ const CustomerProjects = () => {
                         className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center"
                       >
                         <FileText className="w-4 h-4" />
-                      </a>
-                      <a
-                        href={`tel:${project.phone}`}
-                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
-                      >
-                        <Phone className="w-4 h-4" />
                       </a>
                     </div>
                   </div>
@@ -765,19 +745,13 @@ const CustomerProjects = () => {
                       >
                         Contact Customer
                       </a>
-                      <a
-                        href={`/project-detail/${share.project.id}?tab=updates`}
+                      <button
+                        onClick={() => navigate(`/project-detail/${share.project.id}?tab=updates`)}
                         className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
                         title="View Updates"
                       >
                         <Camera className="w-4 h-4" />
-                      </a>
-                      <a
-                        href={`tel:${share.project.phone}`}
-                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
-                      >
-                        Contact Customer
-                      </a>
+                      </button>
                       <a
                         href={`tel:${share.project.phone}`}
                         className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
