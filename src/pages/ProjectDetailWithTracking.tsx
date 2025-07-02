@@ -6,6 +6,8 @@ import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useProjectTracking } from '../hooks/useProjectTracking';
 import { supabase } from '../lib/supabase';
 import type { Customer } from '../lib/supabase';
+import ProjectUpdateForm from '../components/ProjectUpdateForm';
+import ProjectUpdates from '../components/ProjectUpdates';
 import ProjectStatusUpdate from '../components/ProjectStatusUpdate';
 import ProjectTeamManagement from '../components/ProjectTeamManagement';
 import ProjectActivityLog from '../components/ProjectActivityLog';
@@ -28,6 +30,8 @@ const ProjectDetailWithTracking = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showVastuModal, setShowVastuModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'versions'>('details');
+  const [showUpdateForm, setShowUpdateForm] = useState(false);
+  const [updateRefreshKey, setUpdateRefreshKey] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Check if there's a tab parameter in the URL
@@ -101,6 +105,12 @@ const ProjectDetailWithTracking = () => {
     fetchProject();
     refreshData();
     setRefreshKey(prev => prev + 1);
+    setUpdateRefreshKey(prev => prev + 1);
+  };
+
+  const handleUpdateSuccess = () => {
+    setShowUpdateForm(false);
+    setUpdateRefreshKey(prev => prev + 1);
   };
 
   const isProjectOwner = project?.user_id === user?.id;
@@ -224,7 +234,7 @@ const ProjectDetailWithTracking = () => {
         <div className="bg-white rounded-xl shadow-lg mb-8">
           <div className="border-b border-gray-200">
             <nav className="flex space-x-8 px-6">
-              {['details', 'activity', 'versions', 'updates'].map((tab) => (
+              {['details', 'updates', 'activity', 'versions'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab as any)}
@@ -392,6 +402,37 @@ const ProjectDetailWithTracking = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeTab === 'updates' && (
+              <div className="space-y-6">
+                {/* Show update form button for assigned designers */}
+                {isAssignedDesigner && (
+                  <div className="mb-6">
+                    {!showUpdateForm ? (
+                      <button
+                        onClick={() => setShowUpdateForm(true)}
+                        className="btn-primary"
+                      >
+                        Add Project Update
+                      </button>
+                    ) : (
+                      <ProjectUpdateForm
+                        projectId={project.id}
+                        designerId={designer!.id}
+                        onSuccess={handleUpdateSuccess}
+                        onCancel={() => setShowUpdateForm(false)}
+                      />
+                    )}
+                  </div>
+                )}
+                
+                {/* Project Updates List */}
+                <ProjectUpdates 
+                  projectId={project.id} 
+                  refreshTrigger={updateRefreshKey}
+                />
               </div>
             )}
 

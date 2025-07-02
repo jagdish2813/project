@@ -1,8 +1,8 @@
 /*
-  # Add Project Updates System
+  # Add Project Updates Table
 
   1. New Tables
-    - `project_updates` - Store updates, progress reports, and photos for projects
+    - `project_updates` - Store updates and progress reports for projects
       - `id` (uuid, primary key)
       - `project_id` (uuid, references customers)
       - `designer_id` (uuid, references designers)
@@ -37,7 +37,27 @@ CREATE TABLE IF NOT EXISTS project_updates (
 -- Enable RLS
 ALTER TABLE project_updates ENABLE ROW LEVEL SECURITY;
 
--- Policies for project_updates
+-- Drop existing policies if they exist to avoid conflicts
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'project_updates' 
+    AND policyname = 'Designers can manage updates for their assigned projects'
+  ) THEN
+    DROP POLICY "Designers can manage updates for their assigned projects" ON project_updates;
+  END IF;
+  
+  IF EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'project_updates' 
+    AND policyname = 'Customers can view updates for their projects'
+  ) THEN
+    DROP POLICY "Customers can view updates for their projects" ON project_updates;
+  END IF;
+END $$;
+
+-- Create policies for project_updates
 CREATE POLICY "Designers can manage updates for their assigned projects"
   ON project_updates
   FOR ALL
@@ -73,11 +93,20 @@ CREATE POLICY "Customers can view updates for their projects"
     )
   );
 
--- Trigger to automatically update updated_at
-CREATE TRIGGER update_project_updates_updated_at
-  BEFORE UPDATE ON project_updates
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+-- Create trigger for updated_at only if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'update_project_updates_updated_at'
+    AND tgrelid = 'project_updates'::regclass
+  ) THEN
+    CREATE TRIGGER update_project_updates_updated_at
+      BEFORE UPDATE ON project_updates
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+END $$;
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_project_updates_project_id 

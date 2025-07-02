@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
-import { Camera, Upload, X, Send, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Plus, X, Upload, Camera, FileText, Calendar, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { useDesignerProfile } from '../hooks/useDesignerProfile';
 
 interface ProjectUpdateFormProps {
   projectId: string;
-  onUpdateSubmitted: () => void;
+  designerId: string;
+  onSuccess: () => void;
+  onCancel: () => void;
 }
 
-const ProjectUpdateForm: React.FC<ProjectUpdateFormProps> = ({ projectId, onUpdateSubmitted }) => {
+const ProjectUpdateForm: React.FC<ProjectUpdateFormProps> = ({
+  projectId,
+  designerId,
+  onSuccess,
+  onCancel
+}) => {
   const { user } = useAuth();
-  const { designer } = useDesignerProfile();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -26,12 +31,12 @@ const ProjectUpdateForm: React.FC<ProjectUpdateFormProps> = ({ projectId, onUpda
   });
   
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
   
   const updateTypes = [
-    { value: 'progress_report', label: 'Progress Report' },
-    { value: 'photo_update', label: 'Photo Update' },
-    { value: 'milestone', label: 'Milestone Completion' }
+    { value: 'progress_report', label: 'Progress Report', icon: FileText },
+    { value: 'photo_update', label: 'Photo Update', icon: Camera },
+    { value: 'milestone', label: 'Milestone', icon: Calendar }
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -53,65 +58,35 @@ const ProjectUpdateForm: React.FC<ProjectUpdateFormProps> = ({ projectId, onUpda
     if (error) setError(null);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
-    // Validate file types and sizes
-    const newFiles: File[] = [];
-    const invalidFiles: string[] = [];
-    
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      
-      // Check file type
-      if (!file.type.startsWith('image/')) {
-        invalidFiles.push(`${file.name} (not an image)`);
-        continue;
-      }
-      
-      // Check file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        invalidFiles.push(`${file.name} (exceeds 5MB)`);
-        continue;
-      }
-      
-      newFiles.push(file);
-    }
-    
-    if (invalidFiles.length > 0) {
-      setError(`Some files couldn't be added: ${invalidFiles.join(', ')}`);
-    }
-    
-    if (newFiles.length === 0) return;
-    
-    // Create preview URLs
-    const newPreviewUrls = newFiles.map(file => URL.createObjectURL(file));
-    
+    // Add new files to the existing array
+    const newFiles = Array.from(files);
     setPhotoFiles(prev => [...prev, ...newFiles]);
-    setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
     
-    // Clear error if there was one
-    if (error && newFiles.length > 0) setError(null);
+    // Clear error when user adds photos
+    if (error) setError(null);
   };
-
+  
   const removePhoto = (index: number) => {
-    // Revoke object URL to avoid memory leaks
-    URL.revokeObjectURL(previewUrls[index]);
-    
     setPhotoFiles(prev => prev.filter((_, i) => i !== index));
-    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   const uploadPhotos = async (): Promise<string[]> => {
     if (photoFiles.length === 0) return [];
     
-    const uploadedUrls: string[] = [];
-    const totalFiles = photoFiles.length;
-    let filesUploaded = 0;
+    setUploadingPhotos(true);
+    const photoUrls: string[] = [];
     
-    for (const file of photoFiles) {
-      try {
+    try {
+      for (let i = 0; i < photoFiles.length; i++) {
+        const file = photoFiles[i];
+        
+        // Update progress
+        setUploadProgress(Math.round((i / photoFiles.length) * 100));
+        
         // Generate a unique file name
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
@@ -132,48 +107,40 @@ const ProjectUpdateForm: React.FC<ProjectUpdateFormProps> = ({ projectId, onUpda
           .from('project-images')
           .getPublicUrl(data.path);
         
-        uploadedUrls.push(publicUrl);
-        
-        // Update progress
-        filesUploaded++;
-        setUploadProgress(Math.round((filesUploaded / totalFiles) * 100));
-        
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        throw error;
+        photoUrls.push(publicUrl);
       }
+      
+      setUploadProgress(100);
+      return photoUrls;
+    } catch (error: any) {
+      console.error('Error uploading photos:', error);
+      throw error;
+    } finally {
+      setUploadingPhotos(false);
+    }
+  };
+
+  const validateForm = () => {
+    if (!formData.title.trim()) {
+      setError('Title is required');
+      return false;
     }
     
-    return uploadedUrls;
+    if (formData.update_type === 'photo_update' && photoFiles.length === 0) {
+      setError('Please upload at least one photo for a photo update');
+      return false;
+    }
+    
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user || !designer) {
-      setError('You must be logged in as a designer to submit updates');
-      return;
-    }
-    
-    // Validate form
-    if (!formData.title.trim()) {
-      setError('Title is required');
-      return;
-    }
-    
-    if (formData.update_type === 'progress_report' && !formData.description.trim()) {
-      setError('Description is required for progress reports');
-      return;
-    }
-    
-    if (formData.update_type === 'photo_update' && photoFiles.length === 0) {
-      setError('Please upload at least one photo for photo updates');
-      return;
-    }
+    if (!validateForm()) return;
     
     setLoading(true);
     setError(null);
-    setUploadProgress(0);
     
     try {
       // First upload photos if any
@@ -187,7 +154,7 @@ const ProjectUpdateForm: React.FC<ProjectUpdateFormProps> = ({ projectId, onUpda
         .from('project_updates')
         .insert({
           project_id: projectId,
-          designer_id: designer.id,
+          designer_id: designerId,
           title: formData.title,
           description: formData.description,
           update_type: formData.update_type,
@@ -197,37 +164,23 @@ const ProjectUpdateForm: React.FC<ProjectUpdateFormProps> = ({ projectId, onUpda
       
       if (error) throw error;
       
-      // Show success message
       setSuccess(true);
       
-      // Reset form after 2 seconds
+      // Reset form and notify parent after success
       setTimeout(() => {
-        setFormData({
-          title: '',
-          description: '',
-          update_type: 'progress_report',
-          completion_percentage: 0,
-          photos: []
-        });
-        setPhotoFiles([]);
-        setPreviewUrls([]);
-        setSuccess(false);
-        onUpdateSubmitted();
-      }, 2000);
-      
+        onSuccess();
+      }, 1500);
     } catch (error: any) {
-      console.error('Error submitting update:', error);
-      setError(error.message || 'Failed to submit update');
+      console.error('Error creating project update:', error);
+      setError(error.message || 'Failed to create project update');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-      <h3 className="text-lg font-semibold text-secondary-800 mb-4">
-        Add Project Update
-      </h3>
+    <div className="bg-white rounded-xl shadow-lg p-6">
+      <h3 className="text-lg font-semibold text-secondary-800 mb-4">Create Project Update</h3>
       
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex items-start space-x-2">
@@ -239,28 +192,39 @@ const ProjectUpdateForm: React.FC<ProjectUpdateFormProps> = ({ projectId, onUpda
       {success && (
         <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-4 flex items-start space-x-2">
           <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-          <span>Update submitted successfully!</span>
+          <span>Update created successfully!</span>
         </div>
       )}
       
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Update Type */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Update Type *
           </label>
-          <select
-            name="update_type"
-            value={formData.update_type}
-            onChange={handleInputChange}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            required
-          >
-            {updateTypes.map(type => (
-              <option key={type.value} value={type.value}>{type.label}</option>
-            ))}
-          </select>
+          <div className="grid grid-cols-3 gap-2">
+            {updateTypes.map(type => {
+              const IconComponent = type.icon;
+              return (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, update_type: type.value }))}
+                  className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-colors ${
+                    formData.update_type === type.value
+                      ? 'bg-primary-100 border-primary-300 text-primary-700'
+                      : 'border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <IconComponent className="w-5 h-5 mb-1" />
+                  <span className="text-sm">{type.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
         
+        {/* Title */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Title *
@@ -276,9 +240,10 @@ const ProjectUpdateForm: React.FC<ProjectUpdateFormProps> = ({ projectId, onUpda
           />
         </div>
         
+        {/* Description */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Description {formData.update_type === 'progress_report' ? '*' : ''}
+            Description
           </label>
           <textarea
             name="description"
@@ -286,11 +251,11 @@ const ProjectUpdateForm: React.FC<ProjectUpdateFormProps> = ({ projectId, onUpda
             onChange={handleInputChange}
             rows={4}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            placeholder="Provide details about the progress, challenges, and next steps..."
-            required={formData.update_type === 'progress_report'}
+            placeholder="Provide details about the progress, challenges, or next steps..."
           />
         </div>
         
+        {/* Completion Percentage (only for progress reports) */}
         {formData.update_type === 'progress_report' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -306,29 +271,33 @@ const ProjectUpdateForm: React.FC<ProjectUpdateFormProps> = ({ projectId, onUpda
               step="5"
               className="w-full"
             />
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>0%</span>
-              <span>50%</span>
-              <span>100%</span>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+              <div 
+                className="bg-primary-500 h-2.5 rounded-full" 
+                style={{ width: `${formData.completion_percentage}%` }}
+              ></div>
             </div>
           </div>
         )}
         
+        {/* Photo Upload */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Photos {formData.update_type === 'photo_update' ? '*' : '(optional)'}
+            Photos {formData.update_type === 'photo_update' && '*'}
           </label>
           
-          {/* Photo previews */}
-          {previewUrls.length > 0 && (
+          {/* Photo Preview */}
+          {photoFiles.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-              {previewUrls.map((url, index) => (
-                <div key={index} className="relative rounded-lg overflow-hidden border border-gray-200">
-                  <img 
-                    src={url} 
-                    alt={`Preview ${index + 1}`} 
-                    className="w-full h-24 object-cover"
-                  />
+              {photoFiles.map((file, index) => (
+                <div key={index} className="relative">
+                  <div className="aspect-square rounded-lg overflow-hidden border border-gray-200">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={() => removePhoto(index)}
@@ -341,51 +310,67 @@ const ProjectUpdateForm: React.FC<ProjectUpdateFormProps> = ({ projectId, onUpda
             </div>
           )}
           
-          {/* File upload */}
+          {/* Upload Button */}
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-primary-500 transition-colors">
             <input
               type="file"
-              id="photos"
-              accept="image/*"
+              id="photo-upload"
               multiple
-              onChange={handleFileChange}
+              accept="image/*"
+              onChange={handlePhotoChange}
               className="hidden"
+              disabled={loading || uploadingPhotos}
             />
-            <label htmlFor="photos" className="cursor-pointer block">
-              <Camera className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-600 mb-1">Click to upload photos</p>
-              <p className="text-xs text-gray-500">PNG, JPG or JPEG (max. 5MB per image)</p>
+            <label
+              htmlFor="photo-upload"
+              className="cursor-pointer flex flex-col items-center justify-center"
+            >
+              <Upload className="w-8 h-8 text-gray-400 mb-2" />
+              <p className="text-sm text-gray-600 mb-1">Click to upload or drag and drop</p>
+              <p className="text-xs text-gray-500">PNG, JPG or JPEG (max. 5MB per file)</p>
             </label>
           </div>
+          
+          {uploadingPhotos && (
+            <div className="mt-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-gray-500">Uploading photos...</span>
+                <span className="text-xs font-medium text-gray-700">{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-1.5">
+                <div 
+                  className="bg-primary-500 h-1.5 rounded-full" 
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
         </div>
         
-        {loading && uploadProgress > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm text-blue-700 mb-2">Uploading photos: {uploadProgress}%</p>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div 
-                className="bg-blue-600 h-2.5 rounded-full" 
-                style={{ width: `${uploadProgress}%` }}
-              ></div>
-            </div>
-          </div>
-        )}
-        
-        <div className="flex justify-end">
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
           <button
             type="submit"
-            disabled={loading}
-            className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            disabled={loading || uploadingPhotos}
+            className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center space-x-2"
           >
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Submitting...</span>
+                <span>Creating...</span>
               </>
             ) : (
               <>
-                <Send className="w-4 h-4" />
-                <span>Submit Update</span>
+                <Plus className="w-4 h-4" />
+                <span>Create Update</span>
               </>
             )}
           </button>

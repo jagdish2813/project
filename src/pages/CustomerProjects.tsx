@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, IndianRupee as Rupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle, RefreshCw, FileText, Camera, Eye } from 'lucide-react';
+import { Calendar, MapPin, IndianRupee as Rupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle, RefreshCw, FileText, Camera } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -572,6 +572,19 @@ const CustomerProjects = () => {
                         onClick={() => navigate(`/project-detail/${project.id}`)}
                         className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors text-center"
                       >
+                        View Details
+                      </button>
+                      <a
+                        href={`/project-detail/${project.id}?tab=updates`}
+                        className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center"
+                        title="View Updates"
+                      >
+                        <Camera className="w-4 h-4" />
+                      </a>
+                      <a
+                        href={`/generate-quote/${project.id}`}
+                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center"
+                      >
                         <Eye className="w-4 h-4" />
                         <span>View Details</span>
                       </button>
@@ -749,6 +762,19 @@ const CustomerProjects = () => {
                       <a
                         href={`mailto:${share.project.email}?subject=Regarding your ${share.project.project_name} project&body=Hi ${share.project.name},%0D%0A%0D%0AThank you for sharing your project details with me. I would love to discuss your ${share.project.project_name} project further.%0D%0A%0D%0ABest regards,%0D%0A${designer.name}`}
                         className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors text-center"
+                      >
+                        Contact Customer
+                      </a>
+                      <a
+                        href={`/project-detail/${share.project.id}?tab=updates`}
+                        className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
+                        title="View Updates"
+                      >
+                        <Camera className="w-4 h-4" />
+                      </a>
+                      <a
+                        href={`tel:${share.project.phone}`}
+                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
                       >
                         Contact Customer
                       </a>
