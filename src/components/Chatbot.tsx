@@ -1,4 +1,3 @@
-import React, { useState } from "react";
 import { FaCommentDots } from "react-icons/fa";
 
 const Chatbot: React.FC = () => {
