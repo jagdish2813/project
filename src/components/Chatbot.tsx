@@ -31,9 +31,7 @@ const Chatbot = () => {
   // Enhanced quick replies with more relevant options
   const quickReplies: QuickReply[] = [
     { text: "What interior design services do you offer?", action: "services" },
-    { text: "How much does interior design cost?", action: "pricing" },
-    { text: "How do I find the right designer?", action: "find_designer" },
-    { text: "How does the project process work?", action: "process" }
+    { text: "How do I find the right designer?", action: "find_designer" }
   ];
 
   // Additional suggested questions based on context
