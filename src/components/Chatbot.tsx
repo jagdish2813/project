@@ -1,180 +1,445 @@
-import React, { useState } from 'react';
-import { MessageCircle, X, Send } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MessageCircle, X, Send, Bot, User, Minimize2, Maximize2, Sparkles, Settings, HelpCircle, RefreshCw } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
 
-const Chatbot: React.FC = () => {
+interface Message {
+  id: string;
+  message: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
+  message_type?: string;
+}
+
+interface QuickReply {
+  text: string;
+  action: string;
+}
+
+const Chatbot = () => {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<{ sender: string; text: string }[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [isAIEnabled, setIsAIEnabled] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  // Enhanced quick replies with more relevant options
+  const quickReplies: QuickReply[] = [
+    { text: "What interior design services do you offer?", action: "services" },
+    { text: "How much does interior design cost?", action: "pricing" },
+    { text: "How do I find the right designer?", action: "find_designer" },
+    { text: "How does the project process work?", action: "process" }
+  ];
 
-    const newMessages = [...messages, { sender: "user", text: input }];
-    setMessages(newMessages);
-    setInput("");
-    setLoading(true);
+  // Additional suggested questions based on context
+  const suggestedFollowUps: Record<string, QuickReply[]> = {
+    services: [
+      { text: "Do you offer 3D visualization?", action: "3d_visualization" },
+      { text: "Can I get partial room design?", action: "partial_design" },
+    ],
+    pricing: [
+      { text: "Are there any ongoing offers?", action: "offers" },
+      { text: "What payment methods do you accept?", action: "payment" },
+    ],
+    find_designer: [
+      { text: "How are designers verified?", action: "verification" },
+      { text: "Can I see designer reviews?", action: "reviews" },
+    ],
+    process: [
+      { text: "How long does a project take?", action: "timeline" },
+      { text: "What if I'm not satisfied?", action: "satisfaction" },
+    ]
+  };
 
+  // Track the last action to show relevant follow-ups
+  const [lastAction, setLastAction] = useState<string | null>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      initializeChat();
+    }
+  }, [isOpen]);
+
+  const initializeChat = async () => {
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer YOUR_OPENAI_API_KEY`, // Replace securely
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: "You are a helpful assistant for TheHomeDesigners website. Help users with information about interior designers, home projects, and material selection." },
-            ...newMessages.map(msg => ({
-              role: msg.sender === "user" ? "user" : "assistant",
-              content: msg.text,
-            })),
-          ],
-        }),
-      });
+      // Create conversation
+      const { data: conversation, error: convError } = await supabase
+        .from('chat_conversations')
+        .insert({
+          user_id: user?.id || null,
+          session_id: sessionId,
+          title: 'Support Chat',
+          status: 'active'
+        })
+        .select()
+        .single();
 
-      const data = await response.json();
-      const botText = data.choices?.[0]?.message?.content || "Sorry, I couldn't understand that.";
+      if (convError) throw convError;
+      setConversationId(conversation.id);
 
-      setMessages([...newMessages, { sender: "bot", text: botText }]);
+      // Add welcome message
+      const welcomeMessage: Message = {
+        id: 'welcome',
+        message: "👋 Hi! I'm your AI design assistant for TheHomeDesigners. I can help you with finding the perfect designer, understanding our services, pricing information, or answering any questions about interior design. How can I assist you today?",
+        sender: 'bot',
+        timestamp: new Date(),
+        message_type: 'welcome'
+      };
+
+      setMessages([welcomeMessage]);
+
+      // Save welcome message to database
+      await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: conversation.id,
+          message: welcomeMessage.message,
+          sender: 'bot',
+          message_type: 'welcome'
+        });
+
     } catch (error) {
-      console.error("Chatbot error:", error);
-      setMessages([...newMessages, { sender: "bot", text: "There was an error. Please try again later." }]);
-    } finally {
-      setLoading(false);
+      console.error('Error initializing chat:', error);
     }
   };
 
-  return (
-    <div style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 1000 }}>
-      {!isOpen && (
+  const handleSendMessage = async (messageText?: string) => {
+    const textToSend = messageText || inputMessage.trim();
+    if (!textToSend || !conversationId) return;
+    
+    // Extract action from quick replies if this is a predefined message
+    const matchingQuickReply = quickReplies.find(qr => qr.text === textToSend);
+    const action = matchingQuickReply?.action || null;
+    if (action) {
+      setLastAction(action);
+    }
+
+    setIsLoading(true);
+    setInputMessage('');
+
+    // Add user message
+    const userMessage: Message = {
+      id: `user_${Date.now()}`,
+      message: textToSend,
+      sender: 'user',
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    
+    try {
+      // Save user message to database
+      await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: conversationId,
+          message: textToSend,
+          sender: 'user',
+          message_type: 'text'
+        });
+
+      let botResponse;
+      
+      if (isAIEnabled) {
+        try {
+          // Call the AI edge function
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-ai`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+              message: textToSend,
+              conversation_id: conversationId,
+              user_id: user?.id
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (response.ok) {
+            if (data.response) {
+              botResponse = data.response;
+            } else {
+              throw new Error('No response received from AI service');
+            }
+          } else {
+            throw new Error(data.error || `AI service error: ${response.status} ${response.statusText}`);
+          }
+        } catch (aiError) {
+          console.error('Error calling AI service:', aiError);
+          // Fallback to basic response if AI fails
+          botResponse = "I'm sorry, I'm having trouble connecting to our AI service right now. Please try again in a moment, or contact our support team directly at info@thehomedesigners.com for immediate assistance.";
+        }
+      } else {
+        // Basic response when AI is disabled
+        botResponse = "Thank you for your message. Our team will review it and get back to you soon. For immediate assistance, please contact our support team at info@thehomedesigners.com or +91 98765 43210.";
+      }
+
+      // Add bot message
+      const botMessage: Message = {
+        id: `bot_${Date.now()}`,
+        message: botResponse,
+        sender: 'bot',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, botMessage]);
+
+      // Save bot message to database
+      await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: conversationId,
+          message: botResponse,
+          sender: 'bot'
+        });
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      const errorMessage: Message = {
+        id: `error_${Date.now()}`,
+        message: "I'm sorry, I encountered an error. Please try again or contact our support team.",
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleQuickReply = (reply: QuickReply) => {
+    handleSendMessage(reply.text);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  if (!isOpen) {
+    return (
+      <div className="fixed bottom-6 right-6 z-50">
         <button
           onClick={() => setIsOpen(true)}
-          style={{
-            backgroundColor: "#dd6b4d",
-            border: "none",
-            borderRadius: "50%",
-            width: "56px",
-            height: "56px",
-            color: "#fff",
-            boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          className="bg-primary-500 hover:bg-primary-600 text-white p-4 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110"
+          aria-label="Open chat support"
         >
-          <MessageCircle size={24} />
+          <MessageCircle className="w-6 h-6" />
         </button>
-      )}
+      </div>
+    );
+  }
 
-      {isOpen && (
-        <div
-          style={{
-            width: "350px",
-            height: "480px",
-            backgroundColor: "#fff8f3",
-            borderRadius: "16px",
-            boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
-            display: "flex",
-            flexDirection: "column",
-            fontFamily: "sans-serif",
-          }}
-        >
-          {/* Header */}
-          <div
-            style={{
-              backgroundColor: "#dd6b4d",
-              color: "#fff",
-              padding: "12px 16px",
-              fontWeight: "bold",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              borderTopLeftRadius: "16px",
-              borderTopRightRadius: "16px",
-            }}
-          >
-            Ask TheHomeDesigners
-            <button
-              onClick={() => setIsOpen(false)}
-              style={{
-                color: "#fff",
-                background: "none",
-                border: "none",
-                fontSize: "16px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <X size={18} />
-            </button>
+  return (
+    <div className={`fixed bottom-6 right-6 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 transition-all duration-300 overflow-hidden ${
+      isMinimized ? 'w-80 h-16' : 'w-80 h-96'
+    }`}>
+      {/* Enhanced Header */}
+      <div className="bg-gradient-to-r from-primary-500 to-secondary-600 text-white p-4 rounded-t-xl flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center relative">
+            <Bot className="w-5 h-5 absolute" style={{ opacity: isAIEnabled ? 1 : 0, transition: 'opacity 0.3s' }} />
+            <User className="w-5 h-5 absolute" style={{ opacity: isAIEnabled ? 0 : 1, transition: 'opacity 0.3s' }} />
+            {isAIEnabled && <Sparkles className="w-3 h-3 absolute -top-1 -right-1 text-yellow-300" />}
           </div>
-
-          {/* Messages */}
-          <div style={{ flex: 1, padding: "12px", overflowY: "auto" }}>
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                style={{
-                  textAlign: msg.sender === "user" ? "right" : "left",
-                  margin: "6px 0",
-                }}
-              >
-                <span
-                  style={{
-                    display: "inline-block",
-                    padding: "8px 12px",
-                    borderRadius: "12px",
-                    backgroundColor: msg.sender === "user" ? "#ffe4d6" : "#f3f3f3",
-                    color: "#333",
-                    maxWidth: "80%",
-                  }}
-                >
-                  {msg.text}
-                </span>
-              </div>
-            ))}
-            {loading && <div style={{ fontSize: "14px", color: "#999" }}>Typing...</div>}
-          </div>
-
-          {/* Input */}
-          <div style={{ display: "flex", borderTop: "1px solid #eee", padding: "10px" }}>
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Type your question..."
-              style={{
-                flex: 1,
-                padding: "8px 12px",
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                outline: "none",
-              }}
-            />
-            <button
-              onClick={handleSend}
-              style={{
-                backgroundColor: "#dd6b4d",
-                color: "#fff",
-                border: "none",
-                padding: "8px 12px",
-                marginLeft: "8px",
-                borderRadius: "8px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Send size={16} />
-            </button>
+          <div>
+            <h3 className="font-semibold">{isAIEnabled ? 'AI Design Assistant' : 'Support Chat'}</h3>
+            <p className="text-xs text-primary-100 flex items-center">
+              <span className="w-1.5 h-1.5 bg-green-400 rounded-full mr-1"></span>
+              Online now
+            </p>
           </div>
         </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setIsAIEnabled(!isAIEnabled)}
+            className="p-1 hover:bg-white/20 rounded transition-colors"
+            title={isAIEnabled ? "Switch to basic support" : "Enable AI assistant"}
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setIsMinimized(!isMinimized)}
+            className="p-1 hover:bg-white/20 rounded transition-colors"
+          >
+            {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="p-1 hover:bg-white/20 rounded transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {!isMinimized && (
+        <>
+          {/* Enhanced Messages */}
+          <div className="h-64 overflow-y-auto p-4 space-y-4 bg-gray-50">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`flex items-start space-x-2 max-w-[80%] ${
+                  message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+                }`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    message.sender === 'user' 
+                      ? 'bg-primary-500 text-white' 
+                      : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {message.sender === 'user' ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
+                  </div>
+                  <div className={`p-3 rounded-lg ${
+                    message.sender === 'user'
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-white text-gray-800 border border-gray-200 shadow-sm'
+                  }`}>
+                    <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                    <Bot className="w-3 h-3 text-gray-600" />
+                  </div>
+                  <div className="bg-white border border-gray-200 p-3 rounded-lg shadow-sm">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Enhanced Quick Replies */}
+          {(messages.length <= 1 || (lastAction && suggestedFollowUps[lastAction])) && (
+            <div className="px-4 pb-2">
+              <div className="flex flex-col space-y-2">
+                {messages.length <= 1 && (
+                  <>
+                    <p className="text-xs text-gray-500 mb-1 flex items-center">
+                      <HelpCircle className="w-3 h-3 mr-1" />
+                      Suggested questions:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {quickReplies.map((reply, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleQuickReply(reply)}
+                          className="text-xs bg-primary-50 text-primary-600 px-3 py-1 rounded-full hover:bg-primary-100 transition-colors flex items-center"
+                        >
+                          <span>{reply.text}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                
+                {lastAction && suggestedFollowUps[lastAction] && (
+                  <>
+                    <p className="text-xs text-gray-500 mt-2 mb-1 flex items-center">
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      People also ask:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestedFollowUps[lastAction].map((reply, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleQuickReply(reply)}
+                          className="text-xs bg-accent-50 text-accent-700 px-3 py-1 rounded-full hover:bg-accent-100 transition-colors"
+                        >
+                          {reply.text}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Enhanced Input */}
+          <div className="p-4 border-t border-gray-200 bg-white relative chatbot-input-container">
+            <div className="flex space-x-2 items-center">
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder={isAIEnabled ? "Ask me anything about interior design..." : "Type your message..."}
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm shadow-sm"
+                aria-label="Chat message"
+                autoComplete="off"
+                disabled={isLoading}
+                id="chatbot-input"
+              />
+              <button
+                onClick={() => handleSendMessage()}
+                disabled={!inputMessage.trim() || isLoading}
+                className="bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors shadow-sm flex-shrink-0"
+                aria-label="Send message"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+            
+            {isAIEnabled && (
+              <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                <div className="flex items-center">
+                  <Sparkles className="w-3 h-3 mr-1 text-primary-400" />
+                  <span>AI-powered assistant</span>
+                </div>
+                <button 
+                  onClick={() => setIsAIEnabled(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  Switch to basic mode
+                </button>
+              </div>
+            )}
+            {!isAIEnabled && (
+              <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                <span>Basic support mode</span>
+                <button 
+                  onClick={() => setIsAIEnabled(true)}
+                  className="text-primary-500 hover:text-primary-600 flex items-center"
+                >
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  Enable AI assistant
+                </button>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
