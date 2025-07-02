@@ -1,4 +1,5 @@
-import { FaCommentDots } from "react-icons/fa";
+import React, { useState } from 'react';
+import { MessageCircle, X, Send } from 'lucide-react';
 
 const Chatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -59,9 +60,12 @@ const Chatbot: React.FC = () => {
             color: "#fff",
             boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
             cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          <FaCommentDots size={24} />
+          <MessageCircle size={24} />
         </button>
       )}
 
@@ -87,6 +91,9 @@ const Chatbot: React.FC = () => {
               fontWeight: "bold",
               display: "flex",
               justifyContent: "space-between",
+              alignItems: "center",
+              borderTopLeftRadius: "16px",
+              borderTopRightRadius: "16px",
             }}
           >
             Ask TheHomeDesigners
@@ -98,9 +105,12 @@ const Chatbot: React.FC = () => {
                 border: "none",
                 fontSize: "16px",
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              ✕
+              <X size={18} />
             </button>
           </div>
 
@@ -143,6 +153,7 @@ const Chatbot: React.FC = () => {
                 padding: "8px 12px",
                 border: "1px solid #ddd",
                 borderRadius: "8px",
+                outline: "none",
               }}
             />
             <button
@@ -155,9 +166,12 @@ const Chatbot: React.FC = () => {
                 marginLeft: "8px",
                 borderRadius: "8px",
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              Send
+              <Send size={16} />
             </button>
           </div>
         </div>
