@@ -25,7 +25,7 @@ import DesignerQuoteGenerator from './pages/DesignerQuoteGenerator';
 import AdminDashboard from './pages/AdminDashboard';
 import DebugPage from './pages/DebugPage';
 import DebugDesignerProfile from './pages/DebugDesignerProfile';
-import Chatbot from "./Chatbot";
+//import Chatbot from "./Chatbot";
 
 // Component to handle designer dashboard redirect
 const DesignerRedirectHandler = () => {
