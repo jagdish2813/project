@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, UserPlus, Clock, MapPin, IndianRupee as Rupee, User, Phone, Mail, AlertCircle, Compass, Camera } from 'lucide-react';
+import { ArrowLeft, Edit, UserPlus, Clock, MapPin, IndianRupee as Rupee, User, Phone, Mail, AlertCircle, Compass, Camera, RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useProjectTracking } from '../hooks/useProjectTracking';
@@ -12,6 +12,8 @@ import ProjectActivityLog from '../components/ProjectActivityLog';
 import ProjectVersionHistory from '../components/ProjectVersionHistory';
 import AssignProjectModal from '../components/AssignProjectModal';
 import VastuAnalysisModal from '../components/VastuAnalysisModal';
+import ProjectUpdateForm from '../components/ProjectUpdateForm';
+import ProjectUpdates from '../components/ProjectUpdates';
 
 const ProjectDetailWithTracking = () => {
   const { id } = useParams();
@@ -222,7 +224,7 @@ const ProjectDetailWithTracking = () => {
         <div className="bg-white rounded-xl shadow-lg mb-8">
           <div className="border-b border-gray-200">
             <nav className="flex space-x-8 px-6">
-              {['details', 'activity', 'versions'].map((tab) => (
+              {['details', 'activity', 'versions', 'updates'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab as any)}
@@ -399,6 +401,35 @@ const ProjectDetailWithTracking = () => {
 
             {activeTab === 'versions' && (
               <ProjectVersionHistory versions={versions} loading={trackingLoading} />
+            )}
+            
+            {activeTab === 'updates' && (
+              <div className="space-y-6">
+                {isAssignedDesigner && (
+                  <ProjectUpdateForm 
+                    projectId={project.id} 
+                    onUpdateSubmitted={() => {
+                      setRefreshKey(prev => prev + 1);
+                    }}
+                  />
+                )}
+                
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-secondary-800">Project Updates</h3>
+                  <button
+                    onClick={() => setRefreshKey(prev => prev + 1)}
+                    className="text-primary-600 hover:text-primary-700 flex items-center space-x-1"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Refresh</span>
+                  </button>
+                </div>
+                
+                <ProjectUpdates 
+                  projectId={project.id}
+                  refreshTrigger={refreshKey}
+                />
+              </div>
             )}
           </div>
         </div>

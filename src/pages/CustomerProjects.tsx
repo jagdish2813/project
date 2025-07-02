@@ -573,6 +573,7 @@ const CustomerProjects = () => {
                         className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors text-center"
                       >
                         <Eye className="w-4 h-4" />
+                        <span>View Details</span>
                       </button>
                       <button
                         onClick={() => navigate(`/project-detail/${project.id}?tab=updates`)}
