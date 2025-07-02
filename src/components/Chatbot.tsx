@@ -292,101 +292,129 @@ const Chatbot = () => {
       </div>
 
     {!isMinimized && (
-  <div className="flex flex-col h-[calc(24rem-64px)]"> {/* 24rem (h-96) minus header height */}
-    {/* Scrollable Messages */}
-    <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50">
-      {messages.map((message) => (
-        <div
-          key={message.id}
-          className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-        >
-          <div className={`flex items-start space-x-2 max-w-[80%] ${
-            message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-          }`}>
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-              message.sender === 'user' 
-                ? 'bg-primary-500 text-white' 
-                : 'bg-gray-200 text-gray-600'
+  <>
+    {/* Chat body: messages + quick replies */}
+    <div className="flex flex-col flex-grow h-[calc(24rem-112px)] overflow-hidden">
+      {/* Scrollable messages */}
+      <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50">
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div className={`flex items-start space-x-2 max-w-[80%] ${
+              message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
             }`}>
-              {message.sender === 'user' ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
-            </div>
-            <div className={`p-3 rounded-lg ${
-              message.sender === 'user'
-                ? 'bg-primary-500 text-white'
-                : 'bg-white text-gray-800 border border-gray-200 shadow-sm'
-            }`}>
-              <p className="text-sm whitespace-pre-wrap">{message.message}</p>
-            </div>
-          </div>
-        </div>
-      ))}
-
-      {isLoading && (
-        <div className="flex justify-start">
-          <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-              <Bot className="w-3 h-3 text-gray-600" />
-            </div>
-            <div className="bg-white border border-gray-200 p-3 rounded-lg shadow-sm">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                message.sender === 'user' 
+                  ? 'bg-primary-500 text-white' 
+                  : 'bg-gray-200 text-gray-600'
+              }`}>
+                {message.sender === 'user' ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
+              </div>
+              <div className={`p-3 rounded-lg ${
+                message.sender === 'user'
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-white text-gray-800 border border-gray-200 shadow-sm'
+              }`}>
+                <p className="text-sm whitespace-pre-wrap">{message.message}</p>
               </div>
             </div>
+          </div>
+        ))}
+
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                <Bot className="w-3 h-3 text-gray-600" />
+              </div>
+              <div className="bg-white border border-gray-200 p-3 rounded-lg shadow-sm">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Suggested replies */}
+      {(messages.length <= 1 || (lastAction && suggestedFollowUps[lastAction])) && (
+        <div className="px-4 py-2 bg-white border-t border-gray-200">
+          <div className="flex flex-col space-y-2">
+            {messages.length <= 1 && (
+              <>
+                <p className="text-xs text-gray-500 mb-1 flex items-center">
+                  <HelpCircle className="w-3 h-3 mr-1" />
+                  Suggested questions:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {quickReplies.map((reply, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleQuickReply(reply)}
+                      className="text-xs bg-primary-50 text-primary-600 px-3 py-1 rounded-full hover:bg-primary-100 transition-colors flex items-center"
+                    >
+                      {reply.text}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {lastAction && suggestedFollowUps[lastAction] && (
+              <>
+                <p className="text-xs text-gray-500 mt-2 mb-1 flex items-center">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  People also ask:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedFollowUps[lastAction].map((reply, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleQuickReply(reply)}
+                      className="text-xs bg-accent-50 text-accent-700 px-3 py-1 rounded-full hover:bg-accent-100 transition-colors"
+                    >
+                      {reply.text}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
-      <div ref={messagesEndRef} />
     </div>
 
-    {/* Suggested Questions */}
-    {(messages.length <= 1 || (lastAction && suggestedFollowUps[lastAction])) && (
-      <div className="px-4 py-2 bg-white border-t border-gray-200">
-        <div className="flex flex-col space-y-2">
-          {messages.length <= 1 && (
-            <>
-              <p className="text-xs text-gray-500 mb-1 flex items-center">
-                <HelpCircle className="w-3 h-3 mr-1" />
-                Suggested questions:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {quickReplies.map((reply, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleQuickReply(reply)}
-                    className="text-xs bg-primary-50 text-primary-600 px-3 py-1 rounded-full hover:bg-primary-100 transition-colors flex items-center"
-                  >
-                    {reply.text}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {lastAction && suggestedFollowUps[lastAction] && (
-            <>
-              <p className="text-xs text-gray-500 mt-2 mb-1 flex items-center">
-                <Sparkles className="w-3 h-3 mr-1" />
-                People also ask:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {suggestedFollowUps[lastAction].map((reply, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleQuickReply(reply)}
-                    className="text-xs bg-accent-50 text-accent-700 px-3 py-1 rounded-full hover:bg-accent-100 transition-colors"
-                  >
-                    {reply.text}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+    {/* Input Field (always visible) */}
+    <div className="p-4 border-t border-gray-200 bg-white">
+      <div className="flex space-x-2 items-center">
+        <input
+          type="text"
+          value={inputMessage}
+          onChange={(e) => setInputMessage(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder={isAIEnabled ? "Ask me anything about interior design..." : "Type your message..."}
+          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm shadow-sm"
+          aria-label="Chat message"
+          autoComplete="off"
+          disabled={isLoading}
+        />
+        <button
+          onClick={() => handleSendMessage()}
+          disabled={!inputMessage.trim() || isLoading}
+          className="bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors shadow-sm flex-shrink-0"
+          aria-label="Send message"
+        >
+          <Send className="w-4 h-4" />
+        </button>
       </div>
-    )}
-  </div>
+    </div>
+  </>
 )}
 
     </div>
