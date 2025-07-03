@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, UserPlus, Clock, MapPin, IndianRupee as Rupee, User, Phone, Mail, AlertCircle, Compass, Camera, RefreshCw, FileText, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Edit, UserPlus, Clock, MapPin, IndianRupee as Rupee, User, Phone, Mail, AlertCircle, Compass, Camera, RefreshCw, FileText, CheckCircle, Calendar } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useProjectTracking } from '../hooks/useProjectTracking';
@@ -332,6 +332,10 @@ const ProjectDetailWithTracking = () => {
                         <p className="text-sm text-green-600">
                           Accepted on {new Date(acceptedQuote.acceptance_date).toLocaleDateString()}
                         </p>
+                        <div className="flex items-center space-x-2 mt-2 text-xs text-green-700">
+                          <Calendar className="w-3 h-3" />
+                          <span>Valid until: {acceptedQuote.valid_until ? new Date(acceptedQuote.valid_until).toLocaleDateString() : 'Not specified'}</span>
+                        </div>
                       </div>
                     </div>
                     
@@ -377,8 +381,9 @@ const ProjectDetailWithTracking = () => {
                       <div className="mt-4 text-right">
                         <button
                           onClick={() => navigate(`/generate-quote/${project.id}`)}
-                          className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                          className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center space-x-1 justify-end"
                         >
+                          <FileText className="w-4 h-4" />
                           View Full Quote
                         </button>
                       </div>
@@ -389,7 +394,10 @@ const ProjectDetailWithTracking = () => {
                 {/* Project Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-secondary-800 mb-4">Basic Information</h3>
+                    <h3 className="text-lg font-semibold text-secondary-800 mb-4 flex items-center space-x-2">
+                      <User className="w-5 h-5 text-primary-600" />
+                      <span>Basic Information</span>
+                    </h3>
                     <div className="space-y-3">
                       <div>
                         <p className="text-sm font-medium text-gray-700">Property Type</p>
@@ -418,7 +426,10 @@ const ProjectDetailWithTracking = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-semibold text-secondary-800 mb-4">Contact Information</h3>
+                    <h3 className="text-lg font-semibold text-secondary-800 mb-4 flex items-center space-x-2">
+                      <Phone className="w-5 h-5 text-primary-600" />
+                      <span>Contact Information</span>
+                    </h3>
                     <div className="space-y-3">
                       <div>
                         <p className="text-sm font-medium text-gray-700">Customer Name</p>

@@ -353,17 +353,26 @@ const MyProjects = () => {
                   {/* Accepted Quote Info */}
                   {acceptedQuotes.find(q => q.project_id === project.id) && (
                     <div className="px-6 py-4 bg-green-50 border-b border-gray-100">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-3 hover:bg-green-100 p-2 rounded-lg transition-colors">
                         <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                           <FileText className="w-4 h-4 text-white" />
                         </div>
                         <div>
-                          <p className="font-medium text-green-800">
-                            Accepted Quote: ₹{acceptedQuotes.find(q => q.project_id === project.id).total_amount.toLocaleString()}
+                          <p className="font-medium text-green-800 flex items-center space-x-2">
+                            <span>Accepted Quote: ₹{acceptedQuotes.find(q => q.project_id === project.id).total_amount.toLocaleString()}</span>
+                            <CheckCircle className="w-4 h-4" />
                           </p>
                           <p className="text-sm text-green-600">
                             Accepted on {new Date(acceptedQuotes.find(q => q.project_id === project.id).acceptance_date).toLocaleDateString()}
                           </p>
+                        </div>
+                        <div className="ml-auto">
+                          <button
+                            onClick={() => navigate(`/project-detail/${project.id}`)}
+                            className="text-green-700 hover:text-green-800 text-sm font-medium"
+                          >
+                            View Details
+                          </button>
                         </div>
                       </div>
                     </div>

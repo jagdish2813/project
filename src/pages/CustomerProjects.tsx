@@ -550,7 +550,7 @@ const CustomerProjects = () => {
                   {/* Accepted Quote Info */}
                   {acceptedQuotes.find(q => q.project_id === project.id) && (
                     <div className="p-6 bg-green-50 border-b border-gray-100">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-3 hover:bg-green-100 p-2 rounded-lg transition-colors">
                         <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                           <FileText className="w-4 h-4 text-white" />
                         </div>
@@ -562,6 +562,17 @@ const CustomerProjects = () => {
                           <p className="text-sm text-green-600">
                             Accepted on {new Date(acceptedQuotes.find(q => q.project_id === project.id).acceptance_date).toLocaleDateString()}
                           </p>
+                          <p className="text-xs text-green-700 mt-1">
+                            Quote #{acceptedQuotes.find(q => q.project_id === project.id).quote_number}
+                          </p>
+                        </div>
+                        <div className="ml-auto">
+                          <button
+                            onClick={() => navigate(`/generate-quote/${project.id}`)}
+                            className="text-green-700 hover:text-green-800 text-sm font-medium"
+                          >
+                            View Quote
+                          </button>
                         </div>
                       </div>
                     </div>
