@@ -32,7 +32,6 @@ const ProjectDetailWithTracking = () => {
   const [updateRefreshKey, setUpdateRefreshKey] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [acceptedQuote, setAcceptedQuote] = useState<any>(null);
-  const [acceptedQuote, setAcceptedQuote] = useState<any>(null);
 
   // Check if there's a tab parameter in the URL
   useEffect(() => {
