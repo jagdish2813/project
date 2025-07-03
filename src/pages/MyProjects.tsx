@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Calendar, MapPin, IndianRupee as Rupee, Clock, Edit, Eye, Trash2, AlertCircle, Send, Activity, Compass } from 'lucide-react';
+import { Plus, Calendar, MapPin, IndianRupee as Rupee, Clock, Edit, Eye, Trash2, AlertCircle, Send, Activity, Compass, FileText } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import type { Customer } from '../lib/supabase';
@@ -16,6 +16,7 @@ const MyProjects = () => {
   const [selectedProject, setSelectedProject] = useState<Customer | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showVastuModal, setShowVastuModal] = useState(false);
+  const [acceptedQuotes, setAcceptedQuotes] = useState<any[]>([]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -30,11 +31,11 @@ const MyProjects = () => {
 
   const fetchProjects = async () => {
     if (!user) return;
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       const { data, error } = await supabase
         .from('customers')
         .select(`
@@ -48,8 +49,25 @@ const MyProjects = () => {
         console.error('Error fetching projects:', error);
         throw error;
       }
-      
+
       setProjects(data || []);
+      
+      // Fetch accepted quotes for these projects
+      if (data && data.length > 0) {
+        const projectIds = data.map(p => p.id);
+        const { data: quotesData, error: quotesError } = await supabase
+          .from('designer_quotes')
+          .select('*')
+          .in('project_id', projectIds)
+          .eq('customer_accepted', true)
+          .eq('status', 'accepted');
+          
+        if (quotesError) {
+          console.error('Error fetching quotes:', quotesError);
+        } else {
+          setAcceptedQuotes(quotesData || []);
+        }
+      }
     } catch (error: any) {
       console.error('Error fetching projects:', error);
       setError(error.message || 'Failed to load projects');
@@ -328,6 +346,25 @@ const MyProjects = () => {
                             +{project.room_types.length - 3} more
                           </span>
                         )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Accepted Quote Info */}
+                  {acceptedQuotes.find(q => q.project_id === project.id) && (
+                    <div className="px-6 py-4 bg-green-50 border-b border-gray-100">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                          <FileText className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-green-800">
+                            Accepted Quote: ₹{acceptedQuotes.find(q => q.project_id === project.id).total_amount.toLocaleString()}
+                          </p>
+                          <p className="text-sm text-green-600">
+                            Accepted on {new Date(acceptedQuotes.find(q => q.project_id === project.id).acceptance_date).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   )}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, IndianRupee as Rupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle, RefreshCw, FileText, Camera, Eye } from 'lucide-react';
+import { Calendar, MapPin, IndianRupee as Rupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle, RefreshCw, FileText, Camera, Eye, CheckCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -72,6 +72,7 @@ const CustomerProjects = () => {
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'assigned' | 'shared'>('assigned');
+  const [acceptedQuotes, setAcceptedQuotes] = useState<any[]>([]);
 
   // Debug logging for hook states
   useEffect(() => {
@@ -171,6 +172,23 @@ const CustomerProjects = () => {
         setProjectShares([]);
       } else {
         setProjectShares(sharedData || []);
+      }
+      
+      // Fetch accepted quotes for assigned projects
+      if (assignedData && assignedData.length > 0) {
+        const projectIds = assignedData.map(p => p.id);
+        const { data: quotesData, error: quotesError } = await supabase
+          .from('designer_quotes')
+          .select('*')
+          .in('project_id', projectIds)
+          .eq('customer_accepted', true)
+          .eq('status', 'accepted');
+          
+        if (quotesError) {
+          console.error('Error fetching quotes:', quotesError);
+        } else {
+          setAcceptedQuotes(quotesData || []);
+        }
       }
 
       setDebugInfo({
@@ -528,6 +546,26 @@ const CustomerProjects = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Accepted Quote Info */}
+                  {acceptedQuotes.find(q => q.project_id === project.id) && (
+                    <div className="p-6 bg-green-50 border-b border-gray-100">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                          <FileText className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-green-800 flex items-center space-x-2">
+                            <span>Accepted Quote: ₹{acceptedQuotes.find(q => q.project_id === project.id).total_amount.toLocaleString()}</span>
+                            <CheckCircle className="w-4 h-4" />
+                          </p>
+                          <p className="text-sm text-green-600">
+                            Accepted on {new Date(acceptedQuotes.find(q => q.project_id === project.id).acceptance_date).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Project Details */}
                   <div className="p-6">

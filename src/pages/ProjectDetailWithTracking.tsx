@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, UserPlus, Clock, MapPin, IndianRupee as Rupee, User, Phone, Mail, AlertCircle, Compass, Camera, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Edit, UserPlus, Clock, MapPin, IndianRupee as Rupee, User, Phone, Mail, AlertCircle, Compass, Camera, RefreshCw, FileText, CheckCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useProjectTracking } from '../hooks/useProjectTracking';
@@ -31,6 +31,7 @@ const ProjectDetailWithTracking = () => {
   const [showUpdateForm, setShowUpdateForm] = useState(false);
   const [updateRefreshKey, setUpdateRefreshKey] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [acceptedQuote, setAcceptedQuote] = useState<any>(null);
 
   // Check if there's a tab parameter in the URL
   useEffect(() => {
@@ -85,6 +86,22 @@ const ProjectDetailWithTracking = () => {
       }
 
       setProject(data);
+      
+      // Fetch accepted quote if any
+      const { data: quoteData, error: quoteError } = await supabase
+        .from('designer_quotes')
+        .select('*')
+        .eq('project_id', id)
+        .eq('customer_accepted', true)
+        .eq('status', 'accepted')
+        .maybeSingle();
+        
+      if (quoteError) {
+        console.error('Error fetching quote:', quoteError);
+      } else if (quoteData) {
+        setAcceptedQuote(quoteData);
+      }
+      
     } catch (error: any) {
       console.error('Error fetching project:', error);
       setError(error.message || 'Failed to load project');
@@ -298,6 +315,72 @@ const ProjectDetailWithTracking = () => {
                             </a>
                           )}
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Accepted Quote */}
+                {acceptedQuote && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-green-800">Accepted Quote</h3>
+                        <p className="text-sm text-green-600">
+                          Accepted on {new Date(acceptedQuote.acceptance_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-lg border border-green-200 p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <p className="font-medium text-gray-700">{acceptedQuote.title}</p>
+                          <p className="text-sm text-gray-500">{acceptedQuote.quote_number}</p>
+                        </div>
+                        <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm flex items-center space-x-1">
+                          <CheckCircle className="w-4 h-4" />
+                          <span>Accepted</span>
+                        </div>
+                      </div>
+                      
+                      {acceptedQuote.description && (
+                        <p className="text-gray-600 text-sm mb-4">{acceptedQuote.description}</p>
+                      )}
+                      
+                      <div className="border-t border-gray-100 pt-3 mt-3">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-500">Subtotal</p>
+                            <p className="font-medium">₹{acceptedQuote.subtotal.toLocaleString()}</p>
+                          </div>
+                          {acceptedQuote.discount_amount > 0 && (
+                            <div>
+                              <p className="text-sm text-gray-500">Discount</p>
+                              <p className="font-medium text-green-600">-₹{acceptedQuote.discount_amount.toLocaleString()}</p>
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm text-gray-500">Tax ({acceptedQuote.tax_rate}%)</p>
+                            <p className="font-medium">₹{acceptedQuote.tax_amount.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500 font-medium">Total Amount</p>
+                            <p className="text-lg font-bold text-primary-600">₹{acceptedQuote.total_amount.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 text-right">
+                        <button
+                          onClick={() => navigate(`/generate-quote/${project.id}`)}
+                          className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                        >
+                          View Full Quote
+                        </button>
                       </div>
                     </div>
                   </div>
