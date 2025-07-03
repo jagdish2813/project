@@ -358,9 +358,12 @@ const DesignerQuotes = () => {
                   {quote.customer_accepted && (
                     <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-2 text-sm text-green-800 flex items-center space-x-2">
                       <CheckCircle className="w-4 h-4 flex-shrink-0" />
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">Quote accepted by customer</p>
                         <p className="text-xs">{new Date(quote.acceptance_date).toLocaleDateString()}</p>
+                      </div>
+                      <div className="bg-green-200 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                        Confirmed
                       </div>
                     </div>
                   )}
@@ -368,7 +371,7 @@ const DesignerQuotes = () => {
                   <div className="flex space-x-2">
                     <button
                       onClick={() => navigate(`/generate-quote/${quote.project_id}`)}
-                      className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1"
+                      className={`flex-1 ${quote.customer_accepted ? 'bg-green-500 hover:bg-green-600' : 'bg-primary-500 hover:bg-primary-600'} text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1`}
                     >
                       <Eye className="w-4 h-4" />
                       <span>View</span>
