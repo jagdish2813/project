@@ -73,6 +73,7 @@ const CustomerProjects = () => {
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'assigned' | 'shared'>('assigned');
   const [acceptedQuotes, setAcceptedQuotes] = useState<any[]>([]);
+  const [projectQuotes, setProjectQuotes] = useState<Record<string, any>>({});
 
   // Debug logging for hook states
   useEffect(() => {
@@ -151,6 +152,28 @@ const CustomerProjects = () => {
       }
 
       setAssignedProjects(assignedData || []);
+      
+      // Fetch quotes for assigned projects
+      if (assignedData && assignedData.length > 0) {
+        const projectIds = assignedData.map(p => p.id);
+        const { data: quotesData, error: quotesError } = await supabase
+          .from('designer_quotes')
+          .select('*')
+          .in('project_id', projectIds)
+          .eq('customer_accepted', true)
+          .eq('status', 'accepted');
+          
+        if (quotesError) {
+          console.error('Error fetching quotes:', quotesError);
+        } else if (quotesData) {
+          // Create a map of project_id to quote
+          const quotesMap: Record<string, any> = {};
+          quotesData.forEach(quote => {
+            quotesMap[quote.project_id] = quote;
+          });
+          setProjectQuotes(quotesMap);
+        }
+      }
 
       // Fetch shared projects (projects shared via email)
       console.log('Fetching shared projects...');
@@ -547,6 +570,30 @@ const CustomerProjects = () => {
                     </div>
                   </div>
 
+                  {/* Accepted Quote Information */}
+                  {projectQuotes[project.id] && (
+                    <div className="px-6 py-4 bg-green-50 border-b border-gray-100">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                          <CheckCircle className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-green-800">
+                            Quote #{projectQuotes[project.id].quote_number} Accepted
+                          </p>
+                          <div className="flex items-center space-x-4 mt-1">
+                            <p className="text-sm text-green-700 font-medium">
+                              ₹{projectQuotes[project.id].total_amount.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-green-600">
+                              Accepted on {new Date(projectQuotes[project.id].acceptance_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Accepted Quote Info */}
                   {acceptedQuotes.find(q => q.project_id === project.id) && (
                     <div className="p-6 bg-green-50 border-b border-gray-100">
@@ -631,8 +678,9 @@ const CustomerProjects = () => {
                         <Camera className="w-4 h-4" />
                       </button>
                       <a
-                        href={`/generate-quote/${project.id}`}
+                        href={projectQuotes[project.id] ? `/generate-quote/${project.id}?view=true` : `/generate-quote/${project.id}`}
                         className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center"
+                        title={projectQuotes[project.id] ? "View Accepted Quote" : "Create Quote"}
                       >
                         <FileText className="w-4 h-4" />
                       </a>

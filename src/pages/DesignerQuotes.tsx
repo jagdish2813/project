@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Search, Filter, FileText, Calendar, CheckCircle, XCircle, Clock, Download, Send, Eye, Edit, Trash2, AlertCircle, IndianRupee as Rupee, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { BarChart3, Users, Calendar, Star, TrendingUp, Clock, CheckCircle, AlertCircle, DollarSign, Eye, MessageSquare, Award, Target, Activity, FileText, X, BarChart as BarChartIcon, PieChart as PieChartIcon, LineChart as LineChartIcon, ArrowLeft, Filter, Search, Edit, Trash2, Send } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -359,7 +359,9 @@ const DesignerQuotes = () => {
                     <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-2 text-sm text-green-800 flex items-center space-x-2">
                       <CheckCircle className="w-4 h-4 flex-shrink-0" />
                       <div className="flex-1">
-                        <p className="font-medium">Quote accepted by customer</p>
+                        <p className={`text-xl font-bold ${quote.customer_accepted ? 'text-green-600' : 'text-primary-600'}`}>
+                          {formatCurrency(quote.total_amount)}
+                        </p>
                         <p className="text-xs">{new Date(quote.acceptance_date).toLocaleDateString()}</p>
                       </div>
                       <div className="bg-green-200 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
@@ -370,10 +372,10 @@ const DesignerQuotes = () => {
 
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => navigate(`/generate-quote/${quote.project_id}`)}
+                        className={`flex-1 ${quote.customer_accepted ? 'bg-green-500 hover:bg-green-600' : 'bg-primary-500 hover:bg-primary-600'} text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1`}
                       className={`flex-1 ${quote.customer_accepted ? 'bg-green-500 hover:bg-green-600' : 'bg-primary-500 hover:bg-primary-600'} text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1`}
                     >
-                      <Eye className="w-4 h-4" />
+                        <span>{quote.customer_accepted ? 'View Confirmed' : 'View'}</span>
                       <span>View</span>
                     </button>
                     
