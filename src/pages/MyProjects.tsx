@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Calendar, MapPin, IndianRupee as Rupee, Clock, Edit, Eye, Trash2, AlertCircle, Send, Activity, Compass, FileText } from 'lucide-react';
+import { Plus, Calendar, MapPin, IndianRupee as Rupee, Clock, Edit, Eye, Trash2, AlertCircle, Send, Activity, Compass, FileText, CheckCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import type { Customer } from '../lib/supabase';
@@ -17,6 +17,7 @@ const MyProjects = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showVastuModal, setShowVastuModal] = useState(false);
   const [acceptedQuotes, setAcceptedQuotes] = useState<any[]>([]);
+  const [projectQuotes, setProjectQuotes] = useState<Record<string, any>>({});
 
   useEffect(() => {
     if (authLoading) return;
@@ -39,7 +40,10 @@ const MyProjects = () => {
       const { data, error } = await supabase
         .from('customers')
         .select(`
-          *,
+          id, name, email, phone, location, project_name, property_type, project_area, 
+          budget_range, timeline, requirements, preferred_designer, layout_image_url, 
+          inspiration_links, room_types, special_requirements, status, created_at, 
+          updated_at, version, assigned_designer_id, assignment_status, last_modified_by,
           assigned_designer:designers(id, name, email, specialization)
         `)
         .eq('user_id', user.id)
@@ -66,6 +70,28 @@ const MyProjects = () => {
           console.error('Error fetching quotes:', quotesError);
         } else {
           setAcceptedQuotes(quotesData || []);
+        }
+      }
+      
+      // Fetch accepted quotes for each project
+      if (data && data.length > 0) {
+        const projectIds = data.map(p => p.id);
+        const { data: quotesData, error: quotesError } = await supabase
+          .from('designer_quotes')
+          .select('*')
+          .in('project_id', projectIds)
+          .eq('customer_accepted', true)
+          .eq('status', 'accepted');
+          
+        if (quotesError) {
+          console.error('Error fetching quotes:', quotesError);
+        } else if (quotesData) {
+          // Create a map of project_id to quote
+          const quotesMap: Record<string, any> = {};
+          quotesData.forEach(quote => {
+            quotesMap[quote.project_id] = quote;
+          });
+          setProjectQuotes(quotesMap);
         }
       }
     } catch (error: any) {
@@ -313,6 +339,30 @@ const MyProjects = () => {
                   </div>
                 )}
 
+                {/* Accepted Quote Information */}
+                {projectQuotes[project.id] && (
+                  <div className="px-6 py-4 bg-green-50 border-b border-gray-100">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-green-800">
+                          Accepted Quote: {projectQuotes[project.id].title}
+                        </p>
+                        <div className="flex items-center space-x-4 mt-1">
+                          <p className="text-sm text-green-700 font-medium">
+                            ₹{projectQuotes[project.id].total_amount.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-green-600">
+                            Accepted on {new Date(projectQuotes[project.id].acceptance_date).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Project Details */}
                 <div className="p-6">
                   <div className="mb-4">
@@ -388,6 +438,15 @@ const MyProjects = () => {
                         <Activity className="w-4 h-4" />
                         <span>View Details</span>
                       </button>
+                      {projectQuotes[project.id] && (
+                        <button
+                          onClick={() => navigate(`/generate-quote/${project.id}`)}
+                          className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
+                          title="View Quote"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                      )}
                       {project.layout_image_url && (
                         <button
                           onClick={() => handleVastuAnalysis(project)}
@@ -406,12 +465,13 @@ const MyProjects = () => {
                       <button
                         onClick={() => handleDeleteProject(project.id)}
                         className="bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
+                        title="Delete Project"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                     
-                    {!(project as any).assigned_designer && (
+                    {!(project as any).assigned_designer && !projectQuotes[project.id] && (
                       <button
                         onClick={() => handleAssignToDesigner(project)}
                         className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"

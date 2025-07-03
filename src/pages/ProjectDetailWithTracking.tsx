@@ -32,6 +32,7 @@ const ProjectDetailWithTracking = () => {
   const [updateRefreshKey, setUpdateRefreshKey] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [acceptedQuote, setAcceptedQuote] = useState<any>(null);
+  const [acceptedQuote, setAcceptedQuote] = useState<any>(null);
 
   // Check if there's a tab parameter in the URL
   useEffect(() => {
@@ -86,6 +87,23 @@ const ProjectDetailWithTracking = () => {
       }
 
       setProject(data);
+      
+      // Fetch accepted quote for this project
+      if (data) {
+        const { data: quoteData, error: quoteError } = await supabase
+          .from('designer_quotes')
+          .select('*')
+          .eq('project_id', data.id)
+          .eq('customer_accepted', true)
+          .eq('status', 'accepted')
+          .maybeSingle();
+          
+        if (quoteError) {
+          console.error('Error fetching accepted quote:', quoteError);
+        } else if (quoteData) {
+          setAcceptedQuote(quoteData);
+        }
+      }
       
       // Fetch accepted quote if any
       const { data: quoteData, error: quoteError } = await supabase
@@ -387,6 +405,51 @@ const ProjectDetailWithTracking = () => {
                           View Full Quote
                         </button>
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Accepted Quote Information */}
+                {acceptedQuote && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <h3 className="font-semibold text-green-800">Accepted Quote: {acceptedQuote.title}</h3>
+                      </div>
+                      <button
+                        onClick={() => navigate(`/generate-quote/${project.id}`)}
+                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                      >
+                        <FileText className="w-3 h-3" />
+                        <span>View Full Quote</span>
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
+                      <div>
+                        <p className="text-xs text-green-700">Subtotal</p>
+                        <p className="font-medium text-green-800">₹{acceptedQuote.subtotal.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-green-700">Discount</p>
+                        <p className="font-medium text-green-800">₹{acceptedQuote.discount_amount.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-green-700">Tax ({acceptedQuote.tax_rate}%)</p>
+                        <p className="font-medium text-green-800">₹{acceptedQuote.tax_amount.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-green-700">Total Amount</p>
+                        <p className="font-semibold text-green-800 text-lg">₹{acceptedQuote.total_amount.toLocaleString()}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 text-xs text-green-700">
+                      <Calendar className="w-3 h-3" />
+                      <span>Accepted on {new Date(acceptedQuote.acceptance_date).toLocaleDateString()}</span>
+                      <span>•</span>
+                      <span>Valid until {new Date(acceptedQuote.valid_until).toLocaleDateString()}</span>
                     </div>
                   </div>
                 )}
