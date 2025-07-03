@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Search, Filter, FileText, Calendar, CheckCircle, XCircle, Clock, Download, Send, Eye, Edit, Trash2, AlertCircle, IndianRupee as Rupee } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Filter, FileText, Calendar, CheckCircle, XCircle, Clock, Download, Send, Eye, Edit, Trash2, AlertCircle, IndianRupee as Rupee, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -157,9 +157,15 @@ const DesignerQuotes = () => {
       case 'sent':
         return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">Sent</span>;
       case 'accepted':
-        return <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">Accepted</span>;
+        return <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1">
+          <CheckCircle className="w-3 h-3" />
+          <span>Accepted</span>
+        </span>;
       case 'rejected':
-        return <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">Rejected</span>;
+        return <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1">
+          <ThumbsDown className="w-3 h-3" />
+          <span>Rejected</span>
+        </span>;
       case 'expired':
         return <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">Expired</span>;
       default:
@@ -338,13 +344,26 @@ const DesignerQuotes = () => {
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <p className="text-sm text-gray-500">Total Amount</p>
-                      <p className="text-xl font-bold text-primary-600">{formatCurrency(quote.total_amount)}</p>
+                      <p className="text-xl font-bold text-primary-600 flex items-center space-x-1">
+                        <span>{formatCurrency(quote.total_amount)}</span>
+                        {quote.customer_accepted && <CheckCircle className="w-4 h-4 text-green-500" />}
+                      </p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-500">Items</p>
                       <p className="font-medium text-secondary-800">{quote.items_count ? quote.items_count.count : 0}</p>
                     </div>
                   </div>
+                  
+                  {quote.customer_accepted && (
+                    <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-2 text-sm text-green-800 flex items-center space-x-2">
+                      <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium">Quote accepted by customer</p>
+                        <p className="text-xs">{new Date(quote.acceptance_date).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex space-x-2">
                     <button
