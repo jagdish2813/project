@@ -18,6 +18,17 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 
+interface QuoteItem {
+  id: string;
+  name: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  amount: number;
+  item_type: string;
+}
+
 interface Quote {
   id: string;
   designer_id: string;
@@ -48,18 +59,10 @@ interface Quote {
     profile_image: string;
   };
   project: {
+    id: string;
     project_name: string;
   };
-  items: {
-    id: string;
-    name: string;
-    description: string;
-    quantity: number;
-    unit: string;
-    unit_price: number;
-    amount: number;
-    item_type: string;
-  }[];
+  items: QuoteItem[];
 }
 
 const CustomerQuotes = () => {
@@ -105,35 +108,75 @@ const CustomerQuotes = () => {
 
       const projectIds = customerProjects.map(p => p.id);
       
-      // Fetch quotes with designer information
-      const { data: quotesData, error: quotesError } = await supabase
-        .from('designer_quotes')
-        .select(`
-          *,
-          designer:designers(id, name, email, phone, specialization, profile_image),
-          project:customers(project_name)
-        `)
-        .in('project_id', projectIds)
-        .order('created_at', { ascending: false });
+      console.log('Project IDs:', projectIds);
+      
+      // Use the customer_quotes_with_items view to get quotes with items
+      const { data: quotesData, error: quotesError } = await supabase.rpc(
+        'get_customer_quotes',
+        { customer_user_id: user.id }
+      );
 
       if (quotesError) throw quotesError;
       
-      // For each quote, fetch its items
-      const quotesWithItems = await Promise.all((quotesData || []).map(async (quote) => {
-        const { data: items, error: itemsError } = await supabase
-          .from('quote_items')
-          .select('*')
-          .eq('quote_id', quote.id);
+      console.log('Quotes data:', quotesData);
+      
+      // If no quotes data from RPC, try direct query
+      if (!quotesData || quotesData.length === 0) {
+        const { data: directQuotes, error: directError } = await supabase
+          .from('designer_quotes')
+          .select(`
+            *,
+            designer:designers(id, name, email, phone, specialization, profile_image),
+            project:customers(id, project_name)
+          `)
+          .in('project_id', projectIds)
+          .order('created_at', { ascending: false });
           
-        if (itemsError) {
-          console.error('Error fetching quote items:', itemsError);
-          return { ...quote, items: [] };
+        if (directError) {
+          console.error('Error in direct quotes query:', directError);
+        } else if (directQuotes) {
+          console.log('Direct quotes found:', directQuotes.length);
+          
+          // For each quote, fetch its items
+          const quotesWithItems = await Promise.all(directQuotes.map(async (quote) => {
+            const { data: items, error: itemsError } = await supabase
+              .from('quote_items')
+              .select('*')
+              .eq('quote_id', quote.id);
+              
+            if (itemsError) {
+              console.error('Error fetching quote items:', itemsError);
+              return { ...quote, items: [] };
+            }
+            
+            return { ...quote, items: items || [] };
+          }));
+          
+          setQuotes(quotesWithItems);
+          return;
+        }
+      }
+      
+      // Process quotes from the RPC function
+      const processedQuotes = (quotesData || []).map(quote => {
+        // Parse items if they're in JSON string format
+        let items = quote.items || [];
+        if (typeof items === 'string') {
+          try {
+            items = JSON.parse(items);
+          } catch (e) {
+            console.error('Error parsing items JSON:', e);
+            items = [];
+          }
         }
         
-        return { ...quote, items: items || [] };
-      }));
+        return {
+          ...quote,
+          items: items
+        };
+      });
       
-      setQuotes(quotesWithItems);
+      setQuotes(processedQuotes);
     } catch (error: any) {
       console.error('Error fetching quotes:', error);
       setError(error.message || 'Failed to load quotes');
@@ -362,7 +405,7 @@ const CustomerQuotes = () => {
                   <div className="flex items-center space-x-4 text-sm text-gray-600">
                     <div className="flex items-center space-x-1">
                       <Clock className="w-4 h-4" />
-                      <span>Created: {new Date(quote.created_at).toLocaleDateString()}</span>
+                      <span>Created: {quote.created_at ? new Date(quote.created_at).toLocaleDateString() : 'N/A'}</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <FileText className="w-4 h-4" />
@@ -375,15 +418,9 @@ const CustomerQuotes = () => {
                   <div className="flex items-center space-x-3 mb-4">
                     <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center">
                       {quote.designer?.profile_image ? (
-                        <img 
-                          src={quote.designer.profile_image} 
-                          alt={quote.designer.name}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
+                        <img src={quote.designer.profile_image} alt={quote.designer.name} className="w-10 h-10 rounded-full object-cover" />
                       ) : (
-                        <span className="text-white font-semibold">
-                          {quote.designer?.name.charAt(0)}
-                        </span>
+                        <span className="text-white font-semibold">{quote.designer?.name?.charAt(0) || 'D'}</span>
                       )}
                     </div>
                     <div>
@@ -532,16 +569,22 @@ const CustomerQuotes = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50">
-                      <tr>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Item</th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Description</th>
-                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Quantity</th>
-                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Unit Price</th>
-                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Amount</th>
-                      </tr>
+                      {selectedQuote.items && selectedQuote.items.length > 0 ? (
+                        <tr>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Item</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Description</th>
+                          <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Quantity</th>
+                          <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Unit Price</th>
+                          <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Amount</th>
+                        </tr>
+                      ) : (
+                        <tr>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">No items available</th>
+                        </tr>
+                      )}
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {selectedQuote.items && selectedQuote.items.map((item) => (
+                      {selectedQuote.items && selectedQuote.items.length > 0 ? selectedQuote.items.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50">
                           <td className="py-3 px-4 text-sm font-medium text-gray-800">{item.name}</td>
                           <td className="py-3 px-4 text-sm text-gray-600">{item.description || '-'}</td>
@@ -549,7 +592,11 @@ const CustomerQuotes = () => {
                           <td className="py-3 px-4 text-sm text-gray-600 text-right">{formatCurrency(item.unit_price)}</td>
                           <td className="py-3 px-4 text-sm font-medium text-gray-800 text-right">{formatCurrency(item.amount)}</td>
                         </tr>
-                      ))}
+                      )) : (
+                        <tr>
+                          <td colSpan={5} className="py-3 px-4 text-sm text-gray-500 text-center">No items available for this quote</td>
+                        </tr>
+                      )}
                     </tbody>
                     <tfoot className="bg-gray-50">
                       <tr>
