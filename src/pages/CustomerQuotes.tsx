@@ -92,67 +92,79 @@ const CustomerQuotes = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch quotes for the customer's projects
-      const { data: customerProjects, error: projectsError } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('user_id', user.id);
-
-      if (projectsError) throw projectsError;
-      
-      if (!customerProjects || customerProjects.length === 0) {
-        setQuotes([]);
-        setLoading(false);
-        return;
-      }
-
-      const projectIds = customerProjects.map(p => p.id);
-      
-      console.log('Project IDs:', projectIds);
-      
-      // Use the customer_quotes_with_items view to get quotes with items
-      const { data: quotesData, error: quotesError } = await supabase.rpc(
-        'get_customer_quotes',
-        { customer_user_id: user.id }
-      );
+      // First try using the RPC function
+      const { data: quotesData, error: quotesError } = await supabase
+        .rpc('get_customer_quotes');
 
       if (quotesError) throw quotesError;
       
       console.log('Quotes data:', quotesData);
       
-      // If no quotes data from RPC, try direct query
+      // If no quotes data from RPC, try using the view
       if (!quotesData || quotesData.length === 0) {
-        const { data: directQuotes, error: directError } = await supabase
-          .from('designer_quotes')
-          .select(`
-            *,
-            designer:designers(id, name, email, phone, specialization, profile_image),
-            project:customers(id, project_name)
-          `)
-          .in('project_id', projectIds)
-          .order('created_at', { ascending: false });
+        console.log('No quotes from RPC, trying view...');
+        const { data: viewQuotes, error: viewError } = await supabase
+          .from('customer_quotes_with_items')
+          .select('*');
           
-        if (directError) {
-          console.error('Error in direct quotes query:', directError);
-        } else if (directQuotes) {
-          console.log('Direct quotes found:', directQuotes.length);
+        if (viewError) {
+          console.error('Error in view quotes query:', viewError);
           
-          // For each quote, fetch its items
-          const quotesWithItems = await Promise.all(directQuotes.map(async (quote) => {
-            const { data: items, error: itemsError } = await supabase
-              .from('quote_items')
-              .select('*')
-              .eq('quote_id', quote.id);
-              
-            if (itemsError) {
-              console.error('Error fetching quote items:', itemsError);
-              return { ...quote, items: [] };
-            }
+          // Last resort: try direct query
+          const { data: customerProjects, error: projectsError } = await supabase
+            .from('customers')
+            .select('id')
+            .eq('user_id', user.id);
+
+          if (projectsError) throw projectsError;
+          
+          if (!customerProjects || customerProjects.length === 0) {
+            setQuotes([]);
+            setLoading(false);
+            return;
+          }
+
+          const projectIds = customerProjects.map(p => p.id);
+          
+          console.log('Project IDs:', projectIds);
+          
+          // Direct query as last resort
+          const { data: directQuotes, error: directError } = await supabase
+            .from('designer_quotes')
+            .select(`
+              *,
+              designer:designers(id, name, email, phone, specialization, profile_image),
+              project:customers(id, project_name)
+            `)
+            .in('project_id', projectIds)
+            .order('created_at', { ascending: false });
             
-            return { ...quote, items: items || [] };
-          }));
-          
-          setQuotes(quotesWithItems);
+          if (directError) {
+            console.error('Error in direct quotes query:', directError);
+          } else if (directQuotes) {
+            console.log('Direct quotes found:', directQuotes.length);
+            
+            // For each quote, fetch its items
+            const quotesWithItems = await Promise.all(directQuotes.map(async (quote) => {
+              const { data: items, error: itemsError } = await supabase
+                .from('quote_items')
+                .select('*')
+                .eq('quote_id', quote.id);
+                
+              if (itemsError) {
+                console.error('Error fetching quote items:', itemsError);
+                return { ...quote, items: [] };
+              }
+              
+              return { ...quote, items: items || [] };
+            }));
+            
+            setQuotes(quotesWithItems);
+            return;
+          }
+        } else if (viewQuotes) {
+          console.log('View quotes found:', viewQuotes.length);
+          setQuotes(viewQuotes);
           return;
         }
       }
@@ -383,6 +395,9 @@ const CustomerQuotes = () => {
                       <div className="flex items-center space-x-3 mb-2">
                         <h3 className="text-xl font-semibold text-secondary-800">{quote.title}</h3>
                         {getStatusBadge(quote.status, quote.customer_accepted)}
+                        {quote.status === 'sent' && !quote.customer_accepted && (
+                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">Action Required</span>
+                        )}
                       </div>
                       <p className="text-sm text-gray-500">Quote #{quote.quote_number}</p>
                       <p className="text-sm text-gray-600 mt-2">
@@ -453,7 +468,7 @@ const CustomerQuotes = () => {
                   <div className="flex space-x-3">
                     {quote.status === 'sent' && !quote.customer_accepted && (
                       <>
-                        <button
+                        <button 
                           onClick={() => setSelectedQuote(quote)}
                           className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                         >
@@ -465,6 +480,7 @@ const CustomerQuotes = () => {
                     
                     {(quote.status === 'accepted' || quote.customer_accepted) && (
                       <button
+                        onClick={() => setSelectedQuote(quote)}
                         className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                       >
                         <CheckCircle className="w-4 h-4" />
@@ -474,6 +490,7 @@ const CustomerQuotes = () => {
                     
                     {quote.status === 'rejected' && (
                       <button
+                        onClick={() => setSelectedQuote(quote)}
                         className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                       >
                         <XCircle className="w-4 h-4" />
