@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import type { Customer } from '../lib/supabase';
 import AssignProjectModal from '../components/AssignProjectModal';
+import SendToDesignerModal from '../components/SendToDesignerModal';
 import VastuAnalysisModal from '../components/VastuAnalysisModal';
 
 const MyProjects = () => {
@@ -14,6 +15,7 @@ const MyProjects = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<Customer | null>(null);
+  const [showSendModal, setShowSendModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showVastuModal, setShowVastuModal] = useState(false);
   const [acceptedQuotes, setAcceptedQuotes] = useState<any[]>([]);
@@ -127,6 +129,11 @@ const MyProjects = () => {
   const handleAssignToDesigner = (project: Customer) => {
     setSelectedProject(project);
     setShowAssignModal(true);
+  };
+
+  const handleSendToDesigner = (project: Customer) => {
+    setSelectedProject(project);
+    setShowSendModal(true);
   };
 
   const handleVastuAnalysis = (project: Customer) => {
@@ -473,13 +480,22 @@ const MyProjects = () => {
                     
                     {!(project as any).assigned_designer && !projectQuotes[project.id] && (
                       <button
-                        onClick={() => handleAssignToDesigner(project)}
+                        onClick={() => handleSendToDesigner(project)}
                         className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                       >
                         <Send className="w-4 h-4" />
-                        <span>Assign to Designer</span>
+                        <span>Send to Designer</span>
                       </button>
                     )}
+                    
+                    {/* View Quotes Button */}
+                    <button
+                      onClick={() => navigate('/customer-quotes')}
+                      className="w-full bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 mt-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>View Quotes</span>
+                      </button>
                   </div>
                 </div>
               </div>
@@ -498,6 +514,18 @@ const MyProjects = () => {
           }}
           project={selectedProject}
           onSuccess={handleAssignSuccess}
+        />
+      )}
+      
+      {/* Send to Designer Modal */}
+      {selectedProject && (
+        <SendToDesignerModal
+          isOpen={showSendModal}
+          onClose={() => {
+            setShowSendModal(false);
+            setSelectedProject(null);
+          }}
+          project={selectedProject}
         />
       )}
       

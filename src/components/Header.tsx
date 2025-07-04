@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus, Edit, Loader2, FolderOpen, Users, BarChart3 } from 'lucide-react';
+import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus, Edit, Loader2, FolderOpen, Users, BarChart3, FileText } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
@@ -211,6 +211,7 @@ const Header = () => {
                             </>
                           ) : (
                             <>
+                            <>
                               {/* Show "Register as Designer" only if user is not a customer */}
                               {!hasCustomerProject && (
                                 <button
@@ -241,6 +242,19 @@ const Header = () => {
                                 </button>
                               )}
                             </>
+                            </>
+                          )}
+                          {hasCustomerProject && (
+                            <button
+                              onClick={() => {
+                                navigate('/customer-quotes');
+                                setIsMenuOpen(false);
+                              }}
+                              className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                            >
+                              <FileText className="w-4 h-4" />
+                              <span>View Quotes</span>
+                            </button>
                           )}
                         </>
                       )}
@@ -398,6 +412,7 @@ const Header = () => {
                                 <span>View My Projects</span>
                               </button>
                             ) : (
+                              <>
                               <button
                                 onClick={() => {
                                   handleCustomerRegistration();
@@ -407,6 +422,16 @@ const Header = () => {
                               >
                                 <UserPlus className="w-4 h-4" />
                                 <span>Register Your Project</span>
+                              </button>
+                              </>
+                            )}
+                            {hasCustomerProject && (
+                              <button
+                                onClick={() => navigate('/customer-quotes')}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                              >
+                                <FileText className="w-4 h-4" />
+                                <span>View Quotes</span>
                               </button>
                             )}
                           </>
