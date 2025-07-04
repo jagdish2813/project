@@ -111,8 +111,8 @@ const DesignerQuotes = () => {
   const handleSendQuote = async (id: string) => {
     try {
       setLoading(true);
-      setError(null);
-      setSuccess(null);
+      setError(null); 
+      setSuccess(null); 
 
       const { error } = await supabase
         .from('designer_quotes')
@@ -120,7 +120,10 @@ const DesignerQuotes = () => {
         .eq('id', id)
         .eq('designer_id', designer?.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error sending quote:', error);
+        throw error;
+      }
 
       setSuccess('Quote sent to customer successfully!');
       fetchQuotes();
@@ -372,11 +375,10 @@ const DesignerQuotes = () => {
 
                   <div className="flex space-x-2">
                     <button
-                        className={`flex-1 ${quote.customer_accepted ? 'bg-green-500 hover:bg-green-600' : 'bg-primary-500 hover:bg-primary-600'} text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1`}
+                      onClick={() => navigate(`/quote/${quote.id}`)}
                       className={`flex-1 ${quote.customer_accepted ? 'bg-green-500 hover:bg-green-600' : 'bg-primary-500 hover:bg-primary-600'} text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1`}
                     >
-                        <span>{quote.customer_accepted ? 'View Confirmed' : 'View'}</span>
-                      <span>View</span>
+                      <span>{quote.customer_accepted ? 'View Confirmed' : 'View'}</span>
                     </button>
                     
                     {quote.status === 'draft' && (
@@ -391,7 +393,7 @@ const DesignerQuotes = () => {
                         <button
                           onClick={() => handleSendQuote(quote.id)}
                           className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
-                          title="Send"
+                          title="Send to Customer"
                         >
                           <Send className="w-4 h-4" />
                         </button>
@@ -407,6 +409,14 @@ const DesignerQuotes = () => {
                     </button>
                   </div>
                 </div>
+                
+                {/* Status Message */}
+                {quote.status === 'sent' && (
+                  <div className="mt-2 text-xs text-blue-600 flex items-center space-x-1">
+                    <Send className="w-3 h-3" />
+                    <span>Quote sent to customer</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>

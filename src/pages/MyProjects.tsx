@@ -491,11 +491,11 @@ const MyProjects = () => {
                     {/* View Quotes Button */}
                     <button
                       onClick={() => navigate('/customer-quotes')}
-                      className="w-full bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 mt-2"
+                      className="w-full bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 mt-2 mb-2"
                     >
                       <FileText className="w-4 h-4" />
                       <span>View Quotes</span>
-                      </button>
+                    </button>
                   </div>
                 </div>
               </div>
