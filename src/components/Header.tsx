@@ -244,18 +244,7 @@ const Header = () => {
                             </>
                             </>
                           )}
-                          {hasCustomerProject && (
-                            <button
-                              onClick={() => {
-                                navigate('/customer-quotes');
-                                setIsMenuOpen(false);
-                              }}
-                              className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
-                            >
-                              <FileText className="w-4 h-4" />
-                              <span>View Quotes</span>
-                            </button>
-                          )}
+                          
                         </>
                       )}
                       <hr className="my-2" />

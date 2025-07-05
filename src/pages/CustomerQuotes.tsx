@@ -67,7 +67,7 @@ interface Quote {
 
 const CustomerQuotes = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,16 +77,17 @@ const CustomerQuotes = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       navigate('/');
       return;
     }
     
     fetchQuotes();
-  }, [user, navigate]);
+  }, [authLoading, user, navigate]);
 
   const fetchQuotes = async () => {
-    if (!user) return;
+   // if (!user) return;
 
     try {
       setLoading(true);
