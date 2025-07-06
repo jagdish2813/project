@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Users, Calendar, Star, TrendingUp, Clock, CheckCircle, AlertCircle, DollarSign, Eye, MessageSquare, Award, Target, Activity, FileText, X, BarChart as BarChartIcon, PieChart as PieChartIcon, LineChart as LineChartIcon, ArrowLeft, Filter, Search, Edit, Trash2, Send, Plus } from 'lucide-react';
+import { BarChart3, Users, Calendar, Star, TrendingUp, Clock, CheckCircle, AlertCircle, DollarSign, Eye, MessageSquare, Award, Target, Activity, FileText, X, XCircle, BarChart as BarChartIcon, PieChart as PieChartIcon, LineChart as LineChartIcon, ArrowLeft, Filter, Search, Edit, Trash2, Send, Plus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -44,6 +44,7 @@ const DesignerQuotes = () => {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
 
   useEffect(() => {
     if (!designerLoading && designer) {
@@ -375,7 +376,8 @@ const DesignerQuotes = () => {
 
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => navigate(`/quote/${quote.id}`)}
+                      onClick={() => setSelectedQuote(quote)}
+                      //onClick={() => navigate(`/quote/${quote.id}`)}
                       className={`flex-1 ${quote.customer_accepted ? 'bg-green-500 hover:bg-green-600' : 'bg-primary-500 hover:bg-primary-600'} text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1`}
                     >
                       <span>{quote.customer_accepted ? 'View Confirmed' : 'View'}</span>
@@ -420,8 +422,119 @@ const DesignerQuotes = () => {
               </div>
             ))}
           </div>
-        )}
+        )}     
       </div>
+      {selectedQuote && (
+  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-secondary-800">Quote Details</h2>
+        <button
+          onClick={() => setSelectedQuote(null)}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <XCircle className="w-6 h-6" />
+        </button>
+      </div>
+
+      <div className="p-6">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xl font-semibold text-secondary-800">{selectedQuote.title}</h3>
+            <span className="text-2xl font-bold text-primary-600">
+              ₹{selectedQuote.total_amount.toLocaleString('en-IN')}
+            </span>
+          </div>
+          <p className="text-gray-600">{selectedQuote.description}</p>
+          <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+            <div className="flex items-center space-x-1">
+              <Calendar className="w-4 h-4" />
+              <span>Created: {new Date(selectedQuote.created_at).toLocaleDateString()}</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Clock className="w-4 h-4" />
+              <span>Valid until: {new Date(selectedQuote.valid_until).toLocaleDateString()}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Items Table */}
+        <div className="mb-6">
+          <h4 className="font-semibold text-secondary-800 mb-3">Quote Items</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Item</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Description</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Qty</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Unit Price</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {selectedQuote.items?.length > 0 ? selectedQuote.items.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="py-3 px-4 text-sm font-medium text-gray-800">{item.name}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600">{item.description}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600 text-right">{item.quantity} {item.unit}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600 text-right">₹{item.unit_price.toLocaleString('en-IN')}</td>
+                    <td className="py-3 px-4 text-sm font-medium text-gray-800 text-right">₹{item.amount.toLocaleString('en-IN')}</td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={5} className="py-3 px-4 text-sm text-gray-500 text-center">No items available</td>
+                  </tr>
+                )}
+              </tbody>
+              <tfoot className="bg-gray-50">
+                <tr>
+                  <td colSpan={4} className="py-3 px-4 text-sm font-semibold text-gray-700 text-right">Subtotal</td>
+                  <td className="py-3 px-4 text-sm font-semibold text-gray-700 text-right">₹{selectedQuote.subtotal.toLocaleString('en-IN')}</td>
+                </tr>
+                {selectedQuote.discount_amount > 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-3 px-4 text-sm font-semibold text-gray-700 text-right">Discount</td>
+                    <td className="py-3 px-4 text-sm font-semibold text-green-600 text-right">-₹{selectedQuote.discount_amount.toLocaleString('en-IN')}</td>
+                  </tr>
+                )}
+                <tr>
+                  <td colSpan={4} className="py-3 px-4 text-sm font-semibold text-gray-700 text-right">
+                    Tax ({selectedQuote.tax_rate}%)
+                  </td>
+                  <td className="py-3 px-4 text-sm font-semibold text-gray-700 text-right">₹{selectedQuote.tax_amount.toLocaleString('en-IN')}</td>
+                </tr>
+                <tr>
+                  <td colSpan={4} className="py-3 px-4 text-base font-bold text-secondary-800 text-right">Total</td>
+                  <td className="py-3 px-4 text-base font-bold text-primary-600 text-right">₹{selectedQuote.total_amount.toLocaleString('en-IN')}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        {selectedQuote.terms_and_conditions && (
+          <div className="mb-6">
+            <h4 className="font-semibold text-secondary-800 mb-3">Terms & Conditions</h4>
+            <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-600">
+              {selectedQuote.terms_and_conditions}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <button
+            onClick={() => setSelectedQuote(null)}
+            className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium hover:bg-gray-300"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 };

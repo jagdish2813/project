@@ -397,7 +397,7 @@ const ProjectDetailWithTracking = () => {
                       
                       <div className="mt-4 text-right">
                         <button
-                          onClick={() => navigate(`/generate-quote/${project.id}`)}
+                          onClick={() => navigate(`/designer-quote/${project.id}`)}
                           className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center space-x-1 justify-end"
                         >
                           <FileText className="w-4 h-4" />
@@ -416,13 +416,7 @@ const ProjectDetailWithTracking = () => {
                         <CheckCircle className="w-5 h-5 text-green-600" />
                         <h3 className="font-semibold text-green-800">Accepted Quote: {acceptedQuote.title}</h3>
                       </div>
-                      <button
-                        onClick={() => navigate(`/generate-quote/${project.id}`)}
-                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
-                      >
-                        <FileText className="w-3 h-3" />
-                        <span>View Full Quote</span>
-                      </button>
+            
                     </div>
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">

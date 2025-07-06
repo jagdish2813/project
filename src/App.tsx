@@ -76,6 +76,8 @@ function App() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/debug" element={<DebugPage />} />
             <Route path="/debug-profile" element={<DebugDesignerProfile />} />
+           
+            
           </Routes>
         </main>
         <Footer />

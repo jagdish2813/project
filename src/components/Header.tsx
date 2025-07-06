@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Home as HomeIcon, User, LogOut, Palette, UserPlus, Edit, Loader2, FolderOpen, Users, BarChart3, FileText } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
