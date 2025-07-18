@@ -18,17 +18,6 @@ const Footer = () => {
             <p className="text-gray-300 mb-4">
               Premium home interior design services across India. Transform your space with our expert designers.
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="text-gray-300 hover:text-accent-400 transition-colors">
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a href="#" className="text-gray-300 hover:text-accent-400 transition-colors">
-                <Instagram className="w-5 h-5" />
-              </a>
-              <a href="#" className="text-gray-300 hover:text-accent-400 transition-colors">
-                <Twitter className="w-5 h-5" />
-              </a>
-            </div>
           </div>
 
           {/* Quick Links */}
@@ -59,16 +48,12 @@ const Footer = () => {
             <h3 className="text-lg font-semibold mb-4">Contact Info</h3>
             <div className="space-y-3">
               <div className="flex items-center space-x-3">
-                <Phone className="w-4 h-4 text-accent-400" />
-                <span className="text-gray-300">+91 98765 43210</span>
-              </div>
-              <div className="flex items-center space-x-3">
                 <Mail className="w-4 h-4 text-accent-400" />
                 <span className="text-gray-300">info@thehomedesigners.com</span>
               </div>
               <div className="flex items-start space-x-3">
                 <MapPin className="w-4 h-4 text-accent-400 mt-1" />
-                <span className="text-gray-300">Mumbai, Delhi, Bangalore<br />& across India</span>
+                <span className="text-gray-300">Across India</span>
               </div>
             </div>
           </div>
