@@ -80,6 +80,7 @@ function App() {
             
           </Routes>
         </main>
+        <script src='https://www.noupe.com/embed/019991a41a5b7dae8336ecdb685849cd8abb.js'></script>
         <Footer />
         <Chatbot />
       </div>
