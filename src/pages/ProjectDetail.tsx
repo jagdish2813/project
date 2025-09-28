@@ -1,78 +1,360 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { Calendar, MapPin, User, ArrowLeft, Clock, Ruler, IndianRupee as Rupee, Tag, ExternalLink } from 'lucide-react';
 
 const ProjectDetail = () => {
   const { id } = useParams();
+  const [project, setProject] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - in real app, fetch by id
-  const project = {
-    id: 1,
-    title: 'Modern Mumbai Apartment',
-    designer: 'Priya Sharma',
-    designerId: 1,
-    category: 'Residential',
-    location: 'Mumbai',
-    budget: '₹8,50,000',
-    duration: '3 months',
-    completedDate: 'March 2024',
-    area: '1,200 sq ft',
-    client: 'Rohit & Sneha Malhotra',
-    description: 'A complete transformation of a 3BHK apartment in Mumbai, featuring contemporary design with clean lines, neutral palette, and smart storage solutions. The project focused on maximizing natural light and creating an open, airy feel throughout the space.',
-    challenge: 'The main challenge was to create a spacious feel in a compact 1,200 sq ft apartment while accommodating the needs of a young family with children. The existing layout was cramped with poor natural light distribution.',
-    solution: 'We opened up the living and dining areas, used light colors and mirrors strategically, and implemented clever storage solutions. The kitchen was redesigned with an island to create better flow and additional prep space.',
-    images: [
-      {
-        id: 1,
-        url: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=800',
-        title: 'Living Room',
-        description: 'Open concept living room with modern furniture and neutral tones'
-      },
-      {
-        id: 2,
-        url: 'https://images.pexels.com/photos/1571468/pexels-photo-1571468.jpeg?auto=compress&cs=tinysrgb&w=800',
-        title: 'Kitchen',
-        description: 'Modern kitchen with island and smart storage solutions'
-      },
-      {
-        id: 3,
-        url: 'https://images.pexels.com/photos/1643383/pexels-photo-1643383.jpeg?auto=compress&cs=tinysrgb&w=800',
-        title: 'Master Bedroom',
-        description: 'Serene master bedroom with built-in wardrobes'
-      },
-      {
-        id: 4,
-        url: 'https://images.pexels.com/photos/1571461/pexels-photo-1571461.jpeg?auto=compress&cs=tinysrgb&w=800',
-        title: 'Bathroom',
-        description: 'Spa-like bathroom with modern fixtures'
+  useEffect(() => {
+    if (id) {
+      fetchProject();
+    }
+  }, [id]);
+
+  const fetchProject = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch completed project with designer and quote information
+      const { data: projectData, error: projectError } = await supabase
+        .from('customers')
+        .select(`
+          *,
+          assigned_designer:designers(id, name, email, specialization, rating, total_reviews, experience, profile_image)
+        `)
+        .eq('id', id)
+        .eq('assignment_status', 'completed')
+        .single();
+
+      if (projectError) {
+        if (projectError.code === 'PGRST116') {
+          setError('Project not found or not yet completed');
+        } else {
+          throw projectError;
+        }
+        return;
       }
-    ],
-    materials: [
-      { name: 'Italian Marble', usage: 'Flooring in living areas', cost: '₹2,50,000' },
-      { name: 'Teak Wood', usage: 'Kitchen cabinets and wardrobes', cost: '₹1,80,000' },
-      { name: 'Quartz Countertops', usage: 'Kitchen and bathroom surfaces', cost: '₹85,000' },
-      { name: 'LED Lighting', usage: 'Ambient and task lighting throughout', cost: '₹45,000' },
-      { name: 'Designer Wallpaper', usage: 'Accent walls in bedrooms', cost: '₹35,000' },
-      { name: 'Premium Paint', usage: 'Wall finishes', cost: '₹25,000' }
-    ],
-    timeline: [
-      { phase: 'Planning & Design', duration: '2 weeks', description: 'Initial consultation, space planning, and design development' },
-      { phase: 'Demolition', duration: '3 days', description: 'Removal of existing fixtures and non-structural walls' },
-      { phase: 'Electrical & Plumbing', duration: '1 week', description: 'Installation of new electrical and plumbing systems' },
-      { phase: 'Flooring & Painting', duration: '3 weeks', description: 'Installation of marble flooring and complete painting' },
-      { phase: 'Kitchen Installation', duration: '2 weeks', description: 'Custom kitchen cabinet installation and appliances' },
-      { phase: 'Furniture & Styling', duration: '1 week', description: 'Furniture placement and final styling touches' }
-    ],
-    tags: ['Modern', 'Minimalist', '3BHK', 'Open Concept', 'Smart Storage'],
-    features: [
-      'Smart home automation',
-      'Energy-efficient LED lighting',
-      'Built-in storage solutions',
-      'Open concept living',
-      'Premium Italian marble flooring',
-      'Custom-designed furniture'
-    ]
+
+      // Fetch accepted quote for this project
+      const { data: quoteData, error: quoteError } = await supabase
+        .from('designer_quotes')
+        .select('*')
+        .eq('project_id', id)
+        .eq('customer_accepted', true)
+        .eq('status', 'accepted')
+        .maybeSingle();
+
+      if (quoteError) {
+        console.error('Error fetching quote:', quoteError);
+      }
+
+      // Fetch project updates to get completion photos
+      const { data: updatesData, error: updatesError } = await supabase
+        .from('project_updates')
+        .select('*')
+        .eq('project_id', id)
+        .order('created_at', { ascending: false });
+
+      if (updatesError) {
+        console.error('Error fetching updates:', updatesError);
+      }
+
+      // Transform the data to match the existing component structure
+      const transformedProject = {
+        id: projectData.id,
+        title: projectData.project_name,
+        designer: projectData.assigned_designer?.name || 'Unknown Designer',
+        designerId: projectData.assigned_designer?.id || '',
+        category: 'Residential',
+        location: projectData.location,
+        budget: quoteData ? `₹${quoteData.total_amount.toLocaleString()}` : projectData.budget_range,
+        duration: calculateProjectDuration(projectData.created_at, projectData.updated_at),
+        completedDate: new Date(projectData.updated_at).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }),
+        area: projectData.project_area || 'Not specified',
+        client: projectData.name,
+        description: projectData.requirements,
+        challenge: projectData.special_requirements || 'Creating a functional and beautiful space that meets all the client requirements within the specified budget and timeline.',
+        solution: `Our team worked closely with ${projectData.name} to understand their vision and requirements. We implemented a comprehensive design solution that maximized the available space while incorporating their preferred style and functional needs.`,
+        images: extractProjectImages(updatesData),
+        materials: generateMaterialsFromQuote(quoteData),
+        timeline: generateProjectTimeline(projectData.created_at, projectData.updated_at),
+        tags: generateProjectTags(projectData),
+        features: generateProjectFeatures(projectData, quoteData),
+        designerRating: projectData.assigned_designer?.rating || 0,
+        designerReviews: projectData.assigned_designer?.total_reviews || 0,
+        designerExperience: projectData.assigned_designer?.experience || 0,
+        designerImage: projectData.assigned_designer?.profile_image
+      };
+
+      setProject(transformedProject);
+    } catch (error: any) {
+      console.error('Error fetching project:', error);
+      setError(error.message || 'Failed to load project details');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const calculateProjectDuration = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 30) {
+      return `${diffDays} days`;
+    } else if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return `${months} month${months > 1 ? 's' : ''}`;
+    } else {
+      const years = Math.floor(diffDays / 365);
+      const remainingMonths = Math.floor((diffDays % 365) / 30);
+      return `${years} year${years > 1 ? 's' : ''}${remainingMonths > 0 ? ` ${remainingMonths} month${remainingMonths > 1 ? 's' : ''}` : ''}`;
+    }
+  };
+
+  const extractProjectImages = (updates: any[]) => {
+    const images = [];
+    let imageId = 1;
+
+    // Add default project image
+    images.push({
+      id: imageId++,
+      url: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=800',
+      title: 'Project Overview',
+      description: 'Complete project transformation'
+    });
+
+    // Extract images from project updates
+    if (updates && updates.length > 0) {
+      updates.forEach(update => {
+        if (update.photos && update.photos.length > 0) {
+          update.photos.forEach((photo: string, index: number) => {
+            images.push({
+              id: imageId++,
+              url: photo,
+              title: update.title || `Update ${imageId - 1}`,
+              description: update.description || 'Project progress update'
+            });
+          });
+        }
+      });
+    }
+
+    // Add more default images if we have less than 4
+    const defaultImages = [
+      {
+        url: 'https://images.pexels.com/photos/1571468/pexels-photo-1571468.jpeg?auto=compress&cs=tinysrgb&w=800',
+        title: 'Living Area',
+        description: 'Beautifully designed living space'
+      },
+      {
+        url: 'https://images.pexels.com/photos/1643383/pexels-photo-1643383.jpeg?auto=compress&cs=tinysrgb&w=800',
+        title: 'Bedroom',
+        description: 'Comfortable and stylish bedroom design'
+      },
+      {
+        url: 'https://images.pexels.com/photos/1571461/pexels-photo-1571461.jpeg?auto=compress&cs=tinysrgb&w=800',
+        title: 'Kitchen',
+        description: 'Modern and functional kitchen space'
+      }
+    ];
+
+    while (images.length < 4) {
+      const defaultImage = defaultImages[(images.length - 1) % defaultImages.length];
+      images.push({
+        id: imageId++,
+        ...defaultImage
+      });
+    }
+
+    return images.slice(0, 4); // Limit to 4 images
+  };
+
+  const generateMaterialsFromQuote = (quote: any) => {
+    if (!quote) {
+      return [
+        { name: 'Premium Materials', usage: 'Throughout the project', cost: '₹2,50,000' },
+        { name: 'Quality Finishes', usage: 'All surfaces and fixtures', cost: '₹1,80,000' },
+        { name: 'Designer Furniture', usage: 'Custom and branded pieces', cost: '₹85,000' },
+        { name: 'Lighting Solutions', usage: 'Ambient and task lighting', cost: '₹45,000' },
+        { name: 'Accessories & Decor', usage: 'Final styling touches', cost: '₹35,000' }
+      ];
+    }
+
+    // If we have quote data, we could fetch the actual items
+    // For now, return a structure based on the quote total
+    const total = quote.total_amount;
+    return [
+      { name: 'Materials & Supplies', usage: 'Primary construction materials', cost: `₹${Math.round(total * 0.4).toLocaleString()}` },
+      { name: 'Labor & Installation', usage: 'Professional installation services', cost: `₹${Math.round(total * 0.3).toLocaleString()}` },
+      { name: 'Furniture & Fixtures', usage: 'Custom and branded furniture', cost: `₹${Math.round(total * 0.2).toLocaleString()}` },
+      { name: 'Design & Consultation', usage: 'Professional design services', cost: `₹${Math.round(total * 0.1).toLocaleString()}` }
+    ];
+  };
+
+  const generateProjectTimeline = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Generate timeline phases based on project duration
+    const phases = [
+      { 
+        phase: 'Planning & Design', 
+        duration: `${Math.ceil(totalDays * 0.2)} days`, 
+        description: 'Initial consultation, space planning, and design development' 
+      },
+      { 
+        phase: 'Preparation', 
+        duration: `${Math.ceil(totalDays * 0.1)} days`, 
+        description: 'Material procurement and site preparation' 
+      },
+      { 
+        phase: 'Execution', 
+        duration: `${Math.ceil(totalDays * 0.6)} days`, 
+        description: 'Implementation of design plan and installation work' 
+      },
+      { 
+        phase: 'Finishing & Styling', 
+        duration: `${Math.ceil(totalDays * 0.1)} days`, 
+        description: 'Final touches, furniture placement, and styling' 
+      }
+    ];
+    
+    return phases;
+  };
+
+  const generateProjectTags = (projectData: any) => {
+    const tags = [];
+    
+    // Add property type as tag
+    if (projectData.property_type) {
+      if (projectData.property_type.includes('BHK')) {
+        tags.push(projectData.property_type.split(' ')[0] + ' ' + projectData.property_type.split(' ')[1]);
+      } else {
+        tags.push(projectData.property_type.split(' ')[0]);
+      }
+    }
+    
+    // Add room types as tags
+    if (projectData.room_types && projectData.room_types.length > 0) {
+      projectData.room_types.slice(0, 2).forEach((room: string) => {
+        tags.push(room.replace(' Room', ''));
+      });
+    }
+    
+    // Add style tags based on requirements
+    const requirements = projectData.requirements?.toLowerCase() || '';
+    if (requirements.includes('modern')) tags.push('Modern');
+    if (requirements.includes('traditional')) tags.push('Traditional');
+    if (requirements.includes('minimal')) tags.push('Minimalist');
+    if (requirements.includes('luxury')) tags.push('Luxury');
+    if (requirements.includes('contemporary')) tags.push('Contemporary');
+    
+    // Add budget-based tag
+    if (projectData.budget_range) {
+      if (projectData.budget_range.includes('Above ₹50')) {
+        tags.push('Luxury');
+      } else if (projectData.budget_range.includes('₹20-50')) {
+        tags.push('Premium');
+      }
+    }
+    
+    return tags.slice(0, 5); // Limit to 5 tags
+  };
+
+  const generateProjectFeatures = (projectData: any, quote: any) => {
+    const features = [];
+    
+    // Add features based on room types
+    if (projectData.room_types && projectData.room_types.length > 0) {
+      if (projectData.room_types.includes('Kitchen')) {
+        features.push('Modern kitchen design');
+      }
+      if (projectData.room_types.includes('Living Room')) {
+        features.push('Open concept living space');
+      }
+      if (projectData.room_types.includes('Bedroom')) {
+        features.push('Custom bedroom solutions');
+      }
+      if (projectData.room_types.includes('Bathroom')) {
+        features.push('Luxury bathroom fixtures');
+      }
+    }
+    
+    // Add features based on requirements
+    const requirements = projectData.requirements?.toLowerCase() || '';
+    if (requirements.includes('storage')) {
+      features.push('Smart storage solutions');
+    }
+    if (requirements.includes('lighting')) {
+      features.push('Designer lighting systems');
+    }
+    if (requirements.includes('furniture')) {
+      features.push('Custom furniture design');
+    }
+    
+    // Add quote-based features
+    if (quote && quote.total_amount > 1000000) {
+      features.push('Premium material finishes');
+    }
+    
+    // Add default features if we have less than 6
+    const defaultFeatures = [
+      'Professional interior design',
+      'Quality material selection',
+      'Expert project management',
+      'Timely project completion',
+      'Customer satisfaction guarantee',
+      'Post-completion support'
+    ];
+    
+    defaultFeatures.forEach(feature => {
+      if (features.length < 6 && !features.includes(feature)) {
+        features.push(feature);
+      }
+    });
+    
+    return features.slice(0, 6);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading project details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-lg mb-4">
+            <p className="font-medium">Project not found</p>
+            <p className="text-sm">{error || 'This project may not be completed yet or does not exist.'}</p>
+          </div>
+          <Link to="/projects" className="btn-primary">
+            Back to Projects
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
