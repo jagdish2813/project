@@ -69,35 +69,49 @@ const Chatbot = () => {
 
   /**
    * Utility function to handle API calls with exponential backoff and retry logic.
-   * This is used for the Gemini API call to improve resilience against transient errors.
+   * This version includes improved logging for diagnosing 4xx errors.
    */
   const fetchWithRetry = async (url: string, options: RequestInit, maxRetries: number = 3): Promise<any> => {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const response = await fetch(url, options);
         
-        // If the response is good (2xx) or a final client error (4xx), stop retrying
-        if (response.ok || response.status < 500) {
-          const result = await response.json();
-          if (!response.ok) {
-              // Treat 4xx errors (like 400 Bad Request) as definitive failures
-              throw new Error(`API returned status ${response.status}: ${JSON.stringify(result)}`);
-          }
-          return result;
+        // Success case (200-299)
+        if (response.ok) {
+          return response.json();
         }
         
-        // For server errors (5xx), log and retry
-        console.warn(`Attempt ${attempt + 1}: Server error (${response.status}). Retrying in ${Math.pow(2, attempt)}s...`);
-        // Exponential backoff delay: 1s, 2s, 4s...
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        // Attempt to parse JSON response for error details, even if status is not ok
+        const result = await response.json().catch(() => ({})); 
+
+        // If it's a client error (4xx), stop and throw immediately (no retries)
+        if (response.status >= 400 && response.status < 500) {
+            console.error(`Attempt ${attempt + 1}: Definitive Client Error (${response.status}). No retry. Response body:`, result);
+            throw new Error(`API Client Error (${response.status})`);
+        }
+        
+        // If it's a server error (5xx), log and retry
+        if (response.status >= 500) {
+             console.warn(`Attempt ${attempt + 1}: Server Error (${response.status}). Retrying in ${Math.pow(2, attempt)}s...`);
+             // Exponential backoff delay: 1s, 2s, 4s...
+             await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        } else {
+             // Handle other unexpected non-2xx status codes
+             console.error(`Attempt ${attempt + 1}: Unexpected Non-Success Status (${response.status}). No retry. Response body:`, result);
+             throw new Error(`API Unexpected Error (${response.status})`);
+        }
         
       } catch (error) {
         // For network errors (e.g., failed fetch before receiving a status), log and retry
-        console.error(`Attempt ${attempt + 1}: Network error. Retrying in ${Math.pow(2, attempt)}s...`, error);
+        console.error(`Attempt ${attempt + 1}: Network/Parsing Error. Retrying in ${Math.pow(2, attempt)}s...`, error);
+        if (attempt === maxRetries - 1) {
+             // If this is the last attempt, re-throw the original error.
+             throw error;
+        }
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
       }
     }
-    // If all attempts fail
+    // If all attempts fail, the last error will be thrown.
     throw new Error(`Failed to fetch from API after ${maxRetries} attempts.`);
   };
 
@@ -380,12 +394,14 @@ const Chatbot = () => {
             botResponse = text;
           } else {
             // This handles cases where the API returns a success status but no text content
+            console.error("AI service returned an empty or malformed text response.", result);
             throw new Error('AI service returned an empty response.');
           }
           // --- END AI SERVICE CALL ---
 
         } catch (aiError) {
-          console.error('Error calling AI service:', aiError);
+          // Log the specific AI service error here to help the user diagnose the problem
+          console.error('Error calling AI service (likely 4xx error or critical failure):', aiError); 
           // This is the error message the user is seeing.
           botResponse = "I'm sorry, I'm having trouble connecting to our smart AI service right now. Please try again in a moment, or try asking a simpler question.";
         }
