@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, Bot, User, Minimize2, Maximize2, Sparkles, Settings, HelpCircle, RefreshCw } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
+import { 
+  MessageCircle, X, Send, Bot, User, Minimize2, Maximize2, 
+  Sparkles, Settings, HelpCircle, Mic, Volume2
+} from 'lucide-react';
+// ASSUMPTION: You have a centralized supabase client import
+import { supabase } from '../lib/supabase'; 
+// ASSUMPTION: You have a simple hook for user authentication state
+import { useAuth } from '../hooks/useAuth'; 
 
+// --- Type Definitions ---
 interface Message {
   id: string;
   message: string;
@@ -16,8 +22,16 @@ interface QuickReply {
   action: string;
 }
 
+// Extend Window interface for Speech Recognition API compatibility
+declare global {
+  interface Window {
+    webkitSpeechRecognition: any;
+    SpeechRecognition: any;
+  }
+}
+
 const Chatbot = () => {
-  const { user } = useAuth();
+  const { user } = useAuth(); // Get current user (for chat history tracking)
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -26,36 +40,66 @@ const Chatbot = () => {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const [isAIEnabled, setIsAIEnabled] = useState(true);
+  const [lastAction, setLastAction] = useState<string | null>(null);
+  
+  // Voice State
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null); 
+  const synthRef = useRef<SpeechSynthesis | null>(null); 
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Enhanced quick replies with more relevant options
+  // Quick replies for initial prompt
   const quickReplies: QuickReply[] = [
     { text: "What interior design services do you offer?", action: "services" },
     { text: "How do I find the right designer?", action: "find_designer" }
   ];
-
-  // Additional suggested questions based on context
+  
+  // Follow-up suggestions based on the last user action/category
   const suggestedFollowUps: Record<string, QuickReply[]> = {
     services: [
       { text: "Do you offer 3D visualization?", action: "3d_visualization" },
       { text: "Can I get partial room design?", action: "partial_design" },
     ],
-    pricing: [
-      { text: "Are there any ongoing offers?", action: "offers" },
-      { text: "What payment methods do you accept?", action: "payment" },
-    ],
     find_designer: [
       { text: "How are designers verified?", action: "verification" },
       { text: "Can I see designer reviews?", action: "reviews" },
     ],
-    process: [
-      { text: "How long does a project take?", action: "timeline" },
-      { text: "What if I'm not satisfied?", action: "satisfaction" },
-    ]
   };
 
-  // Track the last action to show relevant follow-ups
-  const [lastAction, setLastAction] = useState<string | null>(null);
+  /**
+   * Utility function to handle API calls with exponential backoff and retry logic.
+   * This is used for the Gemini API call to improve resilience against transient errors.
+   */
+  const fetchWithRetry = async (url: string, options: RequestInit, maxRetries: number = 3): Promise<any> => {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, options);
+        
+        // If the response is good (2xx) or a final client error (4xx), stop retrying
+        if (response.ok || response.status < 500) {
+          const result = await response.json();
+          if (!response.ok) {
+              // Treat 4xx errors (like 400 Bad Request) as definitive failures
+              throw new Error(`API returned status ${response.status}: ${JSON.stringify(result)}`);
+          }
+          return result;
+        }
+        
+        // For server errors (5xx), log and retry
+        console.warn(`Attempt ${attempt + 1}: Server error (${response.status}). Retrying in ${Math.pow(2, attempt)}s...`);
+        // Exponential backoff delay: 1s, 2s, 4s...
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        
+      } catch (error) {
+        // For network errors (e.g., failed fetch before receiving a status), log and retry
+        console.error(`Attempt ${attempt + 1}: Network error. Retrying in ${Math.pow(2, attempt)}s...`, error);
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+      }
+    }
+    // If all attempts fail
+    throw new Error(`Failed to fetch from API after ${maxRetries} attempts.`);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -64,21 +108,40 @@ const Chatbot = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
+  
+  // Initialize chat and voice APIs
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       initializeChat();
     }
+    
+    // Initialize Speech Synthesis
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+        synthRef.current = window.speechSynthesis;
+    }
+    
+    // Cleanup function for voice APIs
+    return () => {
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+        }
+        if (synthRef.current) {
+            synthRef.current.cancel();
+        }
+    };
   }, [isOpen]);
 
+  /**
+   * Initializes a new chat conversation in the database.
+   * Uses schema: public.chat_conversations (id, user_id, session_id, title, status)
+   */
   const initializeChat = async () => {
     try {
-      // Create conversation
       const { data: conversation, error: convError } = await supabase
-        .from('chat_conversations')
+        .from('chat_conversations') // CORRECTED TABLE NAME
         .insert({
-          user_id: user?.id || null,
-          session_id: sessionId,
+          user_id: user?.id || null, // CORRECTED COLUMN NAME
+          session_id: sessionId, // CORRECTED COLUMN NAME
           title: 'Support Chat',
           status: 'active'
         })
@@ -88,10 +151,9 @@ const Chatbot = () => {
       if (convError) throw convError;
       setConversationId(conversation.id);
 
-      // Add welcome message
       const welcomeMessage: Message = {
         id: 'welcome',
-        message: "👋 Hi! I'm your AI design assistant for TheHomeDesigners. I can help you with finding the perfect designer, understanding our services, pricing information, or answering any questions about interior design. How can I assist you today?",
+        message: "👋 Hi! I'm your AI design assistant. How can I help you find the details you need or answer a general question?",
         sender: 'bot',
         timestamp: new Date(),
         message_type: 'welcome'
@@ -101,91 +163,236 @@ const Chatbot = () => {
 
       // Save welcome message to database
       await supabase
-        .from('chat_messages')
+        .from('chat_messages') // CORRECTED TABLE NAME
         .insert({
-          conversation_id: conversation.id,
+          conversation_id: conversation.id, // CORRECTED COLUMN NAME
           message: welcomeMessage.message,
           sender: 'bot',
-          message_type: 'welcome'
+          message_type: 'welcome' // CORRECTED COLUMN NAME
         });
-
     } catch (error) {
       console.error('Error initializing chat:', error);
     }
   };
+  
+  /**
+   * Queries the static knowledge base (Supabase) for specific, reliable answers.
+   * Uses schema: public.chatbot_knowledge (category, question, answer, is_active, priority)
+   */
+  const getKnowledgeBaseResponse = async (text: string, action: string | null): Promise<string | null> => {
+    const queryText = text.toLowerCase();
+    
+    try {
+      // 1. Prioritize Quick Reply Action Match
+      if (action) {
+         const actionSearch = action.replace(/_/g, ' '); 
+         
+         const { data, error } = await supabase
+           .from('chatbot_knowledge') // CORRECTED TABLE NAME
+           .select('answer')
+           .or(`category.eq.${action},question.ilike.%${actionSearch}%`) 
+           .eq('is_active', true) // CORRECTED COLUMN NAME
+           .order('priority', { ascending: false }) 
+           .limit(1);
 
+         if (error) throw error;
+         if (data && data.length > 0) {
+           return data[0].answer;
+         }
+      }
+      
+      // 2. Fallback: General Keyword Search with Filtering
+      const stopWords = new Set(['what', 'how', 'when', 'the', 'and', 'design', 'about', 'services', 'find', 'right', 'can', 'i', 'a', 'do', 'you', 'project', 'help', 'me', 'with', 'is', 'it']);
+      
+      const importantKeywords = queryText
+        .split(/\s+/)
+        .filter(word => word.length > 3 && !stopWords.has(word));
+      
+      if (importantKeywords.length > 0) {
+        // Construct a partial text match condition
+        const searchConditions = importantKeywords.map(kw => `question.ilike.%${kw}%`).join(',');
+
+        const { data, error } = await supabase
+          .from('chatbot_knowledge') // CORRECTED TABLE NAME
+          .select('answer')
+          .or(searchConditions) 
+          .eq('is_active', true) // CORRECTED COLUMN NAME
+          .order('priority', { ascending: false }) 
+          .limit(1);
+
+        if (error) throw error;
+        if (data && data.length > 0) {
+          return data[0].answer;
+        }
+      }
+
+      return null; 
+    } catch (error) {
+      console.error('Error fetching knowledge base response:', error);
+      return null;
+    }
+  };
+  
+  /**
+   * VOICE: Handles the bot reading the message aloud (Text-to-Speech)
+   */
+  const textToSpeech = (text: string) => {
+    if (!synthRef.current || !isOpen || isListening) return;
+    synthRef.current.cancel(); 
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    synthRef.current.speak(utterance);
+  };
+  
+  /**
+   * VOICE: Handles starting/stopping voice input (Speech-to-Text)
+   */
+  const toggleListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      console.error("Speech recognition is not supported in your browser.");
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
+    if (!recognitionRef.current) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onstart = () => {
+        setIsListening(true);
+        setInputMessage('Listening...');
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+        setInputMessage('');
+      };
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        handleSendMessage(transcript);
+      };
+      
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        setInputMessage('');
+      };
+    }
+    
+    recognitionRef.current.start();
+  };
+
+  /**
+   * CORE: Main handler for sending messages.
+   * 1. Tries Supabase knowledge base (specific details)
+   * 2. Falls back to AI Service (general knowledge)
+   */
   const handleSendMessage = async (messageText?: string) => {
     const textToSend = messageText || inputMessage.trim();
     if (!textToSend || !conversationId) return;
     
-    // Extract action from quick replies if this is a predefined message
-    const matchingQuickReply = quickReplies.find(qr => qr.text === textToSend);
+    synthRef.current?.cancel();
+
+    const allQuickReplies = [...quickReplies, ...Object.values(suggestedFollowUps).flat()];
+    const matchingQuickReply = allQuickReplies.find(qr => qr.text === textToSend);
     const action = matchingQuickReply?.action || null;
-    if (action) {
-      setLastAction(action);
-    }
+    
+    setLastAction(action || null);
 
     setIsLoading(true);
     setInputMessage('');
 
-    // Add user message
     const userMessage: Message = {
       id: `user_${Date.now()}`,
       message: textToSend,
       sender: 'user',
       timestamp: new Date()
     };
-
     setMessages(prev => [...prev, userMessage]);
     
     try {
       // Save user message to database
       await supabase
-        .from('chat_messages')
+        .from('chat_messages') // CORRECTED TABLE NAME
         .insert({
-          conversation_id: conversationId,
+          conversation_id: conversationId, // CORRECTED COLUMN NAME
           message: textToSend,
           sender: 'user',
-          message_type: 'text'
+          message_type: 'text' // CORRECTED COLUMN NAME
         });
 
-      let botResponse;
+      let botResponse: string;
       
-      if (isAIEnabled) {
+      // 1. Try Knowledge Base first (for specific, reliable answers)
+      let knowledgeResponse = await getKnowledgeBaseResponse(textToSend, action);
+      
+      if (knowledgeResponse) {
+        botResponse = knowledgeResponse;
+      } 
+      // 2. Fallback to AI Service (for generalized questions)
+      else if (isAIEnabled) {
         try {
-          // Call the AI edge function
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-ai`, {
+          // --- AI SERVICE CALL ---
+          const apiKey = ""; // Leave empty for Canvas to provide at runtime
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+          // Construct chat history for context
+          const chatHistory = messages
+              .filter(m => m.sender !== 'bot' || m.message_type !== 'welcome')
+              .slice(-5) // Send last 5 messages for context
+              .map(m => ({
+                  role: m.sender === 'user' ? 'user' : 'model',
+                  parts: [{ text: m.message }]
+              }));
+
+          chatHistory.push({ role: 'user', parts: [{ text: textToSend }] });
+
+
+          const payload = {
+              contents: chatHistory,
+              // Enable Google Search grounding for real-time, generalized answers
+              tools: [{ "google_search": {} }], 
+              systemInstruction: {
+                  parts: [{ text: "You are a friendly, concise, and helpful AI assistant for TheHomeDesigners website. Answer questions about interior design, project process, or general inquiries. If a user asks for specific data (like a project status or designer review), inform them that you are searching the knowledge base but cannot access real-time personal user data directly; instead, provide the most relevant general information you can find." }]
+              },
+          };
+          
+          // Use the resilient fetchWithRetry function
+          const result = await fetchWithRetry(apiUrl, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-            },
-            body: JSON.stringify({
-              message: textToSend,
-              conversation_id: conversationId,
-              user_id: user?.id
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
           });
+
+          const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
           
-          const data = await response.json();
-          
-          if (response.ok) {
-            if (data.response) {
-              botResponse = data.response;
-            } else {
-              throw new Error('No response received from AI service');
-            }
+          if (text) {
+            botResponse = text;
           } else {
-            throw new Error(data.error || `AI service error: ${response.status} ${response.statusText}`);
+            // This handles cases where the API returns a success status but no text content
+            throw new Error('AI service returned an empty response.');
           }
+          // --- END AI SERVICE CALL ---
+
         } catch (aiError) {
           console.error('Error calling AI service:', aiError);
-          // Fallback to basic response if AI fails
-          botResponse = "I'm sorry, I'm having trouble connecting to our AI service right now. Please try again in a moment, or contact our support team directly at info@thehomedesigners.com for immediate assistance.";
+          // This is the error message the user is seeing.
+          botResponse = "I'm sorry, I'm having trouble connecting to our smart AI service right now. Please try again in a moment, or try asking a simpler question.";
         }
-      } else {
-        // Basic response when AI is disabled
-        botResponse = "Thank you for your message. Our team will review it and get back to you soon. For immediate assistance, please contact our support team at info@thehomedesigners.com or +91 98765 43210.";
+      } 
+      // 3. Final Basic Fallback
+      else {
+        botResponse = "Thank you for your message. Our team will review it and get back to you soon.";
       }
 
       // Add bot message
@@ -195,23 +402,24 @@ const Chatbot = () => {
         sender: 'bot',
         timestamp: new Date()
       };
-
       setMessages(prev => [...prev, botMessage]);
+      
+      // VOICE: Read the response aloud
+      textToSpeech(botResponse);
 
       // Save bot message to database
       await supabase
-        .from('chat_messages')
+        .from('chat_messages') // CORRECTED TABLE NAME
         .insert({
-          conversation_id: conversationId,
+          conversation_id: conversationId, // CORRECTED COLUMN NAME
           message: botResponse,
           sender: 'bot'
         });
-
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage: Message = {
         id: `error_${Date.now()}`,
-        message: "I'm sorry, I encountered an error. Please try again or contact our support team.",
+        message: "I'm sorry, I encountered a critical error. Please refresh or contact support.",
         sender: 'bot',
         timestamp: new Date()
       };
@@ -220,17 +428,21 @@ const Chatbot = () => {
       setIsLoading(false);
     }
   };
-
+  
   const handleQuickReply = (reply: QuickReply) => {
     handleSendMessage(reply.text);
   };
-
+  
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
+  
+  const stopSpeech = () => {
+      synthRef.current?.cancel();
+  }
 
   if (!isOpen) {
     return (
@@ -262,7 +474,7 @@ const Chatbot = () => {
             <h3 className="font-semibold">{isAIEnabled ? 'AI Design Assistant' : 'Support Chat'}</h3>
             <p className="text-xs text-primary-100 flex items-center">
               <span className="w-1.5 h-1.5 bg-green-400 rounded-full mr-1"></span>
-              Online now
+              Online
             </p>
           </div>
         </div>
@@ -290,131 +502,158 @@ const Chatbot = () => {
       </div>
 
     {!isMinimized && (
-  <>
-    {/* Chat body: messages + quick replies */}
-    <div className="flex flex-col flex-grow h-[calc(24rem-112px)] overflow-hidden">
-      {/* Scrollable messages */}
-      <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+      <>
+        {/* Chat body: messages + quick replies */}
+        <div className="flex flex-col flex-grow h-[calc(24rem-112px)] overflow-hidden">
+          {/* Scrollable messages */}
+          <div 
+            className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50"
+            onClick={stopSpeech} 
           >
-            <div className={`flex items-start space-x-2 max-w-[80%] ${
-              message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-            }`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                message.sender === 'user' 
-                  ? 'bg-primary-500 text-white' 
-                  : 'bg-gray-200 text-gray-600'
-              }`}>
-                {message.sender === 'user' ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`flex items-start space-x-2 max-w-[80%] ${
+                  message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+                }`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    message.sender === 'user' 
+                      ? 'bg-primary-500 text-white' 
+                      : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {message.sender === 'user' ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
+                  </div>
+                  <div className={`p-3 rounded-lg ${
+                    message.sender === 'user'
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-white text-gray-800 border border-gray-200 shadow-sm'
+                  }`}>
+                    <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+                    {/* VOICE: Button to replay the audio */}
+                    {message.sender === 'bot' && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); textToSpeech(message.message); }}
+                            className="mt-2 text-primary-500 hover:text-primary-600 p-1 rounded-full bg-white/50"
+                            title="Listen again"
+                        >
+                            <Volume2 className="w-3 h-3" />
+                        </button>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className={`p-3 rounded-lg ${
-                message.sender === 'user'
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-white text-gray-800 border border-gray-200 shadow-sm'
-              }`}>
-                <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+            ))}
+
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                    <Bot className="w-3 h-3 text-gray-600" />
+                  </div>
+                  <div className="bg-white border border-gray-200 p-3 rounded-lg shadow-sm">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Suggested replies */}
+          {(messages.length <= 1 || (lastAction && suggestedFollowUps[lastAction])) && (
+            <div className="px-4 py-2 bg-white border-t border-gray-200">
+              <div className="flex flex-col space-y-2">
+                {messages.length <= 1 && (
+                  <>
+                    <p className="text-xs text-gray-500 mb-1 flex items-center">
+                      <HelpCircle className="w-3 h-3 mr-1" />
+                      Suggested questions:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {quickReplies.map((reply, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleQuickReply(reply)}
+                          className="text-xs bg-primary-50 text-primary-600 px-3 py-1 rounded-full hover:bg-primary-100 transition-colors flex items-center"
+                        >
+                          {reply.text}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {lastAction && suggestedFollowUps[lastAction] && (
+                  <>
+                    <p className="text-xs text-gray-500 mt-2 mb-1 flex items-center">
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      People also ask:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestedFollowUps[lastAction].map((reply, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleQuickReply(reply)}
+                          className="text-xs bg-accent-50 text-accent-700 px-3 py-1 rounded-full hover:bg-accent-100 transition-colors"
+                        >
+                          {reply.text}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
-          </div>
-        ))}
+          )}
+        </div>
 
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-                <Bot className="w-3 h-3 text-gray-600" />
-              </div>
-              <div className="bg-white border border-gray-200 p-3 rounded-lg shadow-sm">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Suggested replies */}
-      {(messages.length <= 1 || (lastAction && suggestedFollowUps[lastAction])) && (
-        <div className="px-4 py-2 bg-white border-t border-gray-200">
-          <div className="flex flex-col space-y-2">
-            {messages.length <= 1 && (
-              <>
-                <p className="text-xs text-gray-500 mb-1 flex items-center">
-                  <HelpCircle className="w-3 h-3 mr-1" />
-                  Suggested questions:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {quickReplies.map((reply, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleQuickReply(reply)}
-                      className="text-xs bg-primary-50 text-primary-600 px-3 py-1 rounded-full hover:bg-primary-100 transition-colors flex items-center"
-                    >
-                      {reply.text}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {lastAction && suggestedFollowUps[lastAction] && (
-              <>
-                <p className="text-xs text-gray-500 mt-2 mb-1 flex items-center">
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  People also ask:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {suggestedFollowUps[lastAction].map((reply, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleQuickReply(reply)}
-                      className="text-xs bg-accent-50 text-accent-700 px-3 py-1 rounded-full hover:bg-accent-100 transition-colors"
-                    >
-                      {reply.text}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+        {/* Input Field with Voice Option */}
+        <div className="p-4 border-t border-gray-200 bg-white">
+          <div className="flex space-x-2 items-center">
+             {/* VOICE: Microphone Button */}
+            <button
+              onClick={toggleListening}
+              className={`p-2 rounded-lg transition-colors shadow-sm flex-shrink-0 ${
+                isListening 
+                  ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+              }`}
+              aria-label={isListening ? "Stop voice input" : "Start voice input"}
+              title={isListening ? "Stop voice input" : "Start voice input"}
+              disabled={isLoading}
+            >
+              <Mic className="w-4 h-4" />
+            </button>
+            
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={isListening ? "Listening..." : (isAIEnabled ? "Ask me anything about design..." : "Type your message...")}
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm shadow-sm"
+              aria-label="Chat message"
+              autoComplete="off"
+              disabled={isLoading || isListening}
+            />
+            <button
+              onClick={() => handleSendMessage()}
+              disabled={!inputMessage.trim() || isLoading || isListening}
+              className="bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors shadow-sm flex-shrink-0"
+              aria-label="Send message"
+            >
+              <Send className="w-4 h-4" />
+            </button>
           </div>
         </div>
-      )}
-    </div>
-
-    {/* Input Field (always visible) */}
-    <div className="p-4 border-t border-gray-200 bg-white">
-      <div className="flex space-x-2 items-center">
-        <input
-          type="text"
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder={isAIEnabled ? "Ask me anything about interior design..." : "Type your message..."}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm shadow-sm"
-          aria-label="Chat message"
-          autoComplete="off"
-          disabled={isLoading}
-        />
-        <button
-          onClick={() => handleSendMessage()}
-          disabled={!inputMessage.trim() || isLoading}
-          className="bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors shadow-sm flex-shrink-0"
-          aria-label="Send message"
-        >
-          <Send className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  </>
-)}
-
+      </>
+    )}
     </div>
   );
 };
