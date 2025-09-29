@@ -31,7 +31,7 @@ declare global {
 }
 
 const Chatbot = () => {
-  const { user } = useAuth(); // Get current user (for chat history tracking)
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -69,7 +69,7 @@ const Chatbot = () => {
 
   /**
    * Utility function to handle API calls with exponential backoff and retry logic.
-   * This version includes improved logging for diagnosing 4xx errors.
+   * Cleans up excessive logging, but retains retry logic for 5xx errors.
    */
   const fetchWithRetry = async (url: string, options: RequestInit, maxRetries: number = 3): Promise<any> => {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -81,37 +81,32 @@ const Chatbot = () => {
           return response.json();
         }
         
-        // Attempt to parse JSON response for error details, even if status is not ok
-        const result = await response.json().catch(() => ({})); 
+        // Attempt to parse JSON response for error details
+        const result = await response.json().catch(() => ({ error: "Could not parse response body" })); 
 
-        // If it's a client error (4xx), stop and throw immediately (no retries)
+        // If it's a client error (4xx) like 403, stop and throw immediately (no retries)
         if (response.status >= 400 && response.status < 500) {
-            console.error(`Attempt ${attempt + 1}: Definitive Client Error (${response.status}). No retry. Response body:`, result);
-            throw new Error(`API Client Error (${response.status})`);
+            console.error(`Gemini API Auth Error: Status ${response.status}. Full Response:`, result);
+            throw new Error(`API Client Error (${response.status}): Check API Key/Permissions.`);
         }
         
         // If it's a server error (5xx), log and retry
         if (response.status >= 500) {
-             console.warn(`Attempt ${attempt + 1}: Server Error (${response.status}). Retrying in ${Math.pow(2, attempt)}s...`);
              // Exponential backoff delay: 1s, 2s, 4s...
              await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
         } else {
              // Handle other unexpected non-2xx status codes
-             console.error(`Attempt ${attempt + 1}: Unexpected Non-Success Status (${response.status}). No retry. Response body:`, result);
              throw new Error(`API Unexpected Error (${response.status})`);
         }
         
       } catch (error) {
-        // For network errors (e.g., failed fetch before receiving a status), log and retry
-        console.error(`Attempt ${attempt + 1}: Network/Parsing Error. Retrying in ${Math.pow(2, attempt)}s...`, error);
+        // For network errors
         if (attempt === maxRetries - 1) {
-             // If this is the last attempt, re-throw the original error.
              throw error;
         }
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
       }
     }
-    // If all attempts fail, the last error will be thrown.
     throw new Error(`Failed to fetch from API after ${maxRetries} attempts.`);
   };
 
@@ -147,15 +142,14 @@ const Chatbot = () => {
 
   /**
    * Initializes a new chat conversation in the database.
-   * Uses schema: public.chat_conversations (id, user_id, session_id, title, status)
    */
   const initializeChat = async () => {
     try {
       const { data: conversation, error: convError } = await supabase
-        .from('chat_conversations') // CORRECTED TABLE NAME
+        .from('chat_conversations')
         .insert({
-          user_id: user?.id || null, // CORRECTED COLUMN NAME
-          session_id: sessionId, // CORRECTED COLUMN NAME
+          user_id: user?.id || null,
+          session_id: sessionId,
           title: 'Support Chat',
           status: 'active'
         })
@@ -177,12 +171,12 @@ const Chatbot = () => {
 
       // Save welcome message to database
       await supabase
-        .from('chat_messages') // CORRECTED TABLE NAME
+        .from('chat_messages')
         .insert({
-          conversation_id: conversation.id, // CORRECTED COLUMN NAME
+          conversation_id: conversation.id,
           message: welcomeMessage.message,
           sender: 'bot',
-          message_type: 'welcome' // CORRECTED COLUMN NAME
+          message_type: 'welcome'
         });
     } catch (error) {
       console.error('Error initializing chat:', error);
@@ -191,7 +185,6 @@ const Chatbot = () => {
   
   /**
    * Queries the static knowledge base (Supabase) for specific, reliable answers.
-   * Uses schema: public.chatbot_knowledge (category, question, answer, is_active, priority)
    */
   const getKnowledgeBaseResponse = async (text: string, action: string | null): Promise<string | null> => {
     const queryText = text.toLowerCase();
@@ -202,10 +195,10 @@ const Chatbot = () => {
          const actionSearch = action.replace(/_/g, ' '); 
          
          const { data, error } = await supabase
-           .from('chatbot_knowledge') // CORRECTED TABLE NAME
+           .from('chatbot_knowledge')
            .select('answer')
            .or(`category.eq.${action},question.ilike.%${actionSearch}%`) 
-           .eq('is_active', true) // CORRECTED COLUMN NAME
+           .eq('is_active', true)
            .order('priority', { ascending: false }) 
            .limit(1);
 
@@ -227,10 +220,10 @@ const Chatbot = () => {
         const searchConditions = importantKeywords.map(kw => `question.ilike.%${kw}%`).join(',');
 
         const { data, error } = await supabase
-          .from('chatbot_knowledge') // CORRECTED TABLE NAME
+          .from('chatbot_knowledge')
           .select('answer')
           .or(searchConditions) 
-          .eq('is_active', true) // CORRECTED COLUMN NAME
+          .eq('is_active', true)
           .order('priority', { ascending: false }) 
           .limit(1);
 
@@ -308,8 +301,6 @@ const Chatbot = () => {
 
   /**
    * CORE: Main handler for sending messages.
-   * 1. Tries Supabase knowledge base (specific details)
-   * 2. Falls back to AI Service (general knowledge)
    */
   const handleSendMessage = async (messageText?: string) => {
     const textToSend = messageText || inputMessage.trim();
@@ -337,12 +328,12 @@ const Chatbot = () => {
     try {
       // Save user message to database
       await supabase
-        .from('chat_messages') // CORRECTED TABLE NAME
+        .from('chat_messages')
         .insert({
-          conversation_id: conversationId, // CORRECTED COLUMN NAME
+          conversation_id: conversationId,
           message: textToSend,
           sender: 'user',
-          message_type: 'text' // CORRECTED COLUMN NAME
+          message_type: 'text'
         });
 
       let botResponse: string;
@@ -393,17 +384,16 @@ const Chatbot = () => {
           if (text) {
             botResponse = text;
           } else {
-            // This handles cases where the API returns a success status but no text content
+            // Handle case where API is reachable but returns no text content (malformed response)
             console.error("AI service returned an empty or malformed text response.", result);
             throw new Error('AI service returned an empty response.');
           }
           // --- END AI SERVICE CALL ---
 
         } catch (aiError) {
-          // Log the specific AI service error here to help the user diagnose the problem
-          console.error('Error calling AI service (likely 4xx error or critical failure):', aiError); 
-          // This is the error message the user is seeing.
-          botResponse = "I'm sorry, I'm having trouble connecting to our smart AI service right now. Please try again in a moment, or try asking a simpler question.";
+          // Specific fallback for AI service failure (due to 403 or other critical failure)
+          console.error('AI service failure:', aiError); 
+          botResponse = "I'm sorry, I'm having trouble connecting to our smart AI service right now. Please check your project settings and API permissions, or try asking a simpler question.";
         }
       } 
       // 3. Final Basic Fallback
@@ -425,9 +415,9 @@ const Chatbot = () => {
 
       // Save bot message to database
       await supabase
-        .from('chat_messages') // CORRECTED TABLE NAME
+        .from('chat_messages')
         .insert({
-          conversation_id: conversationId, // CORRECTED COLUMN NAME
+          conversation_id: conversationId,
           message: botResponse,
           sender: 'bot'
         });
