@@ -8,162 +8,182 @@ import { supabase } from '../lib/supabase';
 // ASSUMPTION: You have a simple hook for user authentication state
 import { useAuth } from '../hooks/useAuth'; 
 
-import { createClient } from 'npm:@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+// --- Type Definitions ---
+interface Message {
+  id: string;
+  message: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
+  message_type?: string;
 }
 
-interface ChatMessage {
-  message: string
-  sender: 'user' | 'assistant'
-  timestamp: string
+interface QuickReply {
+  text: string;
+  action: string;
 }
 
-interface ChatRequest {
-  message: string
-  conversationId?: string
-  sessionId?: string
-}
-
-Deno.serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+// Extend Window interface for Speech Recognition API compatibility
+declare global {
+  interface Window {
+    webkitSpeechRecognition: any;
+    SpeechRecognition: any;
   }
+}
 
-  try {
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseKey)
+const Chatbot = () => {
+  const { user } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [isAIEnabled, setIsAIEnabled] = useState(true);
+  const [lastAction, setLastAction] = useState<string | null>(null);
+  
+  // Voice State
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null); 
+  const synthRef = useRef<SpeechSynthesis | null>(null); 
 
-    // Parse request body
-    const { message, conversationId, sessionId }: ChatRequest = await req.json()
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    if (!message) {
-      return new Response(
-        JSON.stringify({ error: 'Message is required' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
+  // Quick replies for initial prompt
+  const quickReplies: QuickReply[] = [
+    { text: "What interior design services do you offer?", action: "services" },
+    { text: "How do I find the right designer?", action: "find_designer" }
+  ];
+  
+  // Follow-up suggestions based on the last user action/category
+  const suggestedFollowUps: Record<string, QuickReply[]> = {
+    services: [
+      { text: "Do you offer 3D visualization?", action: "3d_visualization" },
+      { text: "Can I get partial room design?", action: "partial_design" },
+    ],
+    find_designer: [
+      { text: "How are designers verified?", action: "verification" },
+      { text: "Can I see designer reviews?", action: "reviews" },
+    ],
+  };
 
-    // Get knowledge base for context
-    const { data: knowledgeBase } = await supabase
-      .from('chatbot_knowledge')
-      .select('*')
-      .eq('is_active', true)
-      .order('priority', { ascending: false })
-
-    // Simple keyword matching for responses
-    const userMessage = message.toLowerCase()
-    let response = "I'm here to help you with interior design questions! Could you please provide more details about what you're looking for?"
-
-    // Check knowledge base for relevant responses
-    if (knowledgeBase) {
-      for (const item of knowledgeBase) {
-        const keywords = item.keywords || []
-        const hasKeyword = keywords.some((keyword: string) => 
-          userMessage.includes(keyword.toLowerCase())
-        )
+  /**
+   * Utility function to handle API calls with exponential backoff and retry logic.
+   * Note: This function is kept general, but the 4xx error handling is less relevant
+   * for a custom Supabase function than it was for the direct Gemini API.
+   */
+  const fetchWithRetry = async (url: string, options: RequestInit, maxRetries: number = 3): Promise<any> => {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, options);
         
-        if (hasKeyword || userMessage.includes(item.question.toLowerCase())) {
-          response = item.answer
-          break
+        // Success case (200-299)
+        if (response.ok) {
+          return response.json();
         }
-      }
-    }
-
-    // Handle specific design-related queries
-    if (userMessage.includes('cost') || userMessage.includes('price') || userMessage.includes('budget')) {
-      response = "Interior design costs vary based on project scope, room size, and material choices. Typically, residential projects range from ₹1,200 to ₹3,000 per square foot. Would you like me to connect you with a designer for a detailed quote?"
-    } else if (userMessage.includes('designer') || userMessage.includes('find')) {
-      response = "I can help you find the perfect interior designer! We have verified designers specializing in residential, commercial, and luxury projects. What type of space are you looking to design?"
-    } else if (userMessage.includes('material') || userMessage.includes('furniture')) {
-      response = "We work with a wide range of materials and furniture options. Our designers can help you choose the best materials based on your budget, style preferences, and durability requirements. Would you like to explore our material catalog?"
-    } else if (userMessage.includes('timeline') || userMessage.includes('time')) {
-      response = "Project timelines depend on scope and complexity. Typically: Room design (2-4 weeks), Full home design (6-12 weeks), Commercial projects (8-16 weeks). This includes planning, procurement, and execution phases."
-    }
-
-    // Store conversation if sessionId provided
-    let conversationRecord = null
-    if (sessionId) {
-      // Check if conversation exists
-      const { data: existingConv } = await supabase
-        .from('chat_conversations')
-        .select('*')
-        .eq('session_id', sessionId)
-        .single()
-
-      if (existingConv) {
-        conversationRecord = existingConv
-      } else {
-        // Create new conversation
-        const { data: newConv } = await supabase
-          .from('chat_conversations')
-          .insert({
-            session_id: sessionId,
-            title: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
-            status: 'active'
-          })
-          .select()
-          .single()
         
-        conversationRecord = newConv
+        // Attempt to parse JSON response for error details
+        const result = await response.json().catch(() => ({ error: "Could not parse response body" })); 
+
+        // If it's a client error (4xx), stop and throw immediately (no retries)
+        if (response.status >= 400 && response.status < 500) {
+            console.error(`AI Function Error: Status ${response.status}. Full Response:`, result);
+            throw new Error(`AI Function Client Error (${response.status}): ${result.error || 'Server rejected request.'}`);
+        }
+        
+        // If it's a server error (5xx), log and retry
+        if (response.status >= 500) {
+             // Exponential backoff delay: 1s, 2s, 4s...
+             await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        } else {
+             // Handle other unexpected non-2xx status codes
+             throw new Error(`API Unexpected Error (${response.status})`);
+        }
+        
+      } catch (error) {
+        // For network errors
+        if (attempt === maxRetries - 1) {
+             throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
       }
-
-      // Store user message
-      await supabase
-        .from('chat_messages')
-        .insert({
-          conversation_id: conversationRecord?.id,
-          message: message,
-          sender: 'user',
-          message_type: 'text'
-        })
-
-      // Store assistant response
-      await supabase
-        .from('chat_messages')
-        .insert({
-          conversation_id: conversationRecord?.id,
-          message: response,
-          sender: 'assistant',
-          message_type: 'text'
-        })
     }
+    throw new Error(`Failed to fetch from API after ${maxRetries} attempts.`);
+  };
 
-    return new Response(
-      JSON.stringify({
-        response,
-        conversationId: conversationRecord?.id,
-        sessionId: sessionId || crypto.randomUUID()
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    )
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-  } catch (error) {
-    console.error('Error in chat-ai function:', error)
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+  
+  // Initialize chat and voice APIs
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      initializeChat();
+    }
     
-    return new Response(
-      JSON.stringify({ 
-        error: 'Internal server error',
-        details: error.message 
-      }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    )
-  }
-})
+    // Initialize Speech Synthesis
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+        synthRef.current = window.speechSynthesis;
+    }
+    
+    // Cleanup function for voice APIs
+    return () => {
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+        }
+        if (synthRef.current) {
+            synthRef.current.cancel();
+        }
+    };
+  }, [isOpen]);
+
+  /**
+   * Initializes a new chat conversation in the database.
+   */
+  const initializeChat = async () => {
+    try {
+      const { data: conversation, error: convError } = await supabase
+        .from('chat_conversations')
+        .insert({
+          user_id: user?.id || null,
+          session_id: sessionId,
+          title: 'Support Chat',
+          status: 'active'
+        })
+        .select()
+        .single();
+
+      if (convError) throw convError;
+      setConversationId(conversation.id);
+
+      const welcomeMessage: Message = {
+        id: 'welcome',
+        message: "👋 Hi! I'm your AI design assistant. How can I help you find the details you need or answer a general question?",
+        sender: 'bot',
+        timestamp: new Date(),
+        message_type: 'welcome'
+      };
+
+      setMessages([welcomeMessage]);
+
+      // Save welcome message to database
+      await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: conversation.id,
+          message: welcomeMessage.message,
+          sender: 'bot',
+          message_type: 'welcome'
+        });
+    } catch (error) {
+      console.error('Error initializing chat:', error);
+    }
+  };
+  
   /**
    * Queries the static knowledge base (Supabase) for specific, reliable answers.
    */
