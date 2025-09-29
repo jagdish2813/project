@@ -69,6 +69,8 @@ const Chatbot = () => {
 
   /**
    * Utility function to handle API calls with exponential backoff and retry logic.
+   * Note: This function is kept general, but the 4xx error handling is less relevant
+   * for a custom Supabase function than it was for the direct Gemini API.
    */
   const fetchWithRetry = async (url: string, options: RequestInit, maxRetries: number = 3): Promise<any> => {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -83,10 +85,10 @@ const Chatbot = () => {
         // Attempt to parse JSON response for error details
         const result = await response.json().catch(() => ({ error: "Could not parse response body" })); 
 
-        // If it's a client error (4xx) like 403, stop and throw immediately (no retries)
+        // If it's a client error (4xx), stop and throw immediately (no retries)
         if (response.status >= 400 && response.status < 500) {
-            console.error(`Gemini API Auth Error: Status ${response.status}. Full Response:`, result);
-            throw new Error(`API Client Error (${response.status}): Check API Key/Permissions.`);
+            console.error(`AI Function Error: Status ${response.status}. Full Response:`, result);
+            throw new Error(`AI Function Client Error (${response.status}): ${result.error || 'Server rejected request.'}`);
         }
         
         // If it's a server error (5xx), log and retry
@@ -343,12 +345,15 @@ const Chatbot = () => {
       if (knowledgeResponse) {
         botResponse = knowledgeResponse;
       } 
-      // 2. Fallback to AI Service (for generalized questions)
+      // 2. Fallback to AI Service (Supabase Edge Function)
       else if (isAIEnabled) {
         try {
-          // --- AI SERVICE CALL ---
-          const apiKey = ""; // Leave empty for Canvas to provide at runtime
-          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+          // --- AI SERVICE CALL (Supabase Edge Function) ---
+          const apiUrl = 'https://aqcvftydzrsvahiuurts.supabase.co/functions/v1/chat-ai';
+
+          // Get the current session token for Supabase Authorization
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData.session?.access_token;
 
           // Construct chat history for context
           const chatHistory = messages
@@ -356,43 +361,47 @@ const Chatbot = () => {
               .slice(-5) // Send last 5 messages for context
               .map(m => ({
                   role: m.sender === 'user' ? 'user' : 'model',
-                  parts: [{ text: m.message }]
+                  text: m.message
               }));
 
-          chatHistory.push({ role: 'user', parts: [{ text: textToSend }] });
-
-
           const payload = {
-              contents: chatHistory,
-              // Enable Google Search grounding for real-time, generalized answers
-              tools: [{ "google_search": {} }], 
-              systemInstruction: {
-                  parts: [{ text: "You are a friendly, concise, and helpful AI assistant for TheHomeDesigners website. Answer questions about interior design, project process, or general inquiries. If a user asks for specific data (like a project status or designer review), inform them that you are searching the knowledge base but cannot access real-time personal user data directly; instead, provide the most relevant general information you can find." }]
-              },
+              history: chatHistory,
+              currentMessage: textToSend,
           };
           
+          const headers: HeadersInit = {
+            'Content-Type': 'application/json',
+          };
+
+          // Add authorization header if a token exists
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+
           // Use the resilient fetchWithRetry function
           const result = await fetchWithRetry(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify(payload)
           });
 
-          const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+          // Assuming the Supabase function returns a JSON object like { text: "response" }
+          // or possibly { answer: "response" }
+          const text = result?.text || result?.answer;
           
           if (text) {
             botResponse = text;
           } else {
-            // Handle case where API is reachable but returns no text content (malformed response)
-            console.error("AI service returned an empty or malformed text response.", result);
+            // Handle case where API is reachable but returns no text content
+            console.error("AI function returned an empty or malformed text response.", result);
             throw new Error('AI service returned an empty response.');
           }
           // --- END AI SERVICE CALL ---
 
         } catch (aiError) {
-          // Specific fallback for AI service failure (due to 403 or other critical failure)
+          // Specific fallback for AI service failure (due to custom function error)
           console.error('AI service failure:', aiError); 
-          botResponse = "I'm sorry, I'm having trouble connecting to our smart AI service right now. Please check your project settings and API permissions, or try asking a simpler question.";
+          botResponse = "I'm sorry, there was a problem connecting to our AI service through the design function. Please try again or switch to basic support.";
         }
       } 
       // 3. Final Basic Fallback
