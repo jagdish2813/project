@@ -8,6 +8,23 @@ import { supabase } from '../lib/supabase';
 // ASSUMPTION: You have a simple hook for user authentication state
 import { useAuth } from '../hooks/useAuth'; 
 
+import { createClient } from 'npm:@supabase/supabase-js@2'
+
+Deno.serve(async (req: Request) => {
+  const supabaseClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    // Create client with Auth context of the user that called the function.
+    // This way your row-level-security (RLS) policies are applied.
+    {
+      global: {
+        headers: { Authorization: req.headers.get('Authorization')! },
+      },
+    }
+  );
+
+  //...
+})
 // --- Type Definitions ---
 interface Message {
   id: string;
