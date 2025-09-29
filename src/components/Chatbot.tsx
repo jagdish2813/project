@@ -69,7 +69,6 @@ const Chatbot = () => {
 
   /**
    * Utility function to handle API calls with exponential backoff and retry logic.
-   * Cleans up excessive logging, but retains retry logic for 5xx errors.
    */
   const fetchWithRetry = async (url: string, options: RequestInit, maxRetries: number = 3): Promise<any> => {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
