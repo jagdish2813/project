@@ -355,18 +355,11 @@ const Chatbot = () => {
           const { data: sessionData } = await supabase.auth.getSession();
           const token = sessionData.session?.access_token;
 
-          // Construct chat history for context
-          const chatHistory = messages
-              .filter(m => m.sender !== 'bot' || m.message_type !== 'welcome')
-              .slice(-5) // Send last 5 messages for context
-              .map(m => ({
-                  role: m.sender === 'user' ? 'user' : 'model',
-                  text: m.message
-              }));
-
+          // The Edge Function provided appears to handle context/history based on IDs.
           const payload = {
-              history: chatHistory,
-              currentMessage: textToSend,
+              message: textToSend, // Current message text
+              conversationId: conversationId, // Send existing conversation ID
+              sessionId: sessionId, // Send current session ID
           };
           
           const headers: HeadersInit = {
@@ -385,9 +378,8 @@ const Chatbot = () => {
             body: JSON.stringify(payload)
           });
 
-          // Assuming the Supabase function returns a JSON object like { text: "response" }
-          // or possibly { answer: "response" }
-          const text = result?.text || result?.answer;
+          // The Edge Function is expected to return the generated text under the 'response' key.
+          const text = result?.response;
           
           if (text) {
             botResponse = text;
