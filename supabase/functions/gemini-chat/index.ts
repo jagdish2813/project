@@ -24,7 +24,7 @@ Deno.serve(async (req)=>{
   // Set the default response headers for streaming
   const headers = new Headers({
     ...corsHeaders,
-    'Content-Type': 'text/plain; charset=utf-8',
+    'Content-Type': 'application/json',
     'Connection': 'keep-alive',
     'Cache-Control': 'no-cache'
   });
