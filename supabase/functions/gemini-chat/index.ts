@@ -8,6 +8,7 @@ import { GoogleGenAI } from 'npm:@google/genai';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 
 // Initialize the GoogleGenAI client
@@ -36,7 +37,7 @@ Deno.serve(async (req) => {
   // Set the default response headers for streaming
   const headers = new Headers({
     ...corsHeaders,
-    'Content-Type': 'text/plain; charset=utf-8', // Plain text for basic streaming
+    'Content-Type': 'application/json', // Plain text for basic streaming
     'Connection': 'keep-alive',
     'Cache-Control': 'no-cache',
   });
