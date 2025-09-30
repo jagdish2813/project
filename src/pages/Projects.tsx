@@ -18,6 +18,7 @@ const Projects = () => {
   const locations = ['Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur', 'Gurgaon'];
 
   useEffect(() => {
+    // Fetch projects immediately when component mounts, regardless of auth status
     fetchCompletedProjects();
   }, []);
 
@@ -26,7 +27,7 @@ const Projects = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch completed projects with designer and quote information
+      // Fetch completed projects with designer and quote information - accessible to all users
       const { data: projectsData, error: projectsError } = await supabase
         .from('customers')
         .select(`

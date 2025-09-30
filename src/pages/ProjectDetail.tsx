@@ -11,6 +11,7 @@ const ProjectDetail = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Fetch project details immediately when component mounts, regardless of auth status
     if (id) {
       fetchProject();
     }
@@ -21,7 +22,7 @@ const ProjectDetail = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch completed project with designer and quote information
+      // Fetch completed project with designer and quote information - accessible to all users
       const { data: projectData, error: projectError } = await supabase
         .from('customers')
         .select(`
@@ -34,7 +35,7 @@ const ProjectDetail = () => {
 
       if (projectError) {
         if (projectError.code === 'PGRST116') {
-          setError('Project not found or not yet completed');
+          setError('Project not found or not yet completed. Only completed projects are publicly visible.');
         } else {
           throw projectError;
         }
