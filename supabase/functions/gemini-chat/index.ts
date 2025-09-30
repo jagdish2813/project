@@ -22,7 +22,7 @@ const MODEL_NAME = 'gemini-2.5-flash';
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
+  if (req.method === 'POST') {
     return new Response('ok', { headers: corsHeaders });
   }
 
