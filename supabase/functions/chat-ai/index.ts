@@ -72,9 +72,11 @@ Deno.serve(async (req) => {
     // Handle specific design-related queries
     if (userMessage.includes('cost') || userMessage.includes('price') || userMessage.includes('budget')) {
       response = "Interior design costs vary based on project scope, room size, and material choices. Typically, residential projects range from ₹1,200 to ₹3,000 per square foot. Would you like me to connect you with a designer for a detailed quote?"
-    } else if (userMessage.includes('designer') || userMessage.includes('find')) {
+    } 
+  /*  else if (userMessage.includes('designer') || userMessage.includes('find')) {
       response = "I can help you find the perfect interior designer! We have verified designers specializing in residential, commercial, and luxury projects. What type of space are you looking to design?"
-    } else if (userMessage.includes('material') || userMessage.includes('furniture')) {
+    }*/
+    else if (userMessage.includes('material') || userMessage.includes('furniture')) {
       response = "We work with a wide range of materials and furniture options. Our designers can help you choose the best materials based on your budget, style preferences, and durability requirements. Would you like to explore our material catalog?"
     } else if (userMessage.includes('timeline') || userMessage.includes('time')) {
       response = "Project timelines depend on scope and complexity. Typically: Room design (2-4 weeks), Full home design (6-12 weeks), Commercial projects (8-16 weeks). This includes planning, procurement, and execution phases."
