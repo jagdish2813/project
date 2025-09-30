@@ -5,7 +5,8 @@ import { GoogleGenAI } from 'npm:@google/genai';
 // CORS headers to allow requests from any origin (adjust as needed for production)
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 // Initialize the GoogleGenAI client
 // It automatically looks for the GEMINI_API_KEY in Deno.env (Supabase Secrets)
