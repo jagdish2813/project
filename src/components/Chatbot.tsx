@@ -350,7 +350,7 @@ const Chatbot = () => {
         try {
           // --- AI SERVICE CALL (Supabase Edge Function) ---
          // const apiUrl = 'https://aqcvftydzrsvahiuurts.supabase.co/functions/v1/chat-ai';
-          const apiUrl = 'https://aqcvftydzrsvahiuurts.supabase.co/functions/v1/openai-chat';
+          const apiUrl = 'https://aqcvftydzrsvahiuurts.supabase.co/functions/v1/gemini-chat';
           // Get the current session token for Supabase Authorization
           const { data: sessionData } = await supabase.auth.getSession();
           const token = sessionData.session?.access_token;
