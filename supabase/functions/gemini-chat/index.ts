@@ -53,7 +53,7 @@ const MODEL_NAME = "gemini-2.5-flash"; // Or gemini-2.5-pro
     const model = ai.getGenerativeModel({
       model: MODEL_NAME
     });
-    const response = await model.generateContent(prompt);
+    const result = await model.generateContent(prompt);
     /*const response = await ai.generateContent({
       model: MODEL_NAME,
       contents: prompt,
@@ -62,7 +62,19 @@ const MODEL_NAME = "gemini-2.5-flash"; // Or gemini-2.5-pro
         temperature: 0.7
       }
     });*/ // Extract the generated text
-    const generatedText = response.text;
+    const generatedText = result.text;
+
+    if (!generatedText) {
+    // If text extraction failed (e.g., block was filtered, or response format changed)
+    const errorReason = result.candidates?.[0]?.finishReason || 'Unknown failure';
+    return new Response(JSON.stringify({ 
+        error: `Gemini response failed. Reason: ${errorReason}.`, 
+        details: JSON.stringify(result) 
+    }), {
+        status: 500,
+        headers: jsonHeaders,
+    });
+}
     // 6. Return the AI-generated text
     return new Response(JSON.stringify({
       generated_text: generatedText
