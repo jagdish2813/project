@@ -357,7 +357,7 @@ const Chatbot = () => {
 
           // The Edge Function provided appears to handle context/history based on IDs.
           const payload = {
-              message: textToSend, // Current message text
+              message: textToSend , // Current message text
               conversationId: conversationId, // Send existing conversation ID
               sessionId: sessionId, // Send current session ID
           };
@@ -375,7 +375,7 @@ const Chatbot = () => {
           const result = await fetchWithRetry(apiUrl, {
             method: 'POST',
             headers: headers,
-            body: JSON.stringify(payload)
+            body: JSON.stringify( { prompt: payload })
           });
 
           // The Edge Function is expected to return the generated text under the 'response' key.
