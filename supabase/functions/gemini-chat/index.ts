@@ -1,100 +1,83 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { GoogleGenAI } from 'npm:@google/genai';
-
-// --- Configuration ---
-
-// CORS headers to allow requests from any origin (adjust as needed for production)
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-   'Access-Control-Allow-Methods': 'POST, OPTIONS'
-};
-
-// Initialize the GoogleGenAI client
-// It automatically looks for the GEMINI_API_KEY in Deno.env (Supabase Secrets)
-const ai = new GoogleGenAI({});
-
-// The Gemini model to use
-const MODEL_NAME = 'gemini-2.5-flash';
-
-// --- Function Handler ---
-
-Deno.serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'POST') {
-    return new Response('ok', { headers: corsHeaders });
-  }
-
-  // Enforce POST method for the main logic
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: `Method ${req.method} not allowed. Use POST.` }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+//import { GoogleGenerativeAI } from 'npm:@google/genai';
+// Import the Deno serve function and the Google Generative AI SDK
+//import { Deno } from "https://deno.land/deno.js";
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.15.0";
+// Define the Generative Model you want to use
+const MODEL_NAME = "gemini-2.5-flash"; // Or gemini-2.5-pro
+/**
+ * Handles incoming HTTP requests for the Edge Function.
+ * It expects a JSON body with a 'prompt' property.
+ */ Deno.serve(async (req)=>{
+  // 1. Handle Preflight/CORS requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+      }
     });
   }
-
-  // Set the default response headers for streaming
-  const headers = new Headers({
-    ...corsHeaders,
-    'Content-Type': 'application/json', // Plain text for basic streaming
-    'Connection': 'keep-alive',
-    'Cache-Control': 'no-cache',
-  });
-
+  // Set up CORS headers for the response
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Content-Type': 'application/json'
+  };
   try {
-    // 1. Get the prompt from the request body
+    // 2. Extract the prompt from the request body
     const { prompt } = await req.json();
-
-    // 2. Robust Prompt Validation
-    if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-      return new Response(JSON.stringify({ 
-        error: 'Invalid or missing prompt. Request body must be JSON with a non-empty "prompt" key.' 
+    if (!prompt) {
+      return new Response(JSON.stringify({
+        error: 'Missing "prompt" in request body'
       }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders
       });
     }
-
-    // 3. Call the Gemini API for a streaming response
-    const streamResponse = await ai.models.generateContentStream({
+    // 3. Get API Key from environment secrets
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!apiKey) {
+      return new Response(JSON.stringify({
+        error: 'GEMINI_API_KEY not set in secrets'
+      }), {
+        status: 500,
+        headers: corsHeaders
+      });
+    }
+    // 4. Initialize the Google Generative AI client
+    const ai = new GoogleGenerativeAI(apiKey);
+    // 5. Call the Gemini API
+    const model = ai.getGenerativeModel({
+      model: MODEL_NAME
+    });
+    const response = await model.generateContent(prompt);
+    /*const response = await ai.generateContent({
       model: MODEL_NAME,
       contents: prompt,
+      config: {
+        // Optional: add configuration like temperature, etc.
+        temperature: 0.7
+      }
+    });*/ // Extract the generated text
+    const generatedText = response.text;
+    // 6. Return the AI-generated text
+    return new Response(JSON.stringify({
+      generated_text: generatedText
+    }), {
+      headers: corsHeaders,
+      status: 200
     });
-
-    // 4. Create a Deno ReadableStream from the Gemini stream
-    const stream = new ReadableStream({
-      async start(controller) {
-        const encoder = new TextEncoder();
-        try {
-          // Iterate over the chunks from the Gemini API
-          for await (const chunk of streamResponse) {
-            const text = chunk.text;
-            if (text) {
-              controller.enqueue(encoder.encode(text));
-            }
-          }
-        } catch (error) {
-          console.error('Streaming error:', error);
-          // Instead of crashing, close the stream with an error signal
-          controller.enqueue(encoder.encode(`\n[STREAM ERROR: ${error.message}]`));
-        } finally {
-          controller.close(); // Close the stream when done
-        }
-      },
-    });
-
-    // 5. Return the stream as a response
-    return new Response(stream, { headers });
-
   } catch (error) {
-    // Catch JSON parsing errors or other unexpected issues
-    console.error('Function execution error:', error);
-    return new Response(JSON.stringify({ 
-      error: `An unexpected error occurred: ${error.message}. Check your request formatting.` 
+    // Log and return an error response
+    console.error("Gemini Edge Function Error:", error);
+    return new Response(JSON.stringify({
+      error: error.message
     }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: corsHeaders
     });
   }
 });
