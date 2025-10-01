@@ -349,8 +349,7 @@ const Chatbot = () => {
       else if (isAIEnabled) {
         try {
           // --- AI SERVICE CALL (Supabase Edge Function) ---
-         // const apiUrl = 'https://aqcvftydzrsvahiuurts.supabase.co/functions/v1/chat-ai';
-          const apiUrl = 'https://aqcvftydzrsvahiuurts.supabase.co/functions/v1/gemini-chat';
+          const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-chat`;
           // Get the current session token for Supabase Authorization
           const { data: sessionData } = await supabase.auth.getSession();
           const token = sessionData.session?.access_token;
@@ -369,6 +368,9 @@ const Chatbot = () => {
           // Add authorization header if a token exists
           if (token) {
             headers['Authorization'] = `Bearer ${token}`;
+          } else {
+            // For anonymous users, use the anon key
+            headers['Authorization'] = `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`;
           }
 
           // Use the resilient fetchWithRetry function
@@ -383,6 +385,9 @@ const Chatbot = () => {
           
           if (text) {
             botResponse = text;
+          } else if (result?.fallback) {
+            // Handle fallback response when AI service is unavailable
+            botResponse = result.response;
           } else {
             // Handle case where API is reachable but returns no text content
             console.error("AI function returned an empty or malformed text response.", result);
@@ -393,7 +398,7 @@ const Chatbot = () => {
         } catch (aiError) {
           // Specific fallback for AI service failure (due to custom function error)
           console.error('AI service failure:', aiError); 
-          botResponse = "I'm sorry, there was a problem connecting to our AI service through the design function. Please try again or switch to basic support.";
+          botResponse = "I'm sorry, there was a problem connecting to our AI service. However, I can still help you with basic questions about our interior design services. You can also browse our designer profiles and completed projects, or contact our support team directly.";
         }
       } 
       // 3. Final Basic Fallback
