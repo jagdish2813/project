@@ -122,7 +122,7 @@ Please provide a helpful response about interior design or our platform services
     // Initialize Gemini AI
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 0.7,
         topP: 0.8,
