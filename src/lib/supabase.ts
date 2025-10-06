@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Check if environment variables are properly configured
 const isValidUrl = (url: string) => {
+  if (!url) return false;
   try {
     new URL(url);
     return true;
@@ -13,19 +13,21 @@ const isValidUrl = (url: string) => {
   }
 };
 
-const hasValidCredentials = supabaseUrl && 
-  supabaseAnonKey && 
+const hasValidCredentials =
+  supabaseUrl &&
+  supabaseAnonKey &&
   supabaseUrl !== 'your_supabase_project_url_here' &&
   supabaseAnonKey !== 'your_supabase_anon_key_here' &&
   isValidUrl(supabaseUrl);
 
-let supabase: any;
+export const supabase = hasValidCredentials
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : createMockClient();
 
-if (!hasValidCredentials) {
+function createMockClient(): any {
   console.warn('Supabase credentials not configured. Please click "Connect to Supabase" to set up your project.');
-  
-  // Create a comprehensive mock client to prevent errors during development
-  supabase = {
+
+  return {
     auth: {
       signUp: () => Promise.resolve({ 
         data: { user: null, session: null }, 
@@ -77,11 +79,7 @@ if (!hasValidCredentials) {
       })
     })
   };
-} else {
-  supabase = createClient(supabaseUrl, supabaseAnonKey);
 }
-
-export { supabase };
 
 export type Designer = {
   id: string;
