@@ -11,7 +11,7 @@ const SharePhotoForm = () => {
   const { user, loading: authLoading } = useAuth();
   const { designer, loading: designerLoading } = useDesignerProfile();
   
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // This is for form submission, not initial data loading
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
@@ -36,7 +36,8 @@ const SharePhotoForm = () => {
   ];
 
   useEffect(() => {
-    // If still loading auth or designer profile, do nothing.
+    // If authentication or designer profile is still loading, do nothing in this effect.
+    // The component's render logic will handle showing a loading state.
     if (authLoading || designerLoading) {
       return;
     }
@@ -47,15 +48,14 @@ const SharePhotoForm = () => {
       return;
     }
 
-    // If user is authenticated but the designer object is null (meaning no designer profile found),
-    // redirect back to the gallery, as the button should only be visible for designers.
-    // This handles cases where the designer profile might not be loaded correctly in this component's context.
+    // If user is authenticated but no designer profile is found, redirect to gallery.
+    // This page is specifically for designers to share photos.
     if (!designer) {
-      navigate('/gallery'); // Redirect back to gallery, not home
+      navigate('/gallery');
       return;
     }
     
-    // If user is a designer and designer data is available, ensure form data is initialized with designer's location if available
+    // Initialize form location with designer's location if not already set
     if (!formData.location && designer.location) {
       setFormData(prev => ({
         ...prev,
@@ -150,25 +150,25 @@ const SharePhotoForm = () => {
     }
   };
 
-  // Render loading state
+  // Render loading state for initial data fetch
   if (authLoading || designerLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading user data...</p>
+          <p className="text-gray-600">Loading user data and designer profile...</p>
         </div>
       </div>
     );
   }
 
-  // Render access denied if not authenticated or designer object is null
-  if (!user || !designer) {
+  // Render access denied if not authenticated (after loading is complete)
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-secondary-800 mb-4">Access Denied</h2>
-          <p className="text-gray-600 mb-4">You need to be a registered designer to share photos.</p>
+          <p className="text-gray-600 mb-4">You need to be signed in to share photos.</p>
           <button
             onClick={() => navigate('/')}
             className="btn-primary"
@@ -180,6 +180,31 @@ const SharePhotoForm = () => {
     );
   }
 
+  // Render access denied if user is not a designer (after loading is complete)
+  if (!designer) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Access Denied</h2>
+          <p className="text-gray-600 mb-4">You need to be a registered designer to share photos.</p>
+          <button
+            onClick={() => navigate('/register-designer')}
+            className="btn-primary"
+          >
+            Register as Designer
+          </button>
+          <button
+            onClick={() => navigate('/gallery')}
+            className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors mt-4"
+          >
+            Back to Gallery
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // If all checks pass, render the form
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
