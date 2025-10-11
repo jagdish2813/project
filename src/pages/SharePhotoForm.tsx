@@ -9,7 +9,7 @@ import ImageUploader from '../components/ImageUploader';
 const SharePhotoForm = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { designer, isDesigner, loading: designerLoading } = useDesignerProfile();
+  const { designer, loading: designerLoading } = useDesignerProfile();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,12 +36,34 @@ const SharePhotoForm = () => {
   ];
 
   useEffect(() => {
-    if (authLoading || designerLoading) return;
-
-    if (!user || !isDesigner) {
-      navigate('/'); // Redirect if not logged in or not a designer
+    // If still loading auth or designer profile, do nothing.
+    if (authLoading || designerLoading) {
+      return;
     }
-  }, [user, isDesigner, authLoading, designerLoading, navigate]);
+
+    // If loading is complete and user is not authenticated, redirect to home.
+    if (!user) {
+      navigate('/');
+      return;
+    }
+
+    // If user is authenticated but the designer object is null (meaning no designer profile found), redirect to home.
+    // This is the most critical check to ensure `designer` is available for the form.
+    if (!designer) {
+      navigate('/');
+      return;
+    }
+    
+    // If user is a designer and designer data is available, ensure form data is initialized with designer's location if available
+    // This should only run once when the component mounts and formData.location is not already set
+    if (!formData.location && designer.location) {
+      setFormData(prev => ({
+        ...prev,
+        location: designer.location
+      }));
+    }
+
+  }, [user, authLoading, designerLoading, navigate, designer, formData.location]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -128,6 +150,7 @@ const SharePhotoForm = () => {
     }
   };
 
+  // Render loading state
   if (authLoading || designerLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -139,7 +162,8 @@ const SharePhotoForm = () => {
     );
   }
 
-  if (!user || !isDesigner) {
+  // Render access denied if not authenticated or designer object is null
+  if (!user || !designer) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
