@@ -47,15 +47,15 @@ const SharePhotoForm = () => {
       return;
     }
 
-    // If user is authenticated but the designer object is null (meaning no designer profile found), redirect to home.
-    // This is the most critical check to ensure `designer` is available for the form.
+    // If user is authenticated but the designer object is null (meaning no designer profile found),
+    // redirect back to the gallery, as the button should only be visible for designers.
+    // This handles cases where the designer profile might not be loaded correctly in this component's context.
     if (!designer) {
-      navigate('/');
+      navigate('/gallery'); // Redirect back to gallery, not home
       return;
     }
     
     // If user is a designer and designer data is available, ensure form data is initialized with designer's location if available
-    // This should only run once when the component mounts and formData.location is not already set
     if (!formData.location && designer.location) {
       setFormData(prev => ({
         ...prev,
