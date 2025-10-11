@@ -36,6 +36,14 @@ const SharePhotoForm = () => {
   ];
 
   useEffect(() => {
+    console.log('SharePhotoForm useEffect triggered:', {
+      authLoading,
+      designerLoading,
+      user: user ? user.id : 'null',
+      designer: designer ? designer.id : 'null',
+      currentPath: window.location.pathname
+    });
+
     // If authentication or designer profile is still loading, do nothing in this effect.
     // The component's render logic will handle showing a loading state.
     if (authLoading || designerLoading) {
@@ -44,6 +52,7 @@ const SharePhotoForm = () => {
 
     // If loading is complete and user is not authenticated, redirect to home.
     if (!user) {
+      console.log('User not authenticated, redirecting to /');
       navigate('/');
       return;
     }
@@ -51,6 +60,7 @@ const SharePhotoForm = () => {
     // If user is authenticated but no designer profile is found, redirect to gallery.
     // This page is specifically for designers to share photos.
     if (!designer) {
+      console.log('Designer profile not found, redirecting to /gallery');
       navigate('/gallery');
       return;
     }
