@@ -1,134 +1,222 @@
-import React, { useState } from 'react';
-import { X, ZoomIn, Heart, Share2, Download, Calendar, MapPin, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, ZoomIn, Heart, Share2, Download, Calendar, MapPin, User, Plus } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { useDesignerProfile } from '../hooks/useDesignerProfile';
+
+interface GalleryItem {
+  id: string;
+  title: string;
+  designer: string;
+  designerId: string;
+  location: string;
+  category: string;
+  date: string;
+  image: string;
+  description: string;
+  materials?: string[];
+  projectId?: string;
+  is_approved?: boolean;
+}
 
 const Gallery = () => {
-  const [selectedImage, setSelectedImage] = useState<any>(null);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { isDesigner, loading: designerLoading } = useDesignerProfile();
+  const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [allGalleryItems, setAllGalleryItems] = useState<GalleryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const galleryItems = [
+  const categories = [
+    'All', 'Living Room', 'Kitchen', 'Bedroom', 'Dining Room', 'Bathroom', 
+    'Office', 'Entryway', 'Pooja Room', 'Kids Room', 'Other'
+  ];
+
+  // Mock data for initial display
+  const mockGalleryItems: GalleryItem[] = [
     {
-      id: 1,
+      id: 'mock-1',
       title: 'Modern Living Room',
       designer: 'Priya Sharma',
-      designerId: 1,
+      designerId: '550e8400-e29b-41d4-a716-446655440001', // Example UUID
       location: 'Mumbai',
       category: 'Living Room',
       date: 'March 2024',
       image: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=800',
       description: 'A contemporary living space with clean lines and neutral tones.',
       materials: ['Italian Marble', 'Teak Wood', 'LED Lighting'],
-      projectId: 1
+      projectId: 'proj1',
+      is_approved: true
     },
     {
-      id: 2,
+      id: 'mock-2',
       title: 'Traditional Kitchen',
       designer: 'Rajesh Kumar',
-      designerId: 2,
+      designerId: '550e8400-e29b-41d4-a716-446655440002', // Example UUID
       location: 'Delhi',
       category: 'Kitchen',
       date: 'February 2024',
       image: 'https://images.pexels.com/photos/1571453/pexels-photo-1571453.jpeg?auto=compress&cs=tinysrgb&w=800',
       description: 'Classic Indian kitchen design with modern functionality.',
       materials: ['Granite Counters', 'Sheesham Wood', 'Brass Hardware'],
-      projectId: 2
+      projectId: 'proj2',
+      is_approved: true
     },
     {
-      id: 3,
+      id: 'mock-3',
       title: 'Minimalist Bedroom',
       designer: 'Anita Desai',
-      designerId: 3,
+      designerId: '550e8400-e29b-41d4-a716-446655440003', // Example UUID
       location: 'Bangalore',
       category: 'Bedroom',
       date: 'April 2024',
       image: 'https://images.pexels.com/photos/1643383/pexels-photo-1643383.jpeg?auto=compress&cs=tinysrgb&w=800',
       description: 'Serene bedroom with clean aesthetics and natural materials.',
       materials: ['Bamboo Flooring', 'Linen Fabrics', 'Natural Wood'],
-      projectId: 3
+      projectId: 'proj3',
+      is_approved: true
     },
     {
-      id: 4,
+      id: 'mock-4',
       title: 'Luxury Dining Room',
       designer: 'Vikram Singh',
-      designerId: 4,
+      designerId: '550e8400-e29b-41d4-a716-446655440004', // Example UUID
       location: 'Gurgaon',
       category: 'Dining Room',
       date: 'January 2024',
       image: 'https://images.pexels.com/photos/1457842/pexels-photo-1457842.jpeg?auto=compress&cs=tinysrgb&w=800',
       description: 'Opulent dining space with crystal chandeliers and marble finishes.',
       materials: ['Carrara Marble', 'Crystal Chandelier', 'Velvet Upholstery'],
-      projectId: 4
+      projectId: 'proj4',
+      is_approved: true
     },
-    {
-      id: 5,
-      title: 'Eco-Friendly Bathroom',
-      designer: 'Meera Reddy',
-      designerId: 5,
-      location: 'Hyderabad',
-      category: 'Bathroom',
-      date: 'March 2024',
-      image: 'https://images.pexels.com/photos/1571461/pexels-photo-1571461.jpeg?auto=compress&cs=tinysrgb&w=800',
-      description: 'Sustainable bathroom design with natural materials.',
-      materials: ['Bamboo Vanity', 'Natural Stone', 'Cork Flooring'],
-      projectId: 5
-    },
-    {
-      id: 6,
-      title: 'Industrial Office Space',
-      designer: 'Arjun Patel',
-      designerId: 6,
-      location: 'Pune',
-      category: 'Office',
-      date: 'February 2024',
-      image: 'https://images.pexels.com/photos/1599791/pexels-photo-1599791.jpeg?auto=compress&cs=tinysrgb&w=800',
-      description: 'Urban office with exposed elements and industrial aesthetics.',
-      materials: ['Exposed Brick', 'Steel Frames', 'Concrete Floors'],
-      projectId: 6
-    },
-    {
-      id: 7,
-      title: 'Contemporary Entryway',
-      designer: 'Priya Sharma',
-      designerId: 1,
-      location: 'Mumbai',
-      category: 'Entryway',
-      date: 'March 2024',
-      image: 'https://images.pexels.com/photos/1571468/pexels-photo-1571468.jpeg?auto=compress&cs=tinysrgb&w=800',
-      description: 'Welcoming entrance with modern design elements.',
-      materials: ['Marble Flooring', 'Glass Partitions', 'LED Strips'],
-      projectId: 1
-    },
-    {
-      id: 8,
-      title: 'Traditional Pooja Room',
-      designer: 'Rajesh Kumar',
-      designerId: 2,
-      location: 'Delhi',
-      category: 'Pooja Room',
-      date: 'February 2024',
-      image: 'https://images.pexels.com/photos/1571459/pexels-photo-1571459.jpeg?auto=compress&cs=tinysrgb&w=800',
-      description: 'Sacred space with traditional Indian design elements.',
-      materials: ['Teak Wood', 'Brass Idols', 'Marble Platform'],
-      projectId: 2
-    }
   ];
 
-  const categories = ['All', 'Living Room', 'Kitchen', 'Bedroom', 'Dining Room', 'Bathroom', 'Office', 'Entryway', 'Pooja Room'];
+  useEffect(() => {
+    fetchGalleryItems();
+  }, []);
+
+  const fetchGalleryItems = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error } = await supabase
+        .from('shared_gallery_items')
+        .select(`
+          *,
+          designer:designers(name, id)
+        `)
+        .eq('is_approved', true) // Only show approved items
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const sharedItems: GalleryItem[] = (data || []).map(item => ({
+        id: item.id,
+        title: item.title,
+        designer: item.designer?.name || 'Unknown Designer',
+        designerId: item.designer?.id || '',
+        location: item.location,
+        category: item.category,
+        date: new Date(item.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        image: item.image_url,
+        description: item.description || '',
+        is_approved: item.is_approved
+      }));
+      
+      // Combine mock data with fetched data
+      setAllGalleryItems([...mockGalleryItems, ...sharedItems]);
+
+    } catch (error: any) {
+      console.error('Error fetching gallery items:', error);
+      setError(error.message || 'Failed to load gallery items');
+      // Fallback to only mock data if there's an error
+      setAllGalleryItems(mockGalleryItems);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredItems = selectedCategory === 'All' 
-    ? galleryItems 
-    : galleryItems.filter(item => item.category === selectedCategory);
+    ? allGalleryItems 
+    : allGalleryItems.filter(item => item.category === selectedCategory);
+
+  const shareDesigner = async (item: GalleryItem) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${item.title} by ${item.designer}`,
+          text: `Check out this amazing design project: "${item.title}" by ${item.designer} on TheHomeDesigners!`,
+          url: `${window.location.origin}/gallery` // Or a specific project detail page if available
+        });
+      } catch (error) {
+        console.log('Error sharing:', error);
+      }
+    } else {
+      // Fallback to copying to clipboard
+      navigator.clipboard.writeText(`${window.location.origin}/gallery`);
+      alert('Link copied to clipboard!');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading gallery...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-lg mb-4">
+            <p className="font-medium">Error loading gallery</p>
+            <p className="text-sm">{error}</p>
+          </div>
+          <button
+            onClick={fetchGalleryItems}
+            className="btn-primary"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-3xl lg:text-4xl font-bold text-secondary-800 mb-4">
-            Design Gallery
-          </h1>
-          <p className="text-lg text-gray-600">
-            Explore our collection of stunning interior designs. Get inspired by detailed work from across India.
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl lg:text-4xl font-bold text-secondary-800 mb-4">
+                Design Gallery
+              </h1>
+              <p className="text-lg text-gray-600">
+                Explore our collection of stunning interior designs. Get inspired by detailed work from across India.
+              </p>
+            </div>
+            {user && isDesigner && (
+              <button
+                onClick={() => navigate('/share-photo')}
+                className="btn-primary flex items-center space-x-2"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Share Your Photo</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -183,7 +271,9 @@ const Gallery = () => {
                 
                 <div className="flex items-center space-x-2 mb-2 text-sm text-gray-600">
                   <User className="w-4 h-4" />
-                  <span>{item.designer}</span>
+                  <Link to={`/designers/${item.designerId}`} className="hover:text-primary-600">
+                    <span>{item.designer}</span>
+                  </Link>
                 </div>
                 
                 <div className="flex items-center justify-between text-sm text-gray-600">
@@ -259,23 +349,28 @@ const Gallery = () => {
                   </div>
                 </div>
 
-                <div className="mb-6">
-                  <h3 className="font-semibold text-secondary-800 mb-3">Materials Used</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedImage.materials.map((material: string, index: number) => (
-                      <span key={index} className="bg-accent-100 text-accent-800 px-3 py-1 rounded-full text-sm">
-                        {material}
-                      </span>
-                    ))}
+                {selectedImage.materials && selectedImage.materials.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="font-semibold text-secondary-800 mb-3">Materials Used</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedImage.materials.map((material: string, index: number) => (
+                        <span key={index} className="bg-accent-100 text-accent-800 px-3 py-1 rounded-full text-sm">
+                          {material}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex space-x-3">
                   <button className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2">
                     <Heart className="w-4 h-4" />
                     <span>Save</span>
                   </button>
-                  <button className="flex-1 bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2">
+                  <button 
+                    onClick={() => shareDesigner(selectedImage)}
+                    className="flex-1 bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                  >
                     <Share2 className="w-4 h-4" />
                     <span>Share</span>
                   </button>

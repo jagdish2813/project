@@ -26,6 +26,7 @@ import CustomerQuotes from './pages/CustomerQuotes';
 import AdminDashboard from './pages/AdminDashboard';
 import DebugPage from './pages/DebugPage';
 import DebugDesignerProfile from './pages/DebugDesignerProfile';
+import SharePhotoForm from './pages/SharePhotoForm'; // Import the new component
 
 // Component to handle designer dashboard redirect
 const DesignerRedirectHandler = () => {
@@ -76,8 +77,7 @@ function App() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/debug" element={<DebugPage />} />
             <Route path="/debug-profile" element={<DebugDesignerProfile />} />
-           
-            
+            <Route path="/share-photo" element={<SharePhotoForm />} /> {/* New route */}
           </Routes>
         </main>       
         <Footer />
