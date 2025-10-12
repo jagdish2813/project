@@ -108,7 +108,7 @@ const Gallery = () => {
         .from('shared_gallery_items')
         .select(`
           *,
-          designer:designers(id)
+          designer:designers(name, id)
         `)
         .eq('is_approved', true) // Only show approved items
         .order('created_at', { ascending: false });
