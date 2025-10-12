@@ -71,14 +71,14 @@ const SharePhotoForm = () => {
     }
     
     // Initialize form location with designer's location if not already set
-    if (!formData.location && designer.location) {
+    /* if (!formData.location && designer.location) {
       setFormData(prev => ({
         ...prev,
         location: designer.location
       }));
-    }
+    } */
 
-  }, [user, authLoading, designerLoading, navigate, designer, formData.location]);
+  }, [user, authLoading, designerLoading, navigate, designer, isDesigner, formData.location]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
