@@ -207,7 +207,7 @@ const Gallery = () => {
                 Explore our collection of stunning interior designs. Get inspired by detailed work from across India.
               </p>
             </div>
-            {user && isDesigner && (
+            { (
               <button
                 onClick={() => navigate('/share-photo')}
                 className="btn-primary flex items-center space-x-2"
