@@ -22,8 +22,8 @@ interface GalleryItem {
 
 const Gallery = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { isDesigner, loading: designerLoading } = useDesignerProfile();
+  //const { user } = useAuth();
+ // const { isDesigner, loading: designerLoading } = useDesignerProfile();
   const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [allGalleryItems, setAllGalleryItems] = useState<GalleryItem[]>([]);
