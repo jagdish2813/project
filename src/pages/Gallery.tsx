@@ -108,13 +108,15 @@ const Gallery = () => {
         .from('shared_gallery_items')
         .select(`
           *,
-          designer:designers(name, id)
+          designer:designers(id)
         `)
-        .eq('is_approved', true) // Only show approved items
+        .eq('is_approved', false) // Only show approved items
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
+		
+	  let item = null;
+	  item = data;
       const sharedItems: GalleryItem[] = (data || []).map(item => ({
         id: item.id,
         title: item.title,
