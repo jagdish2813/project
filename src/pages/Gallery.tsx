@@ -23,7 +23,7 @@ interface GalleryItem {
 const Gallery = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  //const { isDesigner, loading: designerLoading } = useDesignerProfile();
+  const { isDesigner, loading: designerLoading } = useDesignerProfile();
   const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [allGalleryItems, setAllGalleryItems] = useState<GalleryItem[]>([]);
@@ -108,7 +108,7 @@ const Gallery = () => {
         .from('shared_gallery_items')
         .select(`
           *,
-          designer:designers(id)
+          designer:designers(name, id)
         `)
         .eq('is_approved', false) // Only show approved items
         .order('created_at', { ascending: false });
