@@ -9,7 +9,7 @@ import ImageUploader from '../components/ImageUploader';
 const SharePhotoForm = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { designer, loading: designerLoading } = useDesignerProfile();
+  const { designer, isDesigner, loading: designerLoading, error: designerError } = useDesignerProfile();
   
   const [loading, setLoading] = useState(false); // This is for form submission, not initial data loading
   const [error, setError] = useState<string | null>(null);
@@ -36,13 +36,18 @@ const SharePhotoForm = () => {
   ];
 
   useEffect(() => {
-    console.log('SharePhotoForm useEffect triggered:', {
+    console.log('CustomerProjects - Hook states:', {
       authLoading,
       designerLoading,
-      user: user ? user.id : 'null',
-      designer: designer ? designer.id : 'null',
-      currentPath: window.location.pathname
+      user: user ? { id: user.id, email: user.email } : null,
+      designer: designer ? { id: designer.id, email: designer.email, isActive: designer.is_active } : null,
+      isDesigner,
+      designerError
     });
+  }, [authLoading, designerLoading, user, designer, isDesigner, designerError]);
+  
+  useEffect(() => {
+
 
     // If authentication or designer profile is still loading, do nothing in this effect.
     // The component's render logic will handle showing a loading state.
