@@ -51,9 +51,9 @@ const SharePhotoForm = () => {
 
     // If authentication or designer profile is still loading, do nothing in this effect.
     // The component's render logic will handle showing a loading state.
-    //if (authLoading || //designerLoading) {
-    //  return;
-    //}
+    if (authLoading || designerLoading) {
+      return;
+    }
 
     // If loading is complete and user is not authenticated, redirect to home.
     if (!user) {
