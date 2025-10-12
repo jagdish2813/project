@@ -110,7 +110,7 @@ const Gallery = () => {
           *,
           designer:designers(name, id)
         `)
-        //.eq('is_approved', true) // Only show approved items
+        .eq('is_approved', true) // Only show approved items
         .order('created_at', { ascending: false });
 
       if (error) throw error;
