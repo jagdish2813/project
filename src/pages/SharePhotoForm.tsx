@@ -36,7 +36,7 @@ const SharePhotoForm = () => {
   ];
 
   useEffect(() => {
-    console.log('CustomerProjects - Hook states:', {
+    console.log('SharePhotoForm - Hook states:', {
       authLoading,
       designerLoading,
       user: user ? { id: user.id, email: user.email } : null,
@@ -54,7 +54,9 @@ const SharePhotoForm = () => {
     if (authLoading || designerLoading) {
       return;
     }
-
+	
+	// Wait up to 1 second for async states to settle
+    const verifyTimeout = setTimeout(() => {
     // If loading is complete and user is not authenticated, redirect to home.
     if (!user) {
       console.log('User not authenticated, redirecting to /');
@@ -71,13 +73,18 @@ const SharePhotoForm = () => {
     }
     
     // Initialize form location with designer's location if not already set
-    /* if (!formData.location && designer.location) {
+     if (!formData.location && designer.location) {
       setFormData(prev => ({
         ...prev,
         location: designer.location
       }));
-    } */
+    } 
 
+	}, 1000); // 1 second wait
+
+    // Cleanup in case dependency changes before timeout fires
+    return () => clearTimeout(verifyTimeout);
+	
   }, [user, authLoading, designerLoading, navigate, designer, isDesigner, formData.location]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
