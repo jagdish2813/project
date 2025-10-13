@@ -108,7 +108,7 @@ const Gallery = () => {
         .from('shared_gallery_items')
         .select(`
           *,
-          designer:designers(id, name)
+          designer:designers(designer_id, name)
         `)
         .eq('is_approved', false) // Only show approved items
         .order('created_at', { ascending: false });
@@ -121,7 +121,7 @@ const Gallery = () => {
         id: item.id,
         title: item.title,
         designer: item.designer?.name || 'Unknown Designer',
-        designerId: item.designer?.id || '',
+        designerId: item.designer?.designer_id || '',
         location: item.location,
         category: item.category,
         date: new Date(item.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
