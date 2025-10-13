@@ -29,25 +29,24 @@ const Gallery = () => {
   const [allGalleryItems, setAllGalleryItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const categories = [
     'All', 'Living Room', 'Kitchen', 'Bedroom', 'Dining Room', 'Bathroom', 
     'Office', 'Entryway', 'Pooja Room', 'Kids Room', 'Other'
   ];
-
-  // Mock data for initial display
+  
+  [cite_start]// Mock data for initial display [cite: 9]
   const mockGalleryItems: GalleryItem[] = [
     {
       id: 'mock-1',
       title: 'Modern Living Room',
       designer: 'Priya Sharma',
-      designerId: '550e8400-e29b-41d4-a716-446655440001', // Example UUID
+      designerId: '550e8400-e29b-41d4-a716-446655440001', 
       location: 'Mumbai',
       category: 'Living Room',
       date: 'March 2024',
       image: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=800',
       description: 'A contemporary living space with clean lines and neutral tones.',
-      materials: ['Italian Marble', 'Teak Wood', 'LED Lighting'],
+      [cite_start]materials: ['Italian Marble', 'Teak Wood', 'LED Lighting'], // [cite: 10]
       projectId: 'proj1',
       is_approved: true
     },
@@ -55,25 +54,25 @@ const Gallery = () => {
       id: 'mock-2',
       title: 'Traditional Kitchen',
       designer: 'Rajesh Kumar',
-      designerId: '550e8400-e29b-41d4-a716-446655440002', // Example UUID
+      designerId: '550e8400-e29b-41d4-a716-446655440002',
       location: 'Delhi',
       category: 'Kitchen',
       date: 'February 2024',
       image: 'https://images.pexels.com/photos/1571453/pexels-photo-1571453.jpeg?auto=compress&cs=tinysrgb&w=800',
-      description: 'Classic Indian kitchen design with modern functionality.',
-      materials: ['Granite Counters', 'Sheesham Wood', 'Brass Hardware'],
+      [cite_start]description: 'Classic Indian kitchen design with modern functionality.', // [cite: 11]
+      [cite_start]materials: ['Granite Counters', 'Sheesham Wood', 'Brass Hardware'], // [cite: 11]
       projectId: 'proj2',
       is_approved: true
     },
-    {
+     {
       id: 'mock-3',
       title: 'Minimalist Bedroom',
       designer: 'Anita Desai',
-      designerId: '550e8400-e29b-41d4-a716-446655440003', // Example UUID
+      designerId: '550e8400-e29b-41d4-a716-446655440003',
       location: 'Bangalore',
       category: 'Bedroom',
       date: 'April 2024',
-      image: 'https://images.pexels.com/photos/1643383/pexels-photo-1643383.jpeg?auto=compress&cs=tinysrgb&w=800',
+      [cite_start]image: 'https://images.pexels.com/photos/1643383/pexels-photo-1643383.jpeg?auto=compress&cs=tinysrgb&w=800', // [cite: 12]
       description: 'Serene bedroom with clean aesthetics and natural materials.',
       materials: ['Bamboo Flooring', 'Linen Fabrics', 'Natural Wood'],
       projectId: 'proj3',
@@ -83,10 +82,10 @@ const Gallery = () => {
       id: 'mock-4',
       title: 'Luxury Dining Room',
       designer: 'Vikram Singh',
-      designerId: '550e8400-e29b-41d4-a716-446655440004', // Example UUID
+      designerId: '550e8400-e29b-41d4-a716-446655440004',
       location: 'Gurgaon',
       category: 'Dining Room',
-      date: 'January 2024',
+      [cite_start]date: 'January 2024', // [cite: 13]
       image: 'https://images.pexels.com/photos/1457842/pexels-photo-1457842.jpeg?auto=compress&cs=tinysrgb&w=800',
       description: 'Opulent dining space with crystal chandeliers and marble finishes.',
       materials: ['Carrara Marble', 'Crystal Chandelier', 'Velvet Upholstery'],
@@ -96,27 +95,24 @@ const Gallery = () => {
   ];
 
   useEffect(() => {
-    fetchGalleryItems();
+    [cite_start]fetchGalleryItems(); // [cite: 14]
   }, []);
 
   const fetchGalleryItems = async () => {
     try {
       setLoading(true);
       setError(null);
-
       const { data, error } = await supabase
         .from('shared_gallery_items')
         .select(`
           *,
           designer:designers(id, name)
         `)
-        .eq('is_approved', false) // Only show approved items
+        .eq('is_approved', true) // Changed to 'true' to show approved items
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-		
-	  let item = null;
-	  item = data;
+      if (error) throw error; [cite_start]// [cite: 17]
+
       const sharedItems: GalleryItem[] = (data || []).map(item => ({
         id: item.id,
         title: item.title,
@@ -126,26 +122,27 @@ const Gallery = () => {
         category: item.category,
         date: new Date(item.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
         image: item.image_url,
-        description: item.description || '',
+        [cite_start]description: item.description || '', // [cite: 19]
+        // NEW: Added this line to read materials from the fetched data.
+        materials: item.materials || [],
         is_approved: item.is_approved
       }));
-      
-      // Combine mock data with fetched data
-      setAllGalleryItems([...mockGalleryItems, ...sharedItems]);
 
+      [cite_start]// Combine mock data with fetched data [cite: 20]
+      setAllGalleryItems([...mockGalleryItems, ...sharedItems]);
     } catch (error: any) {
-      console.error('Error fetching gallery items:', error);
-      setError(error.message || 'Failed to load gallery items');
-      // Fallback to only mock data if there's an error
+      console.error('Error fetching gallery items:', error); [cite_start]// [cite: 21]
+      setError(error.message || 'Failed to load gallery items'); [cite_start]// [cite: 22]
+      [cite_start]// Fallback to only mock data if there's an error [cite: 22]
       setAllGalleryItems(mockGalleryItems);
     } finally {
-      setLoading(false);
+      setLoading(false); [cite_start]// [cite: 23]
     }
   };
 
   const filteredItems = selectedCategory === 'All' 
     ? allGalleryItems 
-    : allGalleryItems.filter(item => item.category === selectedCategory);
+    : allGalleryItems.filter(item => item.category === selectedCategory); [cite_start]// [cite: 24, 25]
 
   const shareDesigner = async (item: GalleryItem) => {
     if (navigator.share) {
@@ -153,15 +150,15 @@ const Gallery = () => {
         await navigator.share({
           title: `${item.title} by ${item.designer}`,
           text: `Check out this amazing design project: "${item.title}" by ${item.designer} on TheHomeDesigners!`,
-          url: `${window.location.origin}/gallery` // Or a specific project detail page if available
+          url: `${window.location.origin}/gallery`
         });
       } catch (error) {
-        console.log('Error sharing:', error);
+        console.log('Error sharing:', error); [cite_start]// [cite: 27]
       }
     } else {
-      // Fallback to copying to clipboard
+      [cite_start]// Fallback to copying to clipboard [cite: 28]
       navigator.clipboard.writeText(`${window.location.origin}/gallery`);
-      alert('Link copied to clipboard!');
+      alert('Link copied to clipboard!'); [cite_start]// [cite: 29]
     }
   };
 
@@ -185,7 +182,7 @@ const Gallery = () => {
             <p className="text-sm">{error}</p>
           </div>
           <button
-            onClick={fetchGalleryItems}
+            [cite_start]onClick={fetchGalleryItems} // [cite: 31]
             className="btn-primary"
           >
             Try Again
@@ -209,7 +206,7 @@ const Gallery = () => {
                 Explore our collection of stunning interior designs. Get inspired by detailed work from across India.
               </p>
             </div>
-            {user && isDesigner && (
+            [cite_start]{user && isDesigner && ( // [cite: 34]
               <button
                 onClick={() => navigate('/share-photo')}
                 className="btn-primary flex items-center space-x-2"
@@ -226,14 +223,14 @@ const Gallery = () => {
         {/* Category Filter */}
         <div className="mb-8">
           <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
+            [cite_start]{categories.map((category) => ( // [cite: 36]
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
                 className={`px-4 py-2 rounded-full font-medium transition-colors ${
                   selectedCategory === category
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-white text-gray-700 hover:bg-primary-50 hover:text-primary-600'
+                    ? [cite_start]'bg-primary-500 text-white' // [cite: 37, 38]
+                    [cite_start]: 'bg-white text-gray-700 hover:bg-primary-50 hover:text-primary-600' // [cite: 38]
                 }`}
               >
                 {category}
@@ -247,14 +244,14 @@ const Gallery = () => {
           {filteredItems.map((item) => (
             <div 
               key={item.id}
-              className="group relative bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
+              [cite_start]className="group relative bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" // [cite: 40]
               onClick={() => setSelectedImage(item)}
             >
               <div className="relative overflow-hidden">
                 <img
                   src={item.image}
                   alt={item.title}
-                  className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-500"
+                  [cite_start]className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-500" // [cite: 41]
                 />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                   <ZoomIn className="w-8 h-8 text-white" />
@@ -293,7 +290,8 @@ const Gallery = () => {
           ))}
         </div>
 
-        {filteredItems.length === 0 && (
+        
+        [cite_start]{filteredItems.length === 0 && ( // [cite: 48]
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">
               No images found in this category.
@@ -307,7 +305,7 @@ const Gallery = () => {
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
           <div className="relative max-w-4xl w-full max-h-[90vh] bg-white rounded-xl overflow-hidden">
             <button
-              onClick={() => setSelectedImage(null)}
+              [cite_start]onClick={() => setSelectedImage(null)} // [cite: 50]
               className="absolute top-4 right-4 z-10 bg-white/90 hover:bg-white rounded-full p-2 transition-colors"
             >
               <X className="w-6 h-6 text-gray-800" />
@@ -318,7 +316,7 @@ const Gallery = () => {
                 <img
                   src={selectedImage.image}
                   alt={selectedImage.title}
-                  className="w-full h-64 lg:h-full object-cover"
+                  [cite_start]className="w-full h-64 lg:h-full object-cover" // [cite: 51]
                 />
               </div>
 
@@ -370,7 +368,7 @@ const Gallery = () => {
                     <span>Save</span>
                   </button>
                   <button 
-                    onClick={() => shareDesigner(selectedImage)}
+                    [cite_start]onClick={() => shareDesigner(selectedImage)} // [cite: 61]
                     className="flex-1 bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                   >
                     <Share2 className="w-4 h-4" />
