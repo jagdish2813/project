@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, ZoomIn, Heart, Share2, Download, Calendar, MapPin, User, Plus } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Upload, Image, Tag, MapPin, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
+import { supabase } from '../lib/supabase';
+import ImageUploader from '../components/ImageUploader';
 
 // List of interior materials
 const INTERIOR_MATERIALS = [
