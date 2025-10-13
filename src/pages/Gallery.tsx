@@ -46,7 +46,7 @@ const Gallery = () => {
       date: 'March 2024',
       image: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=800',
       description: 'A contemporary living space with clean lines and neutral tones.',
-      [cite_start]materials: ['Italian Marble', 'Teak Wood', 'LED Lighting'], // [cite: 10]
+      materials: ['Italian Marble', 'Teak Wood', 'LED Lighting'], // [cite: 10]
       projectId: 'proj1',
       is_approved: true
     },
@@ -59,8 +59,8 @@ const Gallery = () => {
       category: 'Kitchen',
       date: 'February 2024',
       image: 'https://images.pexels.com/photos/1571453/pexels-photo-1571453.jpeg?auto=compress&cs=tinysrgb&w=800',
-      [cite_start]description: 'Classic Indian kitchen design with modern functionality.', // [cite: 11]
-      [cite_start]materials: ['Granite Counters', 'Sheesham Wood', 'Brass Hardware'], // [cite: 11]
+      description: 'Classic Indian kitchen design with modern functionality.', // [cite: 11]
+      materials: ['Granite Counters', 'Sheesham Wood', 'Brass Hardware'], // [cite: 11]
       projectId: 'proj2',
       is_approved: true
     },
@@ -72,7 +72,7 @@ const Gallery = () => {
       location: 'Bangalore',
       category: 'Bedroom',
       date: 'April 2024',
-      [cite_start]image: 'https://images.pexels.com/photos/1643383/pexels-photo-1643383.jpeg?auto=compress&cs=tinysrgb&w=800', // [cite: 12]
+      image: 'https://images.pexels.com/photos/1643383/pexels-photo-1643383.jpeg?auto=compress&cs=tinysrgb&w=800', // [cite: 12]
       description: 'Serene bedroom with clean aesthetics and natural materials.',
       materials: ['Bamboo Flooring', 'Linen Fabrics', 'Natural Wood'],
       projectId: 'proj3',
@@ -85,7 +85,7 @@ const Gallery = () => {
       designerId: '550e8400-e29b-41d4-a716-446655440004',
       location: 'Gurgaon',
       category: 'Dining Room',
-      [cite_start]date: 'January 2024', // [cite: 13]
+      date: 'January 2024', // [cite: 13]
       image: 'https://images.pexels.com/photos/1457842/pexels-photo-1457842.jpeg?auto=compress&cs=tinysrgb&w=800',
       description: 'Opulent dining space with crystal chandeliers and marble finishes.',
       materials: ['Carrara Marble', 'Crystal Chandelier', 'Velvet Upholstery'],
