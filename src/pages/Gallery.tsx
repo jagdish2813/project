@@ -34,7 +34,7 @@ const Gallery = () => {
     'Office', 'Entryway', 'Pooja Room', 'Kids Room', 'Other'
   ];
   
-  [cite_start]// Mock data for initial display [cite: 9]
+  // Mock data for initial display [cite: 9]
   const mockGalleryItems: GalleryItem[] = [
     {
       id: 'mock-1',
@@ -95,7 +95,7 @@ const Gallery = () => {
   ];
 
   useEffect(() => {
-    [cite_start]fetchGalleryItems(); // [cite: 14]
+    fetchGalleryItems(); // [cite: 14]
   }, []);
 
   const fetchGalleryItems = async () => {
@@ -111,7 +111,7 @@ const Gallery = () => {
         .eq('is_approved', true) // Changed to 'true' to show approved items
         .order('created_at', { ascending: false });
 
-      if (error) throw error; [cite_start]// [cite: 17]
+      if (error) throw error; // [cite: 17]
 
       const sharedItems: GalleryItem[] = (data || []).map(item => ({
         id: item.id,
@@ -122,27 +122,27 @@ const Gallery = () => {
         category: item.category,
         date: new Date(item.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
         image: item.image_url,
-        [cite_start]description: item.description || '', // [cite: 19]
+        description: item.description || '', // [cite: 19]
         // NEW: Added this line to read materials from the fetched data.
         materials: item.materials || [],
         is_approved: item.is_approved
       }));
 
-      [cite_start]// Combine mock data with fetched data [cite: 20]
+      // Combine mock data with fetched data [cite: 20]
       setAllGalleryItems([...mockGalleryItems, ...sharedItems]);
     } catch (error: any) {
-      console.error('Error fetching gallery items:', error); [cite_start]// [cite: 21]
-      setError(error.message || 'Failed to load gallery items'); [cite_start]// [cite: 22]
-      [cite_start]// Fallback to only mock data if there's an error [cite: 22]
+      console.error('Error fetching gallery items:', error); // [cite: 21]
+      setError(error.message || 'Failed to load gallery items'); // [cite: 22]
+      // Fallback to only mock data if there's an error [cite: 22]
       setAllGalleryItems(mockGalleryItems);
     } finally {
-      setLoading(false); [cite_start]// [cite: 23]
+      setLoading(false); // [cite: 23]
     }
   };
 
   const filteredItems = selectedCategory === 'All' 
     ? allGalleryItems 
-    : allGalleryItems.filter(item => item.category === selectedCategory); [cite_start]// [cite: 24, 25]
+    : allGalleryItems.filter(item => item.category === selectedCategory); // [cite: 24, 25]
 
   const shareDesigner = async (item: GalleryItem) => {
     if (navigator.share) {
@@ -153,12 +153,12 @@ const Gallery = () => {
           url: `${window.location.origin}/gallery`
         });
       } catch (error) {
-        console.log('Error sharing:', error); [cite_start]// [cite: 27]
+        console.log('Error sharing:', error); // [cite: 27]
       }
     } else {
-      [cite_start]// Fallback to copying to clipboard [cite: 28]
+      // Fallback to copying to clipboard [cite: 28]
       navigator.clipboard.writeText(`${window.location.origin}/gallery`);
-      alert('Link copied to clipboard!'); [cite_start]// [cite: 29]
+      alert('Link copied to clipboard!'); // [cite: 29]
     }
   };
 
@@ -182,7 +182,7 @@ const Gallery = () => {
             <p className="text-sm">{error}</p>
           </div>
           <button
-            [cite_start]onClick={fetchGalleryItems} // [cite: 31]
+            onClick={fetchGalleryItems} // [cite: 31]
             className="btn-primary"
           >
             Try Again
@@ -206,7 +206,7 @@ const Gallery = () => {
                 Explore our collection of stunning interior designs. Get inspired by detailed work from across India.
               </p>
             </div>
-            [cite_start]{user && isDesigner && ( // [cite: 34]
+            {user && isDesigner && ( // [cite: 34]
               <button
                 onClick={() => navigate('/share-photo')}
                 className="btn-primary flex items-center space-x-2"
@@ -223,14 +223,14 @@ const Gallery = () => {
         {/* Category Filter */}
         <div className="mb-8">
           <div className="flex flex-wrap gap-2">
-            [cite_start]{categories.map((category) => ( // [cite: 36]
+            {categories.map((category) => ( // [cite: 36]
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
                 className={`px-4 py-2 rounded-full font-medium transition-colors ${
                   selectedCategory === category
-                    ? [cite_start]'bg-primary-500 text-white' // [cite: 37, 38]
-                    [cite_start]: 'bg-white text-gray-700 hover:bg-primary-50 hover:text-primary-600' // [cite: 38]
+                    ? 'bg-primary-500 text-white' // [cite: 37, 38]
+                    : 'bg-white text-gray-700 hover:bg-primary-50 hover:text-primary-600' // [cite: 38]
                 }`}
               >
                 {category}
@@ -244,14 +244,14 @@ const Gallery = () => {
           {filteredItems.map((item) => (
             <div 
               key={item.id}
-              [cite_start]className="group relative bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" // [cite: 40]
+              className="group relative bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" // [cite: 40]
               onClick={() => setSelectedImage(item)}
             >
               <div className="relative overflow-hidden">
                 <img
                   src={item.image}
                   alt={item.title}
-                  [cite_start]className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-500" // [cite: 41]
+                  className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-500" // [cite: 41]
                 />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                   <ZoomIn className="w-8 h-8 text-white" />
@@ -291,7 +291,7 @@ const Gallery = () => {
         </div>
 
         
-        [cite_start]{filteredItems.length === 0 && ( // [cite: 48]
+        {filteredItems.length === 0 && ( // [cite: 48]
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">
               No images found in this category.
@@ -305,7 +305,7 @@ const Gallery = () => {
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
           <div className="relative max-w-4xl w-full max-h-[90vh] bg-white rounded-xl overflow-hidden">
             <button
-              [cite_start]onClick={() => setSelectedImage(null)} // [cite: 50]
+              onClick={() => setSelectedImage(null)} // [cite: 50]
               className="absolute top-4 right-4 z-10 bg-white/90 hover:bg-white rounded-full p-2 transition-colors"
             >
               <X className="w-6 h-6 text-gray-800" />
@@ -316,7 +316,7 @@ const Gallery = () => {
                 <img
                   src={selectedImage.image}
                   alt={selectedImage.title}
-                  [cite_start]className="w-full h-64 lg:h-full object-cover" // [cite: 51]
+                  className="w-full h-64 lg:h-full object-cover" // [cite: 51]
                 />
               </div>
 
@@ -368,7 +368,7 @@ const Gallery = () => {
                     <span>Save</span>
                   </button>
                   <button 
-                    [cite_start]onClick={() => shareDesigner(selectedImage)} // [cite: 61]
+                    onClick={() => shareDesigner(selectedImage)} // [cite: 61]
                     className="flex-1 bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                   >
                     <Share2 className="w-4 h-4" />
