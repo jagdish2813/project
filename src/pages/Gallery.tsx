@@ -121,7 +121,7 @@ const Gallery = () => {
         id: item.id,
         title: item.title,
         designer: item.designer?.name || 'Unknown Designer',
-        designerId: item.designer?.designer_id || '',
+        designerId: item.designer?.id || '',
         location: item.location,
         category: item.category,
         date: new Date(item.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
