@@ -6,77 +6,99 @@ import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
 import ImageUploader from '../components/ImageUploader';
 
-// List of interior materials
-const INTERIOR_MATERIALS = [
-  'Italian Marble',
-  'Teak Wood',
-  'LED Lighting',
-  'Granite Counters',
-  'Sheesham Wood',
-  'Brass Hardware',
-  'Bamboo Flooring',
-  'Linen Fabrics',
-  'Natural Wood',
-  'Carrara Marble',
-  'Crystal Chandelier',
-  'Velvet Upholstery'
-];
-
-const SharePhotoForm: React.FC = () => {
+const SharePhotoForm = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { designer, isDesigner, loading: designerLoading, error: designerError } = useDesignerProfile();
-
-  const [loading, setLoading] = useState(false);
+  
+  const [loading, setLoading] = useState(false); // This is for form submission, not initial data loading
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
     location: '',
-    imageurl: '',
-    materials: [] as string[],
+    image_url: ''
   });
 
   const categories = [
-    'Living Room', 'Kitchen', 'Bedroom', 'Dining Room', 'Bathroom', 'Office', 'Entryway', 'Pooja Room', 'Kids Room', 'Other'
+    'Living Room', 'Kitchen', 'Bedroom', 'Dining Room', 'Bathroom', 
+    'Office', 'Entryway', 'Pooja Room', 'Kids Room', 'Other'
   ];
+
   const locations = [
-    'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur', 'Surat',
-    'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad', 'Patna', 'Vadodara',
-    'Ghaziabad', 'Ludhiana', 'Agra', 'Nashik'
+    'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata',
+    'Pune', 'Ahmedabad', 'Jaipur', 'Surat', 'Lucknow', 'Kanpur',
+    'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad',
+    'Patna', 'Vadodara', 'Ghaziabad', 'Ludhiana', 'Agra', 'Nashik'
   ];
 
   useEffect(() => {
-    if (!formData.location && designer && designer.location) {
-      setFormData(prev => ({ ...prev, location: designer.location }));
+    console.log('SharePhotoForm - Hook states:', {
+      authLoading,
+      designerLoading,
+      user: user ? { id: user.id, email: user.email } : null,
+      designer: designer ? { id: designer.id, email: designer.email, isActive: designer.is_active } : null,
+      isDesigner,
+      designerError
+    });
+  }, [authLoading, designerLoading, user, designer, isDesigner, designerError]);
+  
+  useEffect(() => {
+
+
+    // If authentication or designer profile is still loading, do nothing in this effect.
+    // The component's render logic will handle showing a loading state.
+    if (authLoading || designerLoading) {
+      return;
     }
-  }, [designer, formData.location]);
+	
+	// Wait up to 1 second for async states to settle
+    const verifyTimeout = setTimeout(() => {
+    // If loading is complete and user is not authenticated, redirect to home.
+    if (!user) {
+      console.log('User not authenticated, redirecting to /');
+      navigate('/');
+      return;
+    }
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
+    // If user is authenticated but no designer profile is found, redirect to gallery.
+    // This page is specifically for designers to share photos.
+    if (!designer) {
+      console.log('Designer profile not found, redirecting to /gallery');
+      navigate('/gallery');
+      return;
+    }
+    
+    // Initialize form location with designer's location if not already set
+     if (!formData.location && designer.location) {
+      setFormData(prev => ({
+        ...prev,
+        location: designer.location
+      }));
+    } 
+
+	}, 1000); // 1 second wait
+
+    // Cleanup in case dependency changes before timeout fires
+    return () => clearTimeout(verifyTimeout);
+	
+  }, [user, authLoading, designerLoading, navigate, designer, isDesigner, formData.location]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (error) setError(null);
-    if (success) setSuccess(null);
-  };
-
-  // Add handler for materials selection
-  const handleMaterialsChange = (material: string) => {
     setFormData(prev => ({
       ...prev,
-      materials: prev.materials.includes(material)
-        ? prev.materials.filter(m => m !== material)
-        : [...prev.materials, material],
+      [name]: value
     }));
     if (error) setError(null);
     if (success) setSuccess(null);
   };
 
   const handleImageUploaded = (url: string) => {
-    setFormData(prev => ({ ...prev, imageurl: url }));
+    setFormData(prev => ({ ...prev, image_url: url }));
     if (error) setError(null);
   };
 
@@ -93,72 +115,271 @@ const SharePhotoForm: React.FC = () => {
       setError('Location is required');
       return false;
     }
-    if (!formData.imageurl) {
+    if (!formData.image_url) {
       setError('An image is required');
       return false;
     }
-    // Materials field: optional, add validation if you want to make it required
     return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !designer) return;
-    if (!validateForm()) return;
+
+    setError(null);
+    setSuccess(null);
+
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { error } = await supabase
         .from('shared_gallery_items')
-        .insert([{
-          designerid: designer.id,
+        .insert({
+          designer_id: designer.id,
           title: formData.title.trim(),
           description: formData.description.trim() || null,
           category: formData.category,
           location: formData.location,
-          imageurl: formData.imageurl,
-          materials: formData.materials, // added materials array
-          isapproved: false,
-        }]);
+          image_url: formData.image_url,
+          is_approved: false // Default to false for moderation
+        });
+
       if (error) throw error;
+
       setSuccess('Photo shared successfully! It will appear in the gallery after review.');
       setFormData({
         title: '',
         description: '',
         category: '',
         location: '',
-        imageurl: '',
-        materials: [],
+        image_url: ''
       });
-      setTimeout(() => navigate('/gallery'), 2000);
+      
+      // Redirect to gallery after a short delay
+      setTimeout(() => {
+        navigate('/gallery');
+      }, 2000);
+
     } catch (error: any) {
+      console.error('Error sharing photo:', error);
       setError(error.message || 'Failed to share photo');
     } finally {
       setLoading(false);
     }
   };
 
-  // UI rendering (simplified to highlight materials input)
-  return (
-    <form onSubmit={handleSubmit}>
-      {/* ...other inputs... */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Materials Used</label>
-        <div>
-          {INTERIOR_MATERIALS.map(material => (
-            <div key={material}>
-              <input
-                type="checkbox"
-                checked={formData.materials.includes(material)}
-                onChange={() => handleMaterialsChange(material)}
-              />
-              <span>{material}</span>
-            </div>
-          ))}
+  // Render loading state for initial data fetch
+  if (authLoading || designerLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading user data and designer profile...</p>
         </div>
       </div>
-      {/* ...other inputs and submit button... */}
-    </form>
+    );
+  }
+
+  // Render access denied if not authenticated (after loading is complete)
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Access Denied</h2>
+          <p className="text-gray-600 mb-4">You need to be signed in to share photos.</p>
+          <button
+            onClick={() => navigate('/')}
+            className="btn-primary"
+          >
+            Go to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Render access denied if user is not a designer (after loading is complete)
+  if (!designer) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-secondary-800 mb-4">Access Denied</h2>
+          <p className="text-gray-600 mb-4">You need to be a registered designer to share photos.</p>
+          <button
+            onClick={() => navigate('/register-designer')}
+            className="btn-primary"
+          >
+            Register as Designer
+          </button>
+          <button
+            onClick={() => navigate('/gallery')}
+            className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors mt-4"
+          >
+            Back to Gallery
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // If all checks pass, render the form
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-xl shadow-lg p-8">
+          <div className="text-center mb-8">
+            <button
+              onClick={() => navigate('/gallery')}
+              className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Gallery
+            </button>
+            <h1 className="text-3xl font-bold text-secondary-800 mb-4">
+              Share Your Design Photo
+            </h1>
+            <p className="text-lg text-gray-600">
+              Showcase your amazing work to our community and inspire others!
+            </p>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2">
+              <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2">
+              <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+              <span>{success}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Image Upload */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-secondary-800 mb-4">Upload Your Photo *</h2>
+              <ImageUploader
+                onImageUploaded={handleImageUploaded}
+                existingImageUrl={formData.image_url}
+                label="Design Project Photo"
+                helpText="Upload a high-quality image of your completed design project."
+              />
+            </div>
+
+            {/* Photo Details */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-secondary-800 mb-4">Photo Details</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Title *
+                  </label>
+                  <div className="relative">
+                    <Image className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="e.g., Modern Living Room, Minimalist Bedroom"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Category *
+                  </label>
+                  <div className="relative">
+                    <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={handleInputChange}
+                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="">Select Category</option>
+                      {categories.map(category => (
+                        <option key={category} value={category}>{category}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      rows={3}
+                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="Briefly describe your design, materials used, and inspiration."
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Location *
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <select
+                      name="location"
+                      value={formData.location}
+                      onChange={handleInputChange}
+                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="">Select Location</option>
+                      {locations.map(location => (
+                        <option key={location} value={location}>{location}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-center">
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary px-12 py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Sharing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-5 h-5" />
+                    <span>Share Photo</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   );
 };
 
