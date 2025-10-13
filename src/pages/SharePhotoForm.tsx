@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Image, Tag, MapPin, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+// NEW: Imported Package and X icons for the materials input field
+import { ArrowLeft, Upload, Image, Tag, MapPin, FileText, CheckCircle, AlertCircle, Loader2, Package, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -11,23 +12,27 @@ const SharePhotoForm = () => {
   const { user, loading: authLoading } = useAuth();
   const { designer, isDesigner, loading: designerLoading, error: designerError } = useDesignerProfile();
   
-  const [loading, setLoading] = useState(false); // This is for form submission, not initial data loading
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
+  // NEW: Added 'materials' to the formData state
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
     location: '',
-    image_url: ''
+    image_url: '',
+    materials: [] as string[] // To hold the list of materials
   });
+
+  // NEW: State to manage the current material being typed
+  const [currentMaterial, setCurrentMaterial] = useState('');
 
   const categories = [
     'Living Room', 'Kitchen', 'Bedroom', 'Dining Room', 'Bathroom', 
     'Office', 'Entryway', 'Pooja Room', 'Kids Room', 'Other'
   ];
-
   const locations = [
     'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata',
     'Pune', 'Ahmedabad', 'Jaipur', 'Surat', 'Lucknow', 'Kanpur',
@@ -36,55 +41,26 @@ const SharePhotoForm = () => {
   ];
 
   useEffect(() => {
-    console.log('SharePhotoForm - Hook states:', {
-      authLoading,
-      designerLoading,
-      user: user ? { id: user.id, email: user.email } : null,
-      designer: designer ? { id: designer.id, email: designer.email, isActive: designer.is_active } : null,
-      isDesigner,
-      designerError
-    });
-  }, [authLoading, designerLoading, user, designer, isDesigner, designerError]);
-  
-  useEffect(() => {
-
-
-    // If authentication or designer profile is still loading, do nothing in this effect.
-    // The component's render logic will handle showing a loading state.
     if (authLoading || designerLoading) {
       return;
     }
-	
-	// Wait up to 1 second for async states to settle
     const verifyTimeout = setTimeout(() => {
-    // If loading is complete and user is not authenticated, redirect to home.
     if (!user) {
-      console.log('User not authenticated, redirecting to /');
       navigate('/');
       return;
     }
-
-    // If user is authenticated but no designer profile is found, redirect to gallery.
-    // This page is specifically for designers to share photos.
     if (!designer) {
-      console.log('Designer profile not found, redirecting to /gallery');
       navigate('/gallery');
       return;
     }
-    
-    // Initialize form location with designer's location if not already set
      if (!formData.location && designer.location) {
       setFormData(prev => ({
         ...prev,
         location: designer.location
       }));
     } 
-
-	}, 1000); // 1 second wait
-
-    // Cleanup in case dependency changes before timeout fires
+	}, 1000); 
     return () => clearTimeout(verifyTimeout);
-	
   }, [user, authLoading, designerLoading, navigate, designer, isDesigner, formData.location]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -100,6 +76,25 @@ const SharePhotoForm = () => {
   const handleImageUploaded = (url: string) => {
     setFormData(prev => ({ ...prev, image_url: url }));
     if (error) setError(null);
+  };
+
+  // NEW: Handler to add a material to the list
+  const handleAddMaterial = () => {
+    if (currentMaterial.trim() && !formData.materials.includes(currentMaterial.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        materials: [...prev.materials, currentMaterial.trim()]
+      }));
+      setCurrentMaterial(''); // Clear the input field
+    }
+  };
+
+  // NEW: Handler to remove a material from the list
+  const handleRemoveMaterial = (materialToRemove: string) => {
+    setFormData(prev => ({
+      ...prev,
+      materials: prev.materials.filter(material => material !== materialToRemove)
+    }));
   };
 
   const validateForm = () => {
@@ -145,25 +140,26 @@ const SharePhotoForm = () => {
           category: formData.category,
           location: formData.location,
           image_url: formData.image_url,
+          // NEW: Added materials array to the insert object
+          materials: formData.materials,
           is_approved: false // Default to false for moderation
         });
 
       if (error) throw error;
 
       setSuccess('Photo shared successfully! It will appear in the gallery after review.');
+      // NEW: Reset materials field on successful submission
       setFormData({
         title: '',
         description: '',
         category: '',
         location: '',
-        image_url: ''
+        image_url: '',
+        materials: []
       });
-      
-      // Redirect to gallery after a short delay
       setTimeout(() => {
         navigate('/gallery');
       }, 2000);
-
     } catch (error: any) {
       console.error('Error sharing photo:', error);
       setError(error.message || 'Failed to share photo');
@@ -172,7 +168,6 @@ const SharePhotoForm = () => {
     }
   };
 
-  // Render loading state for initial data fetch
   if (authLoading || designerLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -184,17 +179,13 @@ const SharePhotoForm = () => {
     );
   }
 
-  // Render access denied if not authenticated (after loading is complete)
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-secondary-800 mb-4">Access Denied</h2>
           <p className="text-gray-600 mb-4">You need to be signed in to share photos.</p>
-          <button
-            onClick={() => navigate('/')}
-            className="btn-primary"
-          >
+          <button onClick={() => navigate('/')} className="btn-primary">
             Go to Home
           </button>
         </div>
@@ -202,23 +193,16 @@ const SharePhotoForm = () => {
     );
   }
 
-  // Render access denied if user is not a designer (after loading is complete)
   if (!designer) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-secondary-800 mb-4">Access Denied</h2>
           <p className="text-gray-600 mb-4">You need to be a registered designer to share photos.</p>
-          <button
-            onClick={() => navigate('/register-designer')}
-            className="btn-primary"
-          >
+          <button onClick={() => navigate('/register-designer')} className="btn-primary">
             Register as Designer
           </button>
-          <button
-            onClick={() => navigate('/gallery')}
-            className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors mt-4"
-          >
+          <button onClick={() => navigate('/gallery')} className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors mt-4">
             Back to Gallery
           </button>
         </div>
@@ -226,7 +210,6 @@ const SharePhotoForm = () => {
     );
   }
 
-  // If all checks pass, render the form
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -262,7 +245,6 @@ const SharePhotoForm = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Image Upload */}
             <div className="bg-gray-50 rounded-lg p-6">
               <h2 className="text-xl font-semibold text-secondary-800 mb-4">Upload Your Photo *</h2>
               <ImageUploader
@@ -273,96 +255,88 @@ const SharePhotoForm = () => {
               />
             </div>
 
-            {/* Photo Details */}
             <div className="bg-gray-50 rounded-lg p-6">
               <h2 className="text-xl font-semibold text-secondary-800 mb-4">Photo Details</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Title *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
                   <div className="relative">
                     <Image className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="title"
-                      value={formData.title}
-                      onChange={handleInputChange}
-                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="e.g., Modern Living Room, Minimalist Bedroom"
-                      required
-                    />
+                    <input type="text" name="title" value={formData.title} onChange={handleInputChange} className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="e.g., Modern Living Room" required />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
                   <div className="relative">
                     <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={handleInputChange}
-                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
-                    >
+                    <select name="category" value={formData.category} onChange={handleInputChange} className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" required>
                       <option value="">Select Category</option>
-                      {categories.map(category => (
-                        <option key={category} value={category}>{category}</option>
-                      ))}
+                      {categories.map(category => (<option key={category} value={category}>{category}</option>))}
                     </select>
                   </div>
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                   <div className="relative">
                     <FileText className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                    <textarea
-                      name="description"
-                      value={formData.description}
-                      onChange={handleInputChange}
-                      rows={3}
+                    <textarea name="description" value={formData.description} onChange={handleInputChange} rows={3} className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Briefly describe your design, materials used, and inspiration." />
+                  </div>
+                </div>
+
+                {/* NEW: Materials Used Input Section */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Materials Used</label>
+                  <div className="relative flex items-center">
+                    <Package className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={currentMaterial}
+                      onChange={(e) => setCurrentMaterial(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddMaterial(); } }}
                       className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="Briefly describe your design, materials used, and inspiration."
+                      placeholder="e.g., Teak Wood, Italian Marble"
                     />
+                    <button
+                      type="button"
+                      onClick={handleAddMaterial}
+                      className="ml-2 bg-primary-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-600 transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {formData.materials.map((material, index) => (
+                      <span key={index} className="bg-accent-100 text-accent-800 px-3 py-1 rounded-full text-sm flex items-center">
+                        {material}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMaterial(material)}
+                          className="ml-2 text-accent-600 hover:text-accent-800"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Location *</label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <select
-                      name="location"
-                      value={formData.location}
-                      onChange={handleInputChange}
-                      className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
-                    >
+                    <select name="location" value={formData.location} onChange={handleInputChange} className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" required>
                       <option value="">Select Location</option>
-                      {locations.map(location => (
-                        <option key={location} value={location}>{location}</option>
-                      ))}
+                      {locations.map(location => (<option key={location} value={location}>{location}</option>))}
                     </select>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Submit Button */}
             <div className="flex justify-center">
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary px-12 py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-              >
+              <button type="submit" disabled={loading} className="btn-primary px-12 py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
                 {loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
