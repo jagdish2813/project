@@ -39,7 +39,8 @@ export const useUserRegistrationStatus = () => {
           const { data: customerData, error: customerError } = await supabase
             .from('customers')
             .select('id')
-            .eq('user_id', user.id);
+            .eq('user_id', user.id)
+            .;
             //.maybeSingle();
 
           if (customerError && customerError.code !== 'PGRST116') {
