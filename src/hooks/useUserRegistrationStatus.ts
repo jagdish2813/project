@@ -40,7 +40,7 @@ export const useUserRegistrationStatus = () => {
             .from('customers')
             .select('id')
             .eq('user_id', user.id)
-            .;
+            .limit(1);
             //.maybeSingle();
 
           if (customerError && customerError.code !== 'PGRST116') {
