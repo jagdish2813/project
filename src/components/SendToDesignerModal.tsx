@@ -1,8 +1,17 @@
-import React, { useState } from 'react';
-import { X, Mail, Phone, Send, AlertCircle, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Send, AlertCircle, CheckCircle, ChevronDown, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import type { Customer } from '../lib/supabase';
+
+interface Designer {
+  id: string;
+  name: string;
+  email: string;
+  location: string;
+  profile_image: string | null;
+  specialization: string;
+}
 
 interface SendToDesignerModalProps {
   isOpen: boolean;
@@ -15,35 +24,58 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    designer_email: '',
-    designer_phone: '',
-    message: ''
-  });
+  const [designers, setDesigners] = useState<Designer[]>([]);
+  const [selectedDesigners, setSelectedDesigners] = useState<Designer[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [message, setMessage] = useState('');
+  const [fetchingDesigners, setFetchingDesigners] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user starts typing
+  useEffect(() => {
+    if (isOpen) {
+      fetchDesigners();
+    }
+  }, [isOpen]);
+
+  const fetchDesigners = async () => {
+    setFetchingDesigners(true);
+    try {
+      const { data, error } = await supabase
+        .from('designers')
+        .select('id, name, email, location, profile_image, specialization')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setDesigners(data || []);
+    } catch (error: any) {
+      console.error('Error fetching designers:', error);
+      setError('Failed to load designers');
+    } finally {
+      setFetchingDesigners(false);
+    }
+  };
+
+  const toggleDesignerSelection = (designer: Designer) => {
+    setSelectedDesigners(prev => {
+      const isSelected = prev.some(d => d.id === designer.id);
+      if (isSelected) {
+        return prev.filter(d => d.id !== designer.id);
+      } else {
+        return [...prev, designer];
+      }
+    });
     if (error) setError(null);
   };
 
+  const removeDesigner = (designerId: string) => {
+    setSelectedDesigners(prev => prev.filter(d => d.id !== designerId));
+  };
+
   const validateForm = () => {
-    if (!formData.designer_email.trim()) {
-      setError('Designer email is required');
+    if (selectedDesigners.length === 0) {
+      setError('Please select at least one designer');
       return false;
     }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.designer_email.trim())) {
-      setError('Please enter a valid email address');
-      return false;
-    }
-    
     return true;
   };
 
@@ -55,36 +87,33 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
     setError(null);
 
     try {
-      const shareData = {
+      const shareDataArray = selectedDesigners.map(designer => ({
         project_id: project.id,
         customer_id: user.id,
-        designer_email: formData.designer_email.trim().toLowerCase(),
-        designer_phone: formData.designer_phone.trim() || null,
-        message: formData.message.trim() || null,
+        designer_id: designer.id,
+        designer_email: designer.email,
+        designer_phone: null,
+        message: message.trim() || null,
         status: 'sent'
-      };
+      }));
 
       const { error } = await supabase
         .from('project_shares')
-        .insert([shareData]);
+        .insert(shareDataArray);
 
       if (error) throw error;
 
       setSuccess(true);
-      
-      // Reset form and close modal after success
+
       setTimeout(() => {
-        setFormData({
-          designer_email: '',
-          designer_phone: '',
-          message: ''
-        });
+        setSelectedDesigners([]);
+        setMessage('');
         setSuccess(false);
         onClose();
       }, 2000);
     } catch (error: any) {
       console.error('Error sending project to designer:', error);
-      setError(error.message || 'Failed to send project to designer');
+      setError(error.message || 'Failed to send project to designers');
     } finally {
       setLoading(false);
     }
@@ -92,13 +121,11 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
 
   const handleClose = () => {
     if (!loading) {
-      setFormData({
-        designer_email: '',
-        designer_phone: '',
-        message: ''
-      });
+      setSelectedDesigners([]);
+      setMessage('');
       setError(null);
       setSuccess(false);
+      setIsDropdownOpen(false);
       onClose();
     }
   };
@@ -143,38 +170,97 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Designer Email Address *
+                  Select Designers *
                 </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="email"
-                    name="designer_email"
-                    value={formData.designer_email}
-                    onChange={handleInputChange}
-                    className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="designer@example.com"
-                    required
-                    disabled={loading}
-                  />
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Designer Phone Number (Optional)
-                </label>
+                {selectedDesigners.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {selectedDesigners.map(designer => (
+                      <div
+                        key={designer.id}
+                        className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm"
+                      >
+                        {designer.profile_image ? (
+                          <img
+                            src={designer.profile_image}
+                            alt={designer.name}
+                            className="w-5 h-5 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-5 h-5 rounded-full bg-blue-200 flex items-center justify-center text-xs">
+                            {designer.name.charAt(0)}
+                          </div>
+                        )}
+                        <span>{designer.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeDesigner(designer.id)}
+                          className="hover:text-blue-900"
+                          disabled={loading}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="tel"
-                    name="designer_phone"
-                    value={formData.designer_phone}
-                    onChange={handleInputChange}
-                    className="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="+91 98765 43210"
-                    disabled={loading}
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    disabled={loading || fetchingDesigners}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 flex items-center justify-between hover:border-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+                  >
+                    <span className="text-gray-700">
+                      {fetchingDesigners ? 'Loading designers...' : 'Choose designers'}
+                    </span>
+                    <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isDropdownOpen && !fetchingDesigners && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                      {designers.length === 0 ? (
+                        <div className="px-4 py-8 text-center text-gray-500">
+                          No designers available
+                        </div>
+                      ) : (
+                        designers.map(designer => {
+                          const isSelected = selectedDesigners.some(d => d.id === designer.id);
+                          return (
+                            <button
+                              key={designer.id}
+                              type="button"
+                              onClick={() => toggleDesignerSelection(designer)}
+                              className="w-full px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-left border-b border-gray-100 last:border-b-0"
+                            >
+                              {designer.profile_image ? (
+                                <img
+                                  src={designer.profile_image}
+                                  alt={designer.name}
+                                  className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-gray-600 font-medium">
+                                    {designer.name.charAt(0)}
+                                  </span>
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-gray-900 truncate">{designer.name}</div>
+                                <div className="text-sm text-gray-500 truncate">{designer.location}</div>
+                                <div className="text-xs text-gray-400 truncate">{designer.specialization}</div>
+                              </div>
+                              {isSelected && (
+                                <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -183,12 +269,11 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
                   Personal Message (Optional)
                 </label>
                 <textarea
-                  name="message"
-                  value={formData.message}
-                  onChange={handleInputChange}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
                   rows={3}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Add a personal message for the designer..."
+                  placeholder="Add a personal message for the designers..."
                   disabled={loading}
                 />
               </div>
