@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FileText,
   CheckCircle,
@@ -69,8 +69,11 @@ interface Quote {
 
 const CustomerQuotes = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const projectIdFilter = searchParams.get('projectId');
   const { user, loading: authLoading } = useAuth();
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [allQuotes, setAllQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
@@ -193,7 +196,14 @@ const CustomerQuotes = () => {
         };
       });
       
-      setQuotes(processedQuotes);
+      setAllQuotes(processedQuotes);
+
+      // Filter by project if projectId is in URL
+      if (projectIdFilter) {
+        setQuotes(processedQuotes.filter(q => q.project_id === projectIdFilter));
+      } else {
+        setQuotes(processedQuotes);
+      }
     } catch (error: any) {
       console.error('Error fetching quotes:', error);
       setError(error.message || 'Failed to load quotes');
@@ -349,11 +359,20 @@ const CustomerQuotes = () => {
             Back to Projects
           </button>
           <h1 className="text-3xl font-bold text-secondary-800 mb-2">
-            My Quotes
+            {projectIdFilter && quotes.length > 0 ? `Quotes for ${quotes[0].project?.project_name}` : 'My Quotes'}
           </h1>
           <p className="text-gray-600">
-            Review and manage quotes from designers for your projects
+            {projectIdFilter ? 'Review quotes from designers for this project' : 'Review and manage quotes from designers for your projects'}
           </p>
+          {projectIdFilter && (
+            <button
+              onClick={() => navigate('/customer-quotes')}
+              className="mt-3 text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center space-x-1"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>View All Quotes</span>
+            </button>
+          )}
         </div>
       </div>
 

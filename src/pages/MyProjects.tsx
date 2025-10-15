@@ -448,7 +448,7 @@ const MyProjects = () => {
                     {projectQuotes[project.id] ? (
                       // Project has accepted quote
                       <button
-                        onClick={() => navigate('/customer-quotes')}
+                        onClick={() => navigate(`/customer-quotes?projectId=${project.id}`)}
                         className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                       >
                         <CheckCircle className="w-4 h-4" />
@@ -457,7 +457,7 @@ const MyProjects = () => {
                     ) : (project as any).assigned_designer ? (
                       // Project is assigned but no accepted quote
                       <button
-                        onClick={() => navigate('/customer-quotes')}
+                        onClick={() => navigate(`/customer-quotes?projectId=${project.id}`)}
                         className="w-full bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                       >
                         <FileText className="w-4 h-4" />
@@ -467,7 +467,7 @@ const MyProjects = () => {
                       // Project has quotes but not assigned yet
                       <div className="space-y-2">
                         <button
-                          onClick={() => navigate('/customer-quotes')}
+                          onClick={() => navigate(`/customer-quotes?projectId=${project.id}`)}
                           className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                         >
                           <FileText className="w-4 h-4" />

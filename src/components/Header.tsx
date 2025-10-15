@@ -75,6 +75,11 @@ const Header = () => {
     setShowUserMenu(false);
   };
 
+  const handleViewQuotes = () => {
+    navigate('/customer-quotes');
+    setShowUserMenu(false);
+  };
+
   const handleViewCustomerProjects = () => {
     navigate('/customer-projects');
     setShowUserMenu(false);
@@ -225,13 +230,22 @@ const Header = () => {
                               
                               {/* Show project-related options for customers */}
                               {hasCustomerProject ? (
-                                <button
-                                  onClick={handleViewProjects}
-                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-                                >
-                                  <FolderOpen className="w-4 h-4" />
-                                  <span>View My Projects</span>
-                                </button>
+                                <>
+                                  <button
+                                    onClick={handleViewProjects}
+                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                                  >
+                                    <FolderOpen className="w-4 h-4" />
+                                    <span>My Projects</span>
+                                  </button>
+                                  <button
+                                    onClick={handleViewQuotes}
+                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                                  >
+                                    <FileText className="w-4 h-4" />
+                                    <span>My Quotes</span>
+                                  </button>
+                                </>
                               ) : (
                                 <button
                                   onClick={handleCustomerRegistration}
@@ -390,16 +404,28 @@ const Header = () => {
                             
                             {/* Show project-related options for customers */}
                             {hasCustomerProject ? (
-                              <button
-                                onClick={() => {
-                                  handleViewProjects();
-                                  setIsMenuOpen(false);
-                                }}
-                                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
-                              >
-                                <FolderOpen className="w-4 h-4" />
-                                <span>View My Projects</span>
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => {
+                                    handleViewProjects();
+                                    setIsMenuOpen(false);
+                                  }}
+                                  className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                                >
+                                  <FolderOpen className="w-4 h-4" />
+                                  <span>My Projects</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    handleViewQuotes();
+                                    setIsMenuOpen(false);
+                                  }}
+                                  className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                  <span>My Quotes</span>
+                                </button>
+                              </>
                             ) : (
                               <>
                               <button
