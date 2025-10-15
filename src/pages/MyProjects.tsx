@@ -407,33 +407,7 @@ const MyProjects = () => {
                     </div>
                   )}
 
-                  {/* Accepted Quote Info */}
-                  {acceptedQuotes.find(q => q.project_id === project.id) && (
-                    <div className="px-6 py-4 bg-green-50 border-b border-gray-100">
-                      <div className="flex items-center space-x-3 hover:bg-green-100 p-2 rounded-lg transition-colors">
-                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                          <FileText className="w-4 h-4 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-green-800 flex items-center space-x-2">
-                            <span>Accepted Quote: ₹{acceptedQuotes.find(q => q.project_id === project.id).total_amount.toLocaleString()}</span>
-                            <CheckCircle className="w-4 h-4" />
-                          </p>
-                          <p className="text-sm text-green-600">
-                            Accepted on {new Date(acceptedQuotes.find(q => q.project_id === project.id).acceptance_date).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="ml-auto">
-                          <button
-                            onClick={() => navigate(`/project-detail/${project.id}`)}
-                            className="text-green-700 hover:text-green-800 text-sm font-medium"
-                          >
-                            View Details
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {/* This duplicate section is removed - handled below */}
 
                   {/* Action Buttons */}
                   <div className="space-y-2">
@@ -445,15 +419,6 @@ const MyProjects = () => {
                         <Activity className="w-4 h-4" />
                         <span>View Details</span>
                       </button>
-                      {projectQuotes[project.id] && (
-                        <button
-                          onClick={() => navigate(`/generate-quote/${project.id}`)}
-                          className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
-                          title="View Quote"
-                        >
-                          <FileText className="w-4 h-4" />
-                        </button>
-                      )}
                       {project.layout_image_url && (
                         <button
                           onClick={() => handleVastuAnalysis(project)}
@@ -477,25 +442,35 @@ const MyProjects = () => {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    
-                    {!(project as any).assigned_designer && !projectQuotes[project.id] && (
+
+                    {/* Send to Designer or View Quotes - Only one button based on state */}
+                    {!projectQuotes[project.id] ? (
+                      !(project as any).assigned_designer ? (
+                        <button
+                          onClick={() => handleSendToDesigner(project)}
+                          className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                        >
+                          <Send className="w-4 h-4" />
+                          <span>Send to Designer</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => navigate('/customer-quotes')}
+                          className="w-full bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                        >
+                          <FileText className="w-4 h-4" />
+                          <span>View Quotes</span>
+                        </button>
+                      )
+                    ) : (
                       <button
-                        onClick={() => handleSendToDesigner(project)}
+                        onClick={() => navigate('/customer-quotes')}
                         className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                       >
-                        <Send className="w-4 h-4" />
-                        <span>Send to Designer</span>
+                        <CheckCircle className="w-4 h-4" />
+                        <span>View Accepted Quote</span>
                       </button>
                     )}
-                    
-                    {/* View Quotes Button */}
-                    <button
-                      onClick={() => navigate('/customer-quotes')}
-                      className="w-full bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 mt-2 mb-2"
-                    >
-                      <FileText className="w-4 h-4" />
-                      <span>View Quotes</span>
-                    </button>
                   </div>
                 </div>
               </div>

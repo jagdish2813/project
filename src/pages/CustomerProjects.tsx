@@ -179,20 +179,24 @@ interface Quote {
 
       // Fetch project details for confirmed quotes
       const projectIds = quotesData?.map(q => q.project_id) || [];
-      const { data: assignedData, error: assignedError } = await supabase
-        .from('customers')
-        .select('*')
-        .in('id', projectIds)
-        .order('created_at', { ascending: false });
+      let assignedData: any[] = [];
+      if (projectIds.length > 0) {
+        const { data, error: assignedError } = await supabase
+          .from('customers')
+          .select('*')
+          .in('id', projectIds)
+          .order('created_at', { ascending: false });
 
-      console.log('Assigned projects query result:', { assignedData, assignedError });
-
-      if (assignedError) {
-        console.error('Error fetching assigned projects:', assignedError);
-        throw new Error(`Failed to fetch assigned projects: ${assignedError.message}`);
+        if (assignedError) {
+          console.error('Error fetching assigned projects:', assignedError);
+          throw new Error(`Failed to fetch assigned projects: ${assignedError.message}`);
+        }
+        assignedData = data || [];
       }
 
-      setAssignedProjects(assignedData || []);
+      console.log('Assigned projects query result:', { assignedData });
+
+      setAssignedProjects(assignedData);
 
       // Create a map of project_id to quote for assigned projects
       if (quotesData && quotesData.length > 0) {
