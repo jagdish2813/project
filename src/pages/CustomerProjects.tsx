@@ -160,54 +160,57 @@ interface Quote {
         isActive: designer.is_active
       });
 
-      // Fetch assigned projects (projects with confirmed quotations)
+      // Fetch assigned projects (projects where assigned_designer_id is set to this designer)
       console.log('Fetching assigned projects...');
-      const { data: quotesData, error: quotesError } = await supabase
-        .from('designer_quotes')
-        .select(`
-          *,
-          items:quote_items(*)
-        `)
-        .eq('designer_id', designer.id)
-        .eq('customer_accepted', true)
-        .order('acceptance_date', { ascending: false });
+      const { data: assignedData, error: assignedError } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('assigned_designer_id', designer.id)
+        .order('created_at', { ascending: false });
 
-      if (quotesError) {
-        console.error('Error fetching confirmed quotes:', quotesError);
-        throw new Error(`Failed to fetch confirmed quotes: ${quotesError.message}`);
-      }
-
-      // Fetch project details for confirmed quotes
-      const projectIds = quotesData?.map(q => q.project_id) || [];
-      let assignedData: any[] = [];
-      if (projectIds.length > 0) {
-        const { data, error: assignedError } = await supabase
-          .from('customers')
-          .select('*')
-          .in('id', projectIds)
-          .order('created_at', { ascending: false });
-
-        if (assignedError) {
-          console.error('Error fetching assigned projects:', assignedError);
-          throw new Error(`Failed to fetch assigned projects: ${assignedError.message}`);
-        }
-        assignedData = data || [];
+      if (assignedError) {
+        console.error('Error fetching assigned projects:', assignedError);
+        throw new Error(`Failed to fetch assigned projects: ${assignedError.message}`);
       }
 
       console.log('Assigned projects query result:', { assignedData });
 
-      setAssignedProjects(assignedData);
+      setAssignedProjects(assignedData || []);
 
-      // Create a map of project_id to quote for assigned projects
-      if (quotesData && quotesData.length > 0) {
+      // Fetch quotes for assigned projects
+      const assignedProjectIds = assignedData?.map(p => p.id) || [];
+      let assignedQuotesData: any[] = [];
+      if (assignedProjectIds.length > 0) {
+        const { data: quotesData, error: quotesError } = await supabase
+          .from('designer_quotes')
+          .select(`
+            *,
+            items:quote_items(*)
+          `)
+          .eq('designer_id', designer.id)
+          .in('project_id', assignedProjectIds)
+          .order('created_at', { ascending: false });
+
+        if (quotesError) {
+          console.error('Error fetching assigned project quotes:', quotesError);
+        } else {
+          assignedQuotesData = quotesData || [];
+        }
+      }
+
+      // Create a map of project_id to quotes for assigned projects
+      if (assignedQuotesData && assignedQuotesData.length > 0) {
         const quotesMap: Record<string, any> = {};
-        quotesData.forEach(quote => {
-          quotesMap[quote.project_id] = quote;
+        assignedQuotesData.forEach(quote => {
+          // Store only accepted quotes in the map for display
+          if (quote.customer_accepted) {
+            quotesMap[quote.project_id] = quote;
+          }
         });
         setProjectQuotes(quotesMap);
       }
 
-      // Fetch shared projects (projects shared via email that don't have confirmed quotations)
+      // Fetch shared projects (projects shared via email that are NOT assigned to this designer)
       console.log('Fetching shared projects...');
       const { data: allSharedData, error: sharedError } = await supabase
         .from('project_shares')
@@ -218,9 +221,9 @@ interface Quote {
         .ilike('designer_email', designer.email)
         .order('created_at', { ascending: false });
 
-      // Filter out projects that have confirmed quotations
+      // Filter out projects that are assigned to this designer
       const sharedData = allSharedData?.filter(share => {
-        return !quotesData?.some(q => q.project_id === share.project_id && q.customer_accepted);
+        return !assignedProjectIds.includes(share.project_id);
       }) || [];
 
       console.log('Shared projects query result:', { sharedData, sharedError });
@@ -233,8 +236,29 @@ interface Quote {
         setProjectShares(sharedData);
       }
 
-      // Set accepted quotes from quotesData
-      setAcceptedQuotes(quotesData || []);
+      // Fetch quotes for shared projects
+      const sharedProjectIds = sharedData?.map(s => s.project_id) || [];
+      let sharedQuotesData: any[] = [];
+      if (sharedProjectIds.length > 0) {
+        const { data: quotesData, error: quotesError } = await supabase
+          .from('designer_quotes')
+          .select(`
+            *,
+            items:quote_items(*)
+          `)
+          .eq('designer_id', designer.id)
+          .in('project_id', sharedProjectIds)
+          .order('created_at', { ascending: false });
+
+        if (quotesError) {
+          console.error('Error fetching shared project quotes:', quotesError);
+        } else {
+          sharedQuotesData = quotesData || [];
+        }
+      }
+
+      // Set accepted quotes from both assigned and shared
+      setAcceptedQuotes([...assignedQuotesData, ...sharedQuotesData]);
 
       setDebugInfo({
         designerInfo: {
@@ -743,7 +767,10 @@ interface Quote {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {projectShares.map((share) => (
+              {projectShares.map((share) => {
+                // Find all quotes for this shared project
+                const projectQuotesForShare = acceptedQuotes.filter(q => q.project_id === share.project_id);
+                return (
                 <div key={share.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
                   {/* Project Header */}
                   <div className="p-6 border-b border-gray-100">
@@ -855,6 +882,45 @@ interface Quote {
                       </div>
                     )}
 
+                    {/* Quotes Section */}
+                    {projectQuotesForShare.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Your Quotes ({projectQuotesForShare.length}):</p>
+                        <div className="space-y-2">
+                          {projectQuotesForShare.map((quote) => (
+                            <div key={quote.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-blue-900">{quote.title}</p>
+                                  <div className="flex items-center space-x-3 mt-1">
+                                    <p className="text-sm font-semibold text-blue-700">
+                                      ₹{quote.total_amount.toLocaleString()}
+                                    </p>
+                                    {quote.customer_accepted ? (
+                                      <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-medium flex items-center space-x-1">
+                                        <CheckCircle className="w-3 h-3" />
+                                        <span>Accepted</span>
+                                      </span>
+                                    ) : (
+                                      <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                                        Pending
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => setSelectedQuote(quote)}
+                                  className="ml-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Action Buttons */}
                     <div className="flex space-x-2">
                       <button
@@ -881,7 +947,7 @@ interface Quote {
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )
         )}
