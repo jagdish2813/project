@@ -699,9 +699,7 @@ interface Quote {
                       >
                         <Upload className="w-4 h-4" />
                       </button>
-                      {projectQuotes[project.id] && (
- 
-                      )}
+                      
                     </div>
                   </div>
                 </div>
