@@ -197,17 +197,32 @@ const DesignerQuoteGenerator = () => {
       setLoading(true);
       setError(null);
 
+      // First, check if this designer has access to this project
+      // Either through project_shares or assigned_designer_id
+      const { data: shareCheck } = await supabase
+        .from('project_shares')
+        .select('*')
+        .eq('project_id', projectId)
+        .ilike('designer_email', designer.email)
+        .maybeSingle();
+
       const { data, error } = await supabase
         .from('customers')
         .select('*')
         .eq('id', projectId)
-        .eq('assigned_designer_id', designer.id)
         .single();
 
       if (error) throw error;
-      
+
       if (!data) {
-        throw new Error('Project not found or you do not have access to this project');
+        throw new Error('Project not found');
+      }
+
+      // Check if designer has access via assignment or share
+      const hasAccess = data.assigned_designer_id === designer.id || shareCheck !== null;
+
+      if (!hasAccess) {
+        throw new Error('You do not have access to this project');
       }
       
       setCustomer(data);
