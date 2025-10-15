@@ -39,14 +39,39 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
   const fetchDesigners = async () => {
     setFetchingDesigners(true);
     try {
-      const { data, error } = await supabase
-        .from('designers')
-        .select('id, name, email, location, profile_image, specialization')
-        .eq('is_active', true)
-        .order('name');
+      // First, get all quotes for this project
+      const { data: quotes, error: quotesError } = await supabase
+        .from('designer_quotes')
+        .select('designer_id')
+        .eq('project_id', project.id);
 
-      if (error) throw error;
-      setDesigners(data || []);
+      if (quotesError) throw quotesError;
+
+      // If no quotes exist, show all designers
+      if (!quotes || quotes.length === 0) {
+        const { data, error } = await supabase
+          .from('designers')
+          .select('id, name, email, location, profile_image, specialization')
+          .eq('is_active', true)
+          .order('name');
+
+        if (error) throw error;
+        setDesigners(data || []);
+      } else {
+        // Get unique designer IDs who have sent quotes
+        const designerIds = [...new Set(quotes.map(q => q.designer_id))];
+
+        // Fetch only those designers
+        const { data, error } = await supabase
+          .from('designers')
+          .select('id, name, email, location, profile_image, specialization')
+          .in('id', designerIds)
+          .eq('is_active', true)
+          .order('name');
+
+        if (error) throw error;
+        setDesigners(data || []);
+      }
     } catch (error: any) {
       console.error('Error fetching designers:', error);
       setError('Failed to load designers');
@@ -56,14 +81,9 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
   };
 
   const toggleDesignerSelection = (designer: Designer) => {
-    setSelectedDesigners(prev => {
-      const isSelected = prev.some(d => d.id === designer.id);
-      if (isSelected) {
-        return prev.filter(d => d.id !== designer.id);
-      } else {
-        return [...prev, designer];
-      }
-    });
+    // For assignment, only allow single selection
+    setSelectedDesigners([designer]);
+    setIsDropdownOpen(false);
     if (error) setError(null);
   };
 
@@ -73,7 +93,7 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
 
   const validateForm = () => {
     if (selectedDesigners.length === 0) {
-      setError('Please select at least one designer');
+      setError('Please select a designer');
       return false;
     }
     return true;
@@ -87,21 +107,19 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
     setError(null);
 
     try {
-      const shareDataArray = selectedDesigners.map(designer => ({
-        project_id: project.id,
-        customer_id: user.id,
-        designer_id: designer.id,
-        designer_email: designer.email,
-        designer_phone: null,
-        message: message.trim() || null,
-        status: 'sent'
-      }));
+      const selectedDesigner = selectedDesigners[0];
 
-      const { error } = await supabase
-        .from('project_shares')
-        .insert(shareDataArray);
+      // Update the customer project with assigned_designer_id
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update({
+          assigned_designer_id: selectedDesigner.id,
+          assignment_status: 'assigned'
+        })
+        .eq('id', project.id)
+        .eq('user_id', user.id); // Security: ensure user owns the project
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
       setSuccess(true);
 
@@ -110,10 +128,12 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
         setMessage('');
         setSuccess(false);
         onClose();
+        // Refresh the page to show updated status
+        window.location.reload();
       }, 2000);
     } catch (error: any) {
-      console.error('Error sending project to designer:', error);
-      setError(error.message || 'Failed to send project to designers');
+      console.error('Error assigning designer to project:', error);
+      setError(error.message || 'Failed to assign designer to project');
     } finally {
       setLoading(false);
     }
@@ -137,7 +157,7 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
       <div className="bg-white rounded-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-secondary-800">
-            Send Project to Designer
+            Assign Designer to Project
           </h2>
           <button
             onClick={handleClose}
@@ -153,9 +173,9 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-green-500" />
             </div>
-            <h3 className="text-xl font-bold text-secondary-800 mb-2">Project Sent Successfully!</h3>
+            <h3 className="text-xl font-bold text-secondary-800 mb-2">Designer Assigned Successfully!</h3>
             <p className="text-gray-600">
-              Your project details have been sent to the designer. They will contact you soon.
+              The selected designer has been assigned to your project and will be notified.
             </p>
           </div>
         ) : (
@@ -163,14 +183,14 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-secondary-800 mb-2">Project: {project.project_name}</h3>
               <p className="text-gray-600 text-sm">
-                Share your project details with a designer to get personalized consultation and quotes.
+                Select a designer who has provided a quote for this project to assign them as the project designer.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Designers *
+                  Select Designer to Assign *
                 </label>
 
                 {selectedDesigners.length > 0 && (
@@ -213,7 +233,7 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
                     className="w-full border border-gray-300 rounded-lg px-4 py-3 flex items-center justify-between hover:border-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
                   >
                     <span className="text-gray-700">
-                      {fetchingDesigners ? 'Loading designers...' : 'Choose designers'}
+                      {fetchingDesigners ? 'Loading designers...' : 'Choose a designer'}
                     </span>
                     <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
@@ -222,7 +242,8 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
                       {designers.length === 0 ? (
                         <div className="px-4 py-8 text-center text-gray-500">
-                          No designers available
+                          <p className="mb-2">No designers have sent quotes yet</p>
+                          <p className="text-xs">Please wait for designers to submit their quotes</p>
                         </div>
                       ) : (
                         designers.map(designer => {

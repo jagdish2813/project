@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  FileText, 
-  CheckCircle, 
-  XCircle, 
-  Calendar, 
-  Clock, 
-  ArrowLeft, 
-  Eye, 
-  Download, 
-  ThumbsUp, 
-  ThumbsDown, 
+import {
+  FileText,
+  CheckCircle,
+  XCircle,
+  Calendar,
+  Clock,
+  ArrowLeft,
+  Eye,
+  Download,
+  ThumbsUp,
+  ThumbsDown,
   AlertCircle,
   Loader2,
-  IndianRupee as Rupee
+  IndianRupee as Rupee,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import SendToDesignerModal from '../components/SendToDesignerModal';
 
 interface QuoteItem {
   id: string;
@@ -75,6 +77,8 @@ const CustomerQuotes = () => {
   const [feedbackText, setFeedbackText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedProjectForAssignment, setSelectedProjectForAssignment] = useState<any>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -480,13 +484,25 @@ const CustomerQuotes = () => {
                     )}
                     
                     {(quote.status === 'accepted' || quote.customer_accepted) && (
-                      <button
-                        onClick={() => setSelectedQuote(quote)}
-                        className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        <span>Accepted Quote</span>
-                      </button>
+                      <>
+                        <button
+                          onClick={() => setSelectedQuote(quote)}
+                          className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          <span>View Accepted Quote</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedProjectForAssignment(quote.project);
+                            setShowAssignModal(true);
+                          }}
+                          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                        >
+                          <UserCheck className="w-4 h-4" />
+                          <span>Assign Designer</span>
+                        </button>
+                      </>
                     )}
                     
                     {quote.status === 'rejected' && (
@@ -699,6 +715,18 @@ const CustomerQuotes = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Assign Designer Modal */}
+      {selectedProjectForAssignment && (
+        <SendToDesignerModal
+          isOpen={showAssignModal}
+          onClose={() => {
+            setShowAssignModal(false);
+            setSelectedProjectForAssignment(null);
+          }}
+          project={selectedProjectForAssignment}
+        />
       )}
     </div>
   );

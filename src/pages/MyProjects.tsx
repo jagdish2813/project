@@ -20,6 +20,7 @@ const MyProjects = () => {
   const [showVastuModal, setShowVastuModal] = useState(false);
   const [acceptedQuotes, setAcceptedQuotes] = useState<any[]>([]);
   const [projectQuotes, setProjectQuotes] = useState<Record<string, any>>({});
+  const [projectHasQuotes, setProjectHasQuotes] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (authLoading) return;
@@ -58,36 +59,36 @@ const MyProjects = () => {
 
       setProjects(data || []);
       
-      // Fetch accepted quotes for these projects
+      // Fetch all quotes for these projects
       if (data && data.length > 0) {
         const projectIds = data.map(p => p.id);
-        const { data: quotesData, error: quotesError } = await supabase
+
+        // Get all quotes (to check which projects have quotes)
+        const { data: allQuotesData, error: allQuotesError } = await supabase
           .from('designer_quotes')
-          .select('*')
-          .in('project_id', projectIds)
-          .eq('customer_accepted', true)
-          .eq('status', 'accepted');
-          
-        if (quotesError) {
-          console.error('Error fetching quotes:', quotesError);
-        } else {
-          setAcceptedQuotes(quotesData || []);
+          .select('project_id')
+          .in('project_id', projectIds);
+
+        if (!allQuotesError && allQuotesData) {
+          const hasQuotesMap: Record<string, boolean> = {};
+          allQuotesData.forEach(quote => {
+            hasQuotesMap[quote.project_id] = true;
+          });
+          setProjectHasQuotes(hasQuotesMap);
         }
-      }
-      
-      // Fetch accepted quotes for each project
-      if (data && data.length > 0) {
-        const projectIds = data.map(p => p.id);
+
+        // Get accepted quotes
         const { data: quotesData, error: quotesError } = await supabase
           .from('designer_quotes')
           .select('*')
           .in('project_id', projectIds)
           .eq('customer_accepted', true)
           .eq('status', 'accepted');
-          
+
         if (quotesError) {
           console.error('Error fetching quotes:', quotesError);
         } else if (quotesData) {
+          setAcceptedQuotes(quotesData || []);
           // Create a map of project_id to quote
           const quotesMap: Record<string, any> = {};
           quotesData.forEach(quote => {
@@ -443,32 +444,44 @@ const MyProjects = () => {
                       </button>
                     </div>
 
-                    {/* Send to Designer or View Quotes - Only one button based on state */}
-                    {!projectQuotes[project.id] ? (
-                      !(project as any).assigned_designer ? (
-                        <button
-                          onClick={() => handleSendToDesigner(project)}
-                          className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                        >
-                          <Send className="w-4 h-4" />
-                          <span>Send to Designer</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => navigate('/customer-quotes')}
-                          className="w-full bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                        >
-                          <FileText className="w-4 h-4" />
-                          <span>View Quotes</span>
-                        </button>
-                      )
-                    ) : (
+                    {/* Action buttons based on project state */}
+                    {projectQuotes[project.id] ? (
+                      // Project has accepted quote
                       <button
                         onClick={() => navigate('/customer-quotes')}
                         className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                       >
                         <CheckCircle className="w-4 h-4" />
                         <span>View Accepted Quote</span>
+                      </button>
+                    ) : (project as any).assigned_designer ? (
+                      // Project is assigned but no accepted quote
+                      <button
+                        onClick={() => navigate('/customer-quotes')}
+                        className="w-full bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span>View Quotes</span>
+                      </button>
+                    ) : projectHasQuotes[project.id] ? (
+                      // Project has quotes but not assigned yet
+                      <div className="space-y-2">
+                        <button
+                          onClick={() => navigate('/customer-quotes')}
+                          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                        >
+                          <FileText className="w-4 h-4" />
+                          <span>View Quotes & Assign Designer</span>
+                        </button>
+                      </div>
+                    ) : (
+                      // No quotes yet, can send to designer
+                      <button
+                        onClick={() => handleSendToDesigner(project)}
+                        className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <Send className="w-4 h-4" />
+                        <span>Send to Designer</span>
                       </button>
                     )}
                   </div>
