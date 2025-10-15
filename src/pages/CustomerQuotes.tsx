@@ -52,6 +52,7 @@ interface Quote {
   customer_accepted: boolean;
   acceptance_date: string | null;
   customer_feedback: string | null;
+  assigned_designer_id?: string;
   designer: {
     id: string;
     name: string;
@@ -63,6 +64,7 @@ interface Quote {
   project: {
     id: string;
     project_name: string;
+    assigned_designer_id?: string;
   };
   items: QuoteItem[];
 }
@@ -142,7 +144,7 @@ const CustomerQuotes = () => {
             .select(`
               *,
               designer:designers(id, name, email, phone, specialization, profile_image),
-              project:customers(id, project_name)
+              project:customers(id, project_name, user_id, assigned_designer_id)
             `)
             .in('project_id', projectIds)
             .order('created_at', { ascending: false });
@@ -511,16 +513,34 @@ const CustomerQuotes = () => {
                           <CheckCircle className="w-4 h-4" />
                           <span>View Accepted Quote</span>
                         </button>
-                        <button
-                          onClick={() => {
-                            setSelectedProjectForAssignment(quote.project);
-                            setShowAssignModal(true);
-                          }}
-                          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                        >
-                          <UserCheck className="w-4 h-4" />
-                          <span>Assign Designer</span>
-                        </button>
+                        {/* Only show Assign Designer if project doesn't have assigned_designer_id */}
+                        {!quote.assigned_designer_id && (
+                          <button
+                            onClick={async () => {
+                              // Fetch full project data
+                              const { data: fullProject, error } = await supabase
+                                .from('customers')
+                                .select('*')
+                                .eq('id', quote.project_id)
+                                .maybeSingle();
+
+                              if (error) {
+                                console.error('Error fetching project:', error);
+                                setError('Failed to load project data');
+                                return;
+                              }
+
+                              if (fullProject) {
+                                setSelectedProjectForAssignment(fullProject);
+                                setShowAssignModal(true);
+                              }
+                            }}
+                            className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                          >
+                            <UserCheck className="w-4 h-4" />
+                            <span>Assign Designer</span>
+                          </button>
+                        )}
                       </>
                     )}
                     
