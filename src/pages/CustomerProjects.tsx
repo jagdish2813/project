@@ -700,13 +700,7 @@ interface Quote {
                         <Upload className="w-4 h-4" />
                       </button>
                       {projectQuotes[project.id] && (
-                        <button
-                          onClick={() => setSelectedQuote(projectQuotes[project.id])}
-                          className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center"
-                          title="View Quotation"
-                        >
-                          <FileText className="w-4 h-4" />
-                        </button>
+ 
                       )}
                     </div>
                   </div>
