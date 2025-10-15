@@ -137,12 +137,29 @@ const CustomerProjects = () => {
         isActive: designer.is_active
       });
 
-      // Fetch assigned projects (projects where this designer is assigned)
+      // Fetch assigned projects (projects with confirmed quotations)
       console.log('Fetching assigned projects...');
+      const { data: quotesData, error: quotesError } = await supabase
+        .from('designer_quotes')
+        .select(`
+          *,
+          items:quote_items(*)
+        `)
+        .eq('designer_id', designer.id)
+        .eq('customer_accepted', true)
+        .order('acceptance_date', { ascending: false });
+
+      if (quotesError) {
+        console.error('Error fetching confirmed quotes:', quotesError);
+        throw new Error(`Failed to fetch confirmed quotes: ${quotesError.message}`);
+      }
+
+      // Fetch project details for confirmed quotes
+      const projectIds = quotesData?.map(q => q.project_id) || [];
       const { data: assignedData, error: assignedError } = await supabase
         .from('customers')
         .select('*')
-        .eq('assigned_designer_id', designer.id)
+        .in('id', projectIds)
         .order('created_at', { ascending: false });
 
       console.log('Assigned projects query result:', { assignedData, assignedError });
@@ -153,32 +170,19 @@ const CustomerProjects = () => {
       }
 
       setAssignedProjects(assignedData || []);
-      
-      // Fetch quotes for assigned projects
-      if (assignedData && assignedData.length > 0) {
-        const projectIds = assignedData.map(p => p.id);
-        const { data: quotesData, error: quotesError } = await supabase
-          .from('designer_quotes')
-          .select('*')
-          .in('project_id', projectIds)
-          .eq('customer_accepted', true)
-          .eq('status', 'accepted');
-          
-        if (quotesError) {
-          console.error('Error fetching quotes:', quotesError);
-        } else if (quotesData) {
-          // Create a map of project_id to quote
-          const quotesMap: Record<string, any> = {};
-          quotesData.forEach(quote => {
-            quotesMap[quote.project_id] = quote;
-          });
-          setProjectQuotes(quotesMap);
-        }
+
+      // Create a map of project_id to quote for assigned projects
+      if (quotesData && quotesData.length > 0) {
+        const quotesMap: Record<string, any> = {};
+        quotesData.forEach(quote => {
+          quotesMap[quote.project_id] = quote;
+        });
+        setProjectQuotes(quotesMap);
       }
 
-      // Fetch shared projects (projects shared via email)
+      // Fetch shared projects (projects shared via email that don't have confirmed quotations)
       console.log('Fetching shared projects...');
-      const { data: sharedData, error: sharedError } = await supabase
+      const { data: allSharedData, error: sharedError } = await supabase
         .from('project_shares')
         .select(`
           *,
@@ -187,33 +191,23 @@ const CustomerProjects = () => {
         .ilike('designer_email', designer.email)
         .order('created_at', { ascending: false });
 
+      // Filter out projects that have confirmed quotations
+      const sharedData = allSharedData?.filter(share => {
+        return !quotesData?.some(q => q.project_id === share.project_id && q.customer_accepted);
+      }) || [];
+
       console.log('Shared projects query result:', { sharedData, sharedError });
 
       if (sharedError) {
         console.error('Error fetching shared projects:', sharedError);
-        // Don't throw error for shared projects, just log it
         console.warn('Could not fetch shared projects, continuing with assigned projects only');
         setProjectShares([]);
       } else {
-        setProjectShares(sharedData || []);
+        setProjectShares(sharedData);
       }
-      
-      // Fetch accepted quotes for assigned projects
-      if (assignedData && assignedData.length > 0) {
-        const projectIds = assignedData.map(p => p.id);
-        const { data: quotesData, error: quotesError } = await supabase
-          .from('designer_quotes')
-          .select('*')
-          .in('project_id', projectIds)
-          .eq('customer_accepted', true)
-          .eq('status', 'accepted');
-          
-        if (quotesError) {
-          console.error('Error fetching quotes:', quotesError);
-        } else {
-          setAcceptedQuotes(quotesData || []);        
-        }
-      }
+
+      // Set accepted quotes from quotesData
+      setAcceptedQuotes(quotesData || []);
 
       setDebugInfo({
         designerInfo: {
@@ -682,13 +676,15 @@ const CustomerProjects = () => {
                       >
                         <Camera className="w-4 h-4" />
                       </button>
-                      <a
-                        href={projectQuotes[project.id] ? `/generate-quote/${project.id}?view=true` : `/generate-quote/${project.id}`}
-                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center"
-                        title={projectQuotes[project.id] ? "View Accepted Quote" : "Create Quote"}
-                      >
-                        <FileText className="w-4 h-4" />
-                      </a>
+                      {projectQuotes[project.id] && (
+                        <button
+                          onClick={() => setSelectedQuote(projectQuotes[project.id])}
+                          className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center"
+                          title="View Quotation"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -842,22 +838,24 @@ const CustomerProjects = () => {
 
                     {/* Action Buttons */}
                     <div className="flex space-x-2">
+                      <button
+                        onClick={() => navigate(`/generate-quote/${share.project.id}`)}
+                        className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors text-center flex items-center justify-center space-x-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span>Create Quotation</span>
+                      </button>
                       <a
                         href={`mailto:${share.project.email}?subject=Regarding your ${share.project.project_name} project&body=Hi ${share.project.name},%0D%0A%0D%0AThank you for sharing your project details with me. I would love to discuss your ${share.project.project_name} project further.%0D%0A%0D%0ABest regards,%0D%0A${designer.name}`}
-                        className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors text-center"
+                        className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center"
+                        title="Contact Customer"
                       >
-                        Contact Customer
+                        <Mail className="w-4 h-4" />
                       </a>
-                      <button
-                        onClick={() => navigate(`/project-detail/${share.project.id}?tab=updates`)}
-                        className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
-                        title="View Updates"
-                      >
-                        <Camera className="w-4 h-4" />
-                      </button>
                       <a
                         href={`tel:${share.project.phone}`}
                         className="bg-secondary-500 hover:bg-secondary-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
+                        title="Call Customer"
                       >
                         <Phone className="w-4 h-4" />
                       </a>
