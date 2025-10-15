@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, IndianRupee as Rupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle, RefreshCw, FileText, Camera, Eye, BarChart3, Users, Star, TrendingUp, CheckCircle, DollarSign, Award, Target, Activity, X, XCircle, BarChart as BarChartIcon, PieChart as PieChartIcon, LineChart as LineChartIcon, Filter, Search, Edit, Trash2, Send, Plus } from 'lucide-react';
+import { Calendar, MapPin, IndianRupee as Rupee, Clock, User, Mail, Phone, MessageSquare, ArrowLeft, Loader2, AlertCircle, RefreshCw, FileText, Upload, Eye, BarChart3, Users, Star, TrendingUp, CheckCircle, DollarSign, Award, Target, Activity, X, XCircle, BarChart as BarChartIcon, PieChart as PieChartIcon, LineChart as LineChartIcon, Filter, Search, Edit, Trash2, Send, Plus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { supabase } from '../lib/supabase';
@@ -75,6 +75,29 @@ const CustomerProjects = () => {
   const [acceptedQuotes, setAcceptedQuotes] = useState<any[]>([]);
   const [projectQuotes, setProjectQuotes] = useState<Record<string, any>>({});
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+
+interface Quote {
+  id: string;
+  designer_id: string;
+  project_id: string;
+  quote_number: string;
+  title: string;
+  description: string;
+  subtotal: number;
+  discount_amount: number;
+  tax_rate: number;
+  tax_amount: number;
+  total_amount: number;
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+  valid_until: string;
+  terms_and_conditions: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  acceptance_date?: string;
+  customer_accepted?: boolean;
+  items?: any[];
+}
 
   // Debug logging for hook states
   useEffect(() => {
@@ -674,7 +697,7 @@ const CustomerProjects = () => {
                         className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium transition-colors"
                         title="Add Updates"
                       >
-                        <Camera className="w-4 h-4" />
+                        <Upload className="w-4 h-4" />
                       </button>
                       {projectQuotes[project.id] && (
                         <button
