@@ -361,7 +361,7 @@ const CustomerQuotes = () => {
             Back to Projects
           </button>
           <h1 className="text-3xl font-bold text-secondary-800 mb-2">
-            {projectIdFilter && quotes.length > 0 ? `Quotes for ${quotes[0].project?.project_name}` : 'My Quotes'}
+            {'My Quotes'}
           </h1>
           <p className="text-gray-600">
             {projectIdFilter ? 'Review quotes from designers for this project' : 'Review and manage quotes from designers for your projects'}
