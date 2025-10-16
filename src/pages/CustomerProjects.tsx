@@ -160,13 +160,14 @@ interface Quote {
         isActive: designer.is_active
       });
 
-      // Fetch assigned projects (projects where assigned_designer_id is set and status is 'assigned')
+      // Fetch assigned projects (projects where assigned_designer_id is set and status is NOT 'shared')
+      // This includes: assigned, pending, finalized, in_progress, completed
       console.log('Fetching assigned projects...');
       const { data: assignedData, error: assignedError } = await supabase
         .from('customers')
         .select('*')
         .eq('assigned_designer_id', designer.id)
-        .eq('assignment_status', 'assigned')
+        .neq('assignment_status', 'shared')
         .order('created_at', { ascending: false });
 
       if (assignedError) {
