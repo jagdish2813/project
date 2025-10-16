@@ -148,6 +148,8 @@ const MyProjects = () => {
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
+      case 'shared':
+        return 'bg-cyan-100 text-cyan-800';
       case 'assigned':
         return 'bg-blue-100 text-blue-800';
       case 'in_progress':
@@ -170,6 +172,8 @@ const MyProjects = () => {
       return hasDesigner ? 'Assigned' : 'Unassigned';
     }
     switch (status.toLowerCase()) {
+      case 'shared':
+        return 'Shared';
       case 'assigned':
         return 'Assigned';
       case 'pending':

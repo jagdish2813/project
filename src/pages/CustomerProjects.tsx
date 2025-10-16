@@ -160,12 +160,13 @@ interface Quote {
         isActive: designer.is_active
       });
 
-      // Fetch assigned projects (projects where assigned_designer_id is set to this designer)
+      // Fetch assigned projects (projects where assigned_designer_id is set and status is 'assigned')
       console.log('Fetching assigned projects...');
       const { data: assignedData, error: assignedError } = await supabase
         .from('customers')
         .select('*')
         .eq('assigned_designer_id', designer.id)
+        .eq('assignment_status', 'assigned')
         .order('created_at', { ascending: false });
 
       if (assignedError) {
@@ -210,21 +211,14 @@ interface Quote {
         setProjectQuotes(quotesMap);
       }
 
-      // Fetch shared projects (projects shared via email that are NOT assigned to this designer)
+      // Fetch shared projects (projects where assigned_designer_id is set and status is 'shared')
       console.log('Fetching shared projects...');
-      const { data: allSharedData, error: sharedError } = await supabase
-        .from('project_shares')
-        .select(`
-          *,
-          project:customers(*)
-        `)
-        .ilike('designer_email', designer.email)
+      const { data: sharedData, error: sharedError } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('assigned_designer_id', designer.id)
+        .eq('assignment_status', 'shared')
         .order('created_at', { ascending: false });
-
-      // Filter out projects that are assigned to this designer
-      const sharedData = allSharedData?.filter(share => {
-        return !assignedProjectIds.includes(share.project_id);
-      }) || [];
 
       console.log('Shared projects query result:', { sharedData, sharedError });
 
@@ -233,11 +227,24 @@ interface Quote {
         console.warn('Could not fetch shared projects, continuing with assigned projects only');
         setProjectShares([]);
       } else {
-        setProjectShares(sharedData);
+        // Transform shared projects to match ProjectShare interface
+        const transformedShared = sharedData?.map(project => ({
+          id: project.id,
+          project_id: project.id,
+          customer_id: project.user_id,
+          designer_email: designer.email,
+          designer_phone: null,
+          message: null,
+          status: 'shared',
+          created_at: project.created_at,
+          updated_at: project.updated_at,
+          project: project
+        })) || [];
+        setProjectShares(transformedShared);
       }
 
       // Fetch quotes for shared projects
-      const sharedProjectIds = sharedData?.map(s => s.project_id) || [];
+      const sharedProjectIds = sharedData?.map(s => s.id) || [];
       let sharedQuotesData: any[] = [];
       if (sharedProjectIds.length > 0) {
         const { data: quotesData, error: quotesError } = await supabase
@@ -291,6 +298,8 @@ interface Quote {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
+      case 'shared':
+        return 'bg-cyan-100 text-cyan-800';
       case 'assigned':
         return 'bg-blue-100 text-blue-800';
       case 'in_progress':
@@ -310,8 +319,10 @@ interface Quote {
 
   const getStatusText = (status: string) => {
     switch (status.toLowerCase()) {
+      case 'shared':
+        return 'Shared';
       case 'assigned':
-        return 'Assigned';  
+        return 'Assigned';
       case 'pending':
         return 'Pending';
       case 'finalized':

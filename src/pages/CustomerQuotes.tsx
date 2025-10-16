@@ -216,10 +216,20 @@ const CustomerQuotes = () => {
 
   const handleAcceptQuote = async (quoteId: string) => {
     if (!user) return;
-    
+
     try {
       setSubmitting(true);
-      
+
+      // First, get the quote to find the project_id
+      const { data: quoteData, error: quoteError } = await supabase
+        .from('designer_quotes')
+        .select('project_id, designer_id')
+        .eq('id', quoteId)
+        .single();
+
+      if (quoteError) throw quoteError;
+
+      // Update the quote
       const { error } = await supabase
         .from('designer_quotes')
         .update({
@@ -228,16 +238,31 @@ const CustomerQuotes = () => {
           status: 'accepted'
         })
         .eq('id', quoteId);
-        
+
       if (error) throw error;
-      
+
+      // Update the customer project status from 'shared' to 'assigned'
+      if (quoteData?.project_id) {
+        const { error: projectError } = await supabase
+          .from('customers')
+          .update({
+            assignment_status: 'assigned'
+          })
+          .eq('id', quoteData.project_id)
+          .eq('user_id', user.id);
+
+        if (projectError) {
+          console.error('Error updating project status:', projectError);
+        }
+      }
+
       setSuccessMessage('Quote accepted successfully!');
       setSelectedQuote(null);
       setFeedbackText('');
-      
+
       // Refresh quotes
       fetchQuotes();
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => {
         setSuccessMessage(null);

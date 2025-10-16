@@ -110,11 +110,13 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
       const selectedDesigner = selectedDesigners[0];
 
       // Update the customer project with assigned_designer_id
+      // Set status to 'shared' for first-time assignment
+      // Status will change to 'assigned' when customer accepts a quote
       const { error: updateError } = await supabase
         .from('customers')
         .update({
           assigned_designer_id: selectedDesigner.id,
-          assignment_status: 'assigned'
+          assignment_status: 'shared'
         })
         .eq('id', project.id)
         .eq('user_id', user.id); // Security: ensure user owns the project
@@ -157,7 +159,7 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
       <div className="bg-white rounded-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-secondary-800">
-            Assign Designer to Project
+            Share Project with Designer
           </h2>
           <button
             onClick={handleClose}
@@ -173,9 +175,9 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-green-500" />
             </div>
-            <h3 className="text-xl font-bold text-secondary-800 mb-2">Designer Assigned Successfully!</h3>
+            <h3 className="text-xl font-bold text-secondary-800 mb-2">Project Shared Successfully!</h3>
             <p className="text-gray-600">
-              The selected designer has been assigned to your project and will be notified.
+              The project has been shared with the selected designer. Once you accept their quote, the project will be assigned to them.
             </p>
           </div>
         ) : (
@@ -183,14 +185,14 @@ const SendToDesignerModal: React.FC<SendToDesignerModalProps> = ({ isOpen, onClo
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-secondary-800 mb-2">Project: {project.project_name}</h3>
               <p className="text-gray-600 text-sm">
-                Select a designer who has provided a quote for this project to assign them as the project designer.
+                Select a designer who has provided a quote to share your project with them. The project will be assigned once you accept their quote.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Designer to Assign *
+                  Select Designer to Share With *
                 </label>
 
                 {selectedDesigners.length > 0 && (
