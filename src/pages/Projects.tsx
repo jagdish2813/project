@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, User, Filter, Tag, IndianRupee as Rupee } from 'lucide-react';
+import { Calendar, MapPin, User, Filter, Tag, Search } from 'lucide-react';
 import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 const Projects = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedBudget, setSelectedBudget] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +15,6 @@ const Projects = () => {
 
   const categories = ['Residential', 'Commercial', 'Office', 'Retail'];
   const budgetRanges = ['Under ₹5L', '₹5L - ₹10L', '₹10L - ₹20L', 'Above ₹20L'];
-  const locations = ['Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur', 'Gurgaon'];
 
   useEffect(() => {
     fetchCompletedProjects();
@@ -427,9 +426,18 @@ const Projects = () => {
           return true;
       }
     })();
-    const matchesLocation = !selectedLocation || project.location === selectedLocation;
 
-    return matchesCategory && matchesBudget && matchesLocation;
+    const matchesSearch = !searchQuery || (
+      project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.designer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.area.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      project.materials.some((material: string) => material.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    return matchesCategory && matchesBudget && matchesSearch;
   });
 
   if (loading) {
@@ -486,6 +494,20 @@ const Projects = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search projects..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
               <select
                 value={selectedCategory}
@@ -513,26 +535,12 @@ const Projects = () => {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-              <select
-                value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              >
-                <option value="">All Locations</option>
-                {locations.map(location => (
-                  <option key={location} value={location}>{location}</option>
-                ))}
-              </select>
-            </div>
-
             <div className="flex items-end">
               <button
                 onClick={() => {
+                  setSearchQuery('');
                   setSelectedCategory('');
                   setSelectedBudget('');
-                  setSelectedLocation('');
                 }}
                 className="w-full text-primary-600 hover:text-primary-700 font-medium py-2"
               >

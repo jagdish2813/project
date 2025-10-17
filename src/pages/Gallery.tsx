@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ZoomIn, Heart, Share2, Download, Calendar, MapPin, User, Plus } from 'lucide-react';
+import { X, ZoomIn, Heart, Share2, Calendar, MapPin, User, Plus, Search } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -26,6 +26,7 @@ const Gallery = () => {
   const { isDesigner, loading: designerLoading } = useDesignerProfile();
   const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
   const [allGalleryItems, setAllGalleryItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,9 +141,18 @@ const Gallery = () => {
     }
   };
 
-  const filteredItems = selectedCategory === 'All' 
-    ? allGalleryItems 
-    : allGalleryItems.filter(item => item.category === selectedCategory); // [cite: 24, 25]
+  const filteredItems = allGalleryItems.filter(item => {
+    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+    const matchesSearch = !searchQuery || (
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.designer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.materials && item.materials.some(material => material.toLowerCase().includes(searchQuery.toLowerCase())))
+    );
+    return matchesCategory && matchesSearch;
+  }); // [cite: 24, 25]
 
   const shareDesigner = async (item: GalleryItem) => {
     if (navigator.share) {
@@ -220,17 +230,27 @@ const Gallery = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Category Filter */}
-        <div className="mb-8">
+        {/* Search and Category Filter */}
+        <div className="mb-8 space-y-4">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search gallery..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+            />
+          </div>
           <div className="flex flex-wrap gap-2">
-            {categories.map((category) => ( // [cite: 36]
+            {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
                 className={`px-4 py-2 rounded-full font-medium transition-colors ${
                   selectedCategory === category
-                    ? 'bg-primary-500 text-white' // [cite: 37, 38]
-                    : 'bg-white text-gray-700 hover:bg-primary-50 hover:text-primary-600' // [cite: 38]
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-white text-gray-700 hover:bg-primary-50 hover:text-primary-600'
                 }`}
               >
                 {category}
