@@ -494,27 +494,53 @@ const DesignerDashboard = () => {
       }
 
       // Calculate stats
-      const activeProjects = projects?.filter(p => 
+      const activeProjects = projects?.filter(p =>
         p.assignment_status === 'assigned' || p.assignment_status === 'in_progress'
       ).length || 0;
 
-      const completedProjects = projects?.filter(p => 
+      const completedProjectsList = projects?.filter(p =>
         p.assignment_status === 'completed'
-      ).length || 0;
+      ) || [];
+
+      const completedProjects = completedProjectsList.length;
+
+      // Fetch accepted quotes for completed projects to calculate real revenue
+      let totalRevenue = 0;
+      const completedProjectIds = completedProjectsList.map(p => p.id);
+
+      if (completedProjectIds.length > 0) {
+        const { data: quotes, error: quotesError } = await supabase
+          .from('designer_quotes')
+          .select('total_amount, project_id, created_at')
+          .eq('designer_id', designer.id)
+          .in('project_id', completedProjectIds)
+          .eq('customer_accepted', true)
+          .eq('status', 'accepted');
+
+        if (!quotesError && quotes) {
+          totalRevenue = quotes.reduce((sum, quote) => sum + (quote.total_amount || 0), 0);
+
+          // Generate monthly revenue data from actual quotes
+          generateMonthlyRevenueData(quotes, completedProjectsList);
+        }
+      } else {
+        // No completed projects, set empty revenue data
+        setRevenueData([]);
+      }
 
       setStats({
         totalProjects: projects?.length || 0,
         activeProjects,
         completedProjects,
-        totalRevenue: completedProjects * 75000, // Estimated revenue
+        totalRevenue,
         averageRating: designer.rating || 0,
         totalReviews: designer.total_reviews || 0,
         pendingAssignments: assignments?.length || 0,
-        profileViews: Math.floor(Math.random() * 500) + 100 // Mock data
+        profileViews: Math.floor(Math.random() * 500) + 100
       });
-      
-      // Generate mock data for charts
-      generateMockChartData(projects?.length || 0, activeProjects, completedProjects);
+
+      // Generate chart data for projects
+      generateProjectChartData(projects?.length || 0, activeProjects, completedProjects, completedProjectsList);
 
       setRecentActivity(activities?.map(activity => ({
         id: activity.id,
@@ -526,7 +552,6 @@ const DesignerDashboard = () => {
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      // Set default values to prevent UI errors
       setStats({
         totalProjects: 0,
         activeProjects: 0,
@@ -538,59 +563,83 @@ const DesignerDashboard = () => {
         profileViews: 0
       });
       setRecentActivity([]);
+      setRevenueData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const generateMockChartData = (totalProjects: number, activeProjects: number, completedProjects: number) => {
-    // Generate project data for the last 6 months
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const projectData: ProjectData[] = [];
-    
-    // Distribute projects across months with a growth trend
-    let totalCompleted = completedProjects;
-    let totalActive = activeProjects;
-    
-    for (let i = 0; i < months.length; i++) {
-      const completedThisMonth = Math.max(1, Math.floor(totalCompleted * (0.1 + (i * 0.05))));
-      const activeThisMonth = Math.max(1, Math.floor(totalActive * (0.1 + (i * 0.03))));
-      
-      projectData.push({
-        month: months[i],
-        completed: completedThisMonth,
-        active: activeThisMonth
-      });
-      
-      totalCompleted -= completedThisMonth;
-      totalActive -= activeThisMonth;
-      
-      // Ensure we don't go negative
-      if (totalCompleted <= 0) totalCompleted = 1;
-      if (totalActive <= 0) totalActive = 1;
+  const generateMonthlyRevenueData = (quotes: any[], completedProjects: any[]) => {
+    const monthlyRevenue = new Map<string, number>();
+    const now = new Date();
+
+    // Initialize last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      monthlyRevenue.set(monthKey, 0);
     }
-    
-    // Reverse to show most recent months last (right side of chart)
-    setProjectData(projectData.reverse());
-    
-    // Generate revenue data with growth trend
-    const revenueData: RevenueData[] = [];
-    let baseRevenue = stats.totalRevenue / 6; // Distribute total revenue
-    
-    for (let i = 0; i < months.length; i++) {
-      // Add some randomness and growth trend
-      const growthFactor = 1 + (i * 0.1);
-      const randomFactor = 0.8 + (Math.random() * 0.4);
-      const monthlyRevenue = Math.round(baseRevenue * growthFactor * randomFactor);
-      
-      revenueData.push({
-        month: months[i],
-        amount: monthlyRevenue
-      });
+
+    // Aggregate revenue by month from accepted quotes
+    quotes.forEach(quote => {
+      const quoteDate = new Date(quote.created_at);
+      const monthKey = quoteDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+      if (monthlyRevenue.has(monthKey)) {
+        monthlyRevenue.set(monthKey, monthlyRevenue.get(monthKey)! + (quote.total_amount || 0));
+      }
+    });
+
+    // Convert to array format for chart
+    const revenueData: RevenueData[] = Array.from(monthlyRevenue.entries()).map(([month, amount]) => ({
+      month,
+      amount
+    }));
+
+    setRevenueData(revenueData);
+  };
+
+  const generateProjectChartData = (totalProjects: number, activeProjects: number, completedProjects: number, completedProjectsList: any[]) => {
+    const now = new Date();
+    const projectsByMonth = new Map<string, { completed: number; active: number }>();
+
+    // Initialize last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = date.toLocaleDateString('en-US', { month: 'short' });
+      projectsByMonth.set(monthKey, { completed: 0, active: 0 });
     }
-    
-    setRevenueData(revenueData.reverse());
-    
+
+    // Count completed projects by month
+    completedProjectsList.forEach(project => {
+      const projectDate = new Date(project.updated_at || project.created_at);
+      const monthKey = projectDate.toLocaleDateString('en-US', { month: 'short' });
+
+      const monthData = projectsByMonth.get(monthKey);
+      if (monthData) {
+        monthData.completed += 1;
+      }
+    });
+
+    // Distribute active projects evenly (since we don't have exact start dates)
+    const monthKeys = Array.from(projectsByMonth.keys());
+    const activePerMonth = Math.ceil(activeProjects / monthKeys.length);
+    monthKeys.forEach(key => {
+      const monthData = projectsByMonth.get(key);
+      if (monthData) {
+        monthData.active = activePerMonth;
+      }
+    });
+
+    // Convert to array format for chart
+    const projectData: ProjectData[] = Array.from(projectsByMonth.entries()).map(([month, data]) => ({
+      month,
+      completed: data.completed,
+      active: data.active
+    }));
+
+    setProjectData(projectData);
+
     // Generate project type data
     const projectTypeData: ProjectTypeData[] = [
       { name: 'Residential', value: Math.round(totalProjects * 0.6) },
@@ -599,7 +648,7 @@ const DesignerDashboard = () => {
       { name: 'Retail', value: Math.round(totalProjects * 0.05) },
       { name: 'Other', value: Math.round(totalProjects * 0.05) }
     ];
-    
+
     setProjectTypeData(projectTypeData);
   };
 
