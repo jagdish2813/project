@@ -15,7 +15,9 @@ import {
   Download,
   BarChart3,
   PieChart,
-  Calendar
+  Calendar,
+  DollarSign,
+  TrendingDown
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -28,6 +30,8 @@ interface AdminStats {
   completedProjects: number;
   pendingVerifications: number;
   monthlyGrowth: number;
+  totalEarnings: number;
+  platformCommission: number;
 }
 
 interface Designer {
@@ -55,8 +59,21 @@ interface Customer {
   created_at: string;
 }
 
+interface DesignerEarning {
+  id: string;
+  designer_id: string;
+  project_name: string;
+  project_type: string;
+  project_value: number;
+  designer_earnings: number;
+  platform_commission: number;
+  payment_status: string;
+  completed_at: string;
+  designers?: { name: string };
+}
+
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'designers' | 'customers' | 'projects'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'designers' | 'customers' | 'projects' | 'earnings'>('overview');
   const [stats, setStats] = useState<AdminStats>({
     totalDesigners: 0,
     verifiedDesigners: 0,
@@ -65,10 +82,13 @@ const AdminDashboard = () => {
     activeProjects: 0,
     completedProjects: 0,
     pendingVerifications: 0,
-    monthlyGrowth: 0
+    monthlyGrowth: 0,
+    totalEarnings: 0,
+    platformCommission: 0
   });
   const [designers, setDesigners] = useState<Designer[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [earnings, setEarnings] = useState<DesignerEarning[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -96,21 +116,37 @@ const AdminDashboard = () => {
 
       if (customersError) throw customersError;
 
+      // Fetch earnings
+      const { data: earningsData, error: earningsError } = await supabase
+        .from('designer_projects_earnings')
+        .select(`
+          *,
+          designers (name)
+        `)
+        .order('completed_at', { ascending: false });
+
+      if (earningsError) throw earningsError;
+
       setDesigners(designersData || []);
       setCustomers(customersData || []);
+      setEarnings(earningsData || []);
 
       // Calculate stats
       const totalDesigners = designersData?.length || 0;
       const verifiedDesigners = designersData?.filter(d => d.is_verified).length || 0;
       const totalCustomers = customersData?.length || 0;
       const totalProjects = customersData?.length || 0;
-      const activeProjects = customersData?.filter(c => 
+      const activeProjects = customersData?.filter(c =>
         c.status === 'assigned' || c.status === 'in_progress'
       ).length || 0;
-      const completedProjects = customersData?.filter(c => 
+      const completedProjects = customersData?.filter(c =>
         c.status === 'completed'
       ).length || 0;
       const pendingVerifications = designersData?.filter(d => !d.is_verified).length || 0;
+
+      // Calculate earnings
+      const totalEarnings = earningsData?.reduce((sum, e) => sum + Number(e.project_value), 0) || 0;
+      const platformCommission = earningsData?.reduce((sum, e) => sum + Number(e.platform_commission), 0) || 0;
 
       setStats({
         totalDesigners,
@@ -120,7 +156,9 @@ const AdminDashboard = () => {
         activeProjects,
         completedProjects,
         pendingVerifications,
-        monthlyGrowth: 12.5 // Mock data
+        monthlyGrowth: 12.5,
+        totalEarnings,
+        platformCommission
       });
 
     } catch (error) {
@@ -231,7 +269,8 @@ const AdminDashboard = () => {
                 { id: 'overview', label: 'Overview', icon: BarChart3 },
                 { id: 'designers', label: 'Designers', icon: Users },
                 { id: 'customers', label: 'Customers', icon: UserCheck },
-                { id: 'projects', label: 'Projects', icon: Briefcase }
+                { id: 'projects', label: 'Projects', icon: Briefcase },
+                { id: 'earnings', label: 'Earnings', icon: DollarSign }
               ].map((tab) => {
                 const IconComponent = tab.icon;
                 return (
@@ -316,6 +355,36 @@ const AdminDashboard = () => {
                 </div>
                 <div className="mt-4 flex items-center text-sm">
                   <span className="text-gray-600">Requires attention</span>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                    <p className="text-3xl font-bold text-secondary-800">₹{stats.totalEarnings.toLocaleString()}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                    <DollarSign className="w-6 h-6 text-emerald-600" />
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center text-sm">
+                  <span className="text-gray-600">From completed projects</span>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Platform Commission</p>
+                    <p className="text-3xl font-bold text-secondary-800">₹{stats.platformCommission.toLocaleString()}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-sky-100 rounded-lg flex items-center justify-center">
+                    <TrendingDown className="w-6 h-6 text-sky-600" />
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center text-sm">
+                  <span className="text-gray-600">Platform earnings</span>
                 </div>
               </div>
             </div>
@@ -566,6 +635,159 @@ const AdminDashboard = () => {
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h3 className="text-lg font-bold text-secondary-800 mb-4">Project Management</h3>
             <p className="text-gray-600">Project management features would be implemented here.</p>
+          </div>
+        )}
+
+        {/* Earnings Tab */}
+        {activeTab === 'earnings' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-gray-600">Total Revenue</h3>
+                  <DollarSign className="w-5 h-5 text-emerald-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">₹{stats.totalEarnings.toLocaleString()}</p>
+                <p className="text-sm text-gray-500 mt-2">{earnings.length} completed projects</p>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-gray-600">Platform Earnings</h3>
+                  <TrendingUp className="w-5 h-5 text-sky-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">₹{stats.platformCommission.toLocaleString()}</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  {stats.totalEarnings > 0 ? ((stats.platformCommission / stats.totalEarnings) * 100).toFixed(1) : 0}% commission rate
+                </p>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-gray-600">Designer Earnings</h3>
+                  <Users className="w-5 h-5 text-blue-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  ₹{(stats.totalEarnings - stats.platformCommission).toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-500 mt-2">Paid to designers</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-secondary-800">Designer Projects & Earnings</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Designer</th>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Project</th>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Type</th>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Project Value</th>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Designer Earnings</th>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Commission</th>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Payment Status</th>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Completed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {earnings.map((earning) => (
+                      <tr key={earning.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-4 px-6">
+                          <p className="font-medium text-secondary-800">{earning.designers?.name || 'N/A'}</p>
+                        </td>
+                        <td className="py-4 px-6">
+                          <p className="text-gray-900">{earning.project_name}</p>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">
+                            {earning.project_type}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <p className="font-medium text-gray-900">₹{Number(earning.project_value).toLocaleString()}</p>
+                        </td>
+                        <td className="py-4 px-6">
+                          <p className="font-medium text-emerald-600">₹{Number(earning.designer_earnings).toLocaleString()}</p>
+                        </td>
+                        <td className="py-4 px-6">
+                          <p className="text-gray-900">₹{Number(earning.platform_commission).toLocaleString()}</p>
+                          <p className="text-xs text-gray-500">{earning.commission_percentage}%</p>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            earning.payment_status === 'paid'
+                              ? 'bg-green-100 text-green-800'
+                              : earning.payment_status === 'processing'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {earning.payment_status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-gray-600">
+                          {new Date(earning.completed_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                    {earnings.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="py-12 text-center text-gray-500">
+                          No earnings data available yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-bold text-secondary-800 mb-4">Top Earning Designers</h3>
+              <div className="space-y-4">
+                {(() => {
+                  const designerTotals = earnings.reduce((acc, earning) => {
+                    const designerId = earning.designer_id;
+                    const designerName = earning.designers?.name || 'Unknown';
+                    if (!acc[designerId]) {
+                      acc[designerId] = {
+                        name: designerName,
+                        total: 0,
+                        projects: 0
+                      };
+                    }
+                    acc[designerId].total += Number(earning.designer_earnings);
+                    acc[designerId].projects += 1;
+                    return acc;
+                  }, {} as Record<string, { name: string; total: number; projects: number }>);
+
+                  const topDesigners = Object.values(designerTotals)
+                    .sort((a, b) => b.total - a.total)
+                    .slice(0, 5);
+
+                  return topDesigners.length > 0 ? (
+                    topDesigners.map((designer, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                            <span className="text-emerald-600 font-bold">{index + 1}</span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{designer.name}</p>
+                            <p className="text-sm text-gray-500">{designer.projects} completed projects</p>
+                          </div>
+                        </div>
+                        <p className="text-lg font-bold text-emerald-600">₹{designer.total.toLocaleString()}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-gray-500 py-8">No designer earnings yet.</p>
+                  );
+                })()}
+              </div>
+            </div>
           </div>
         )}
       </div>
