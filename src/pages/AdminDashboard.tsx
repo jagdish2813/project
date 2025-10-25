@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  UserCheck, 
-  Briefcase, 
-  TrendingUp, 
+import {
+  Users,
+  UserCheck,
+  Briefcase,
+  TrendingUp,
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -17,8 +17,10 @@ import {
   PieChart,
   Calendar,
   DollarSign,
-  TrendingDown
+  TrendingDown,
+  Tag
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 interface AdminStats {
@@ -73,6 +75,7 @@ interface DesignerEarning {
 }
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'designers' | 'customers' | 'projects' | 'earnings'>('overview');
   const [stats, setStats] = useState<AdminStats>({
     totalDesigners: 0,
@@ -247,11 +250,18 @@ const AdminDashboard = () => {
               <p className="text-gray-600 mt-2">Manage your platform and monitor performance</p>
             </div>
             <div className="flex space-x-4">
-              <button className="btn-secondary flex items-center space-x-2">
+              <button
+                onClick={() => navigate('/admin/deals')}
+                className="bg-sky-600 text-white px-4 py-2 rounded-lg hover:bg-sky-700 flex items-center space-x-2 transition-colors"
+              >
+                <Tag className="w-4 h-4" />
+                <span>Manage Deals</span>
+              </button>
+              <button className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 flex items-center space-x-2 transition-colors">
                 <Download className="w-4 h-4" />
                 <span>Export Data</span>
               </button>
-              <button className="btn-primary flex items-center space-x-2">
+              <button className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 flex items-center space-x-2 transition-colors">
                 <BarChart3 className="w-4 h-4" />
                 <span>Analytics</span>
               </button>

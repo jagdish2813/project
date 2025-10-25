@@ -1,10 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Award, Users, ArrowRight, Play, Palette, UserPlus, Percent, Clock, Gift, ExternalLink, IndianRupee as Rupee } from 'lucide-react';
+import { Star, Award, Users, ArrowRight, Play, Palette, UserPlus, Percent, Clock, Gift, ExternalLink, IndianRupee as Rupee, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
+import { supabase } from '../lib/supabase';
 import VideoModal from '../components/VideoModal';
 import AuthModal from '../components/AuthModal';
+
+interface Deal {
+  id: string;
+  designer_id: string;
+  title: string;
+  description: string;
+  discount_percentage: number;
+  original_price: number;
+  deal_price: number;
+  deal_type: string;
+  services_included: string[];
+  valid_from: string;
+  valid_until: string;
+  is_active: boolean;
+  is_featured: boolean;
+  image_url: string;
+  designers?: {
+    name: string;
+    specialization: string;
+    location: string;
+    profile_image: string;
+    rating: number;
+  };
+}
 
 const Home = () => {
   const { user } = useAuth();
@@ -13,6 +38,8 @@ const Home = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [pendingAction, setPendingAction] = useState<'designer' | 'customer' | null>(null);
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [currentDealIndex, setCurrentDealIndex] = useState(0);
 
   const featuredDesigners = [
     {
@@ -112,6 +139,60 @@ const Home = () => {
     { icon: Award, label: 'Projects Completed', value: '2,500+' },
     { icon: Star, label: 'Happy Clients', value: '10,000+' },
   ];
+
+  useEffect(() => {
+    fetchDeals();
+  }, []);
+
+  useEffect(() => {
+    if (deals.length > 0) {
+      const interval = setInterval(() => {
+        setCurrentDealIndex((prevIndex) => (prevIndex + 1) % deals.length);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [deals]);
+
+  const fetchDeals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('designer_deals')
+        .select(`
+          *,
+          designers (
+            name,
+            specialization,
+            location,
+            profile_image,
+            rating
+          )
+        `)
+        .eq('is_active', true)
+        .gte('valid_until', new Date().toISOString())
+        .lte('valid_from', new Date().toISOString())
+        .order('is_featured', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setDeals(data || []);
+    } catch (error) {
+      console.error('Error fetching deals:', error);
+    }
+  };
+
+  const nextDeal = () => {
+    setCurrentDealIndex((prevIndex) => (prevIndex + 1) % deals.length);
+  };
+
+  const prevDeal = () => {
+    setCurrentDealIndex((prevIndex) => (prevIndex - 1 + deals.length) % deals.length);
+  };
+
+  const getDaysRemaining = (validUntil: string) => {
+    const days = Math.ceil((new Date(validUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    return days;
+  };
 
   const handleDesignerRegistration = () => {
     if (!user) {
@@ -391,142 +472,180 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Designer Ads Section */}
-      <section className="py-16 bg-gradient-to-br from-gray-50 to-primary-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center space-x-2 bg-primary-100 text-primary-800 px-4 py-2 rounded-full text-sm font-medium mb-4">
-              <Gift className="w-4 h-4" />
-              <span>Limited Time Offers</span>
+      {/* Exclusive Designer Deals Carousel */}
+      {deals.length > 0 && (
+        <section className="py-16 bg-gradient-to-br from-gray-50 to-sky-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center space-x-2 bg-sky-100 text-sky-800 px-4 py-2 rounded-full text-sm font-medium mb-4">
+                <Gift className="w-4 h-4" />
+                <span>Limited Time Offers</span>
+              </div>
+              <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+                Exclusive Designer Deals
+              </h2>
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                Don't miss out on these amazing offers from our top designers. Transform your space with premium services at unbeatable prices.
+              </p>
             </div>
-            <h2 className="text-3xl lg:text-4xl font-bold text-secondary-800 mb-4">
-              Exclusive Designer Deals
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Don't miss out on these amazing offers from our top designers. Transform your space with premium services at unbeatable prices.
-            </p>
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {designerAds.map((ad) => (
-              <div key={ad.id} className="bg-white rounded-2xl shadow-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-                {/* Offer Badge */}
-                <div className="relative">
-                  <img
-                    src={ad.portfolioImage}
-                    alt={`${ad.name}'s work`}
-                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute top-4 right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
-                    {ad.offer.discount}
-                  </div>
-                  <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2">
-                    <div className="flex items-center space-x-2">
-                      <img
-                        src={ad.image}
-                        alt={ad.name}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                      <div>
-                        <p className="font-semibold text-secondary-800 text-sm">{ad.name}</p>
-                        <p className="text-xs text-gray-600">{ad.location}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+            <div className="relative">
+              {deals.length > 1 && (
+                <>
+                  <button
+                    onClick={prevDeal}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:bg-gray-50 transition-colors"
+                    aria-label="Previous deal"
+                  >
+                    <ChevronLeft className="w-6 h-6 text-gray-700" />
+                  </button>
+                  <button
+                    onClick={nextDeal}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:bg-gray-50 transition-colors"
+                    aria-label="Next deal"
+                  >
+                    <ChevronRight className="w-6 h-6 text-gray-700" />
+                  </button>
+                </>
+              )}
 
-                {/* Content */}
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="bg-primary-100 text-primary-800 px-2 py-1 rounded-full text-xs font-medium">
-                      {ad.badge}
-                    </span>
-                    <div className="flex items-center space-x-1">
-                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                      <span className="text-sm font-medium text-gray-700">{ad.rating}</span>
-                      <span className="text-xs text-gray-500">({ad.projects} projects)</span>
-                    </div>
-                  </div>
+              <div className="overflow-hidden">
+                <div
+                  className="transition-transform duration-500 ease-in-out"
+                  style={{ transform: `translateX(-${currentDealIndex * 100}%)` }}
+                >
+                  <div className="flex">
+                    {deals.map((deal) => {
+                      const daysRemaining = getDaysRemaining(deal.valid_until);
+                      return (
+                        <div key={deal.id} className="w-full flex-shrink-0 px-2">
+                          <div className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 max-w-4xl mx-auto">
+                            <div className="grid md:grid-cols-2 gap-0">
+                              <div className="relative h-64 md:h-auto">
+                                {deal.image_url ? (
+                                  <img
+                                    src={deal.image_url}
+                                    alt={deal.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gradient-to-br from-sky-100 to-sky-200 flex items-center justify-center">
+                                    <Gift className="w-24 h-24 text-sky-400" />
+                                  </div>
+                                )}
+                                <div className="absolute top-4 right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-full text-lg font-bold shadow-lg">
+                                  {deal.discount_percentage}% OFF
+                                </div>
+                                {deal.is_featured && (
+                                  <div className="absolute top-4 left-4 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
+                                    <Star className="w-4 h-4 fill-current" />
+                                    Featured
+                                  </div>
+                                )}
+                              </div>
 
-                  <h3 className="text-xl font-bold text-secondary-800 mb-2">{ad.offer.title}</h3>
-                  <p className="text-gray-600 mb-4">{ad.offer.description}</p>
-                  <p className="text-sm text-gray-500 mb-4">{ad.specialization}</p>
+                              <div className="p-8">
+                                <div className="flex items-center gap-3 mb-4">
+                                  {deal.designers && (
+                                    <>
+                                      <div className="w-12 h-12 bg-sky-100 rounded-full flex items-center justify-center overflow-hidden">
+                                        {deal.designers.profile_image ? (
+                                          <img
+                                            src={deal.designers.profile_image}
+                                            alt={deal.designers.name}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          <span className="text-sky-700 font-semibold">
+                                            {deal.designers.name.charAt(0)}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div>
+                                        <p className="font-semibold text-gray-900">{deal.designers.name}</p>
+                                        <p className="text-sm text-gray-600">{deal.designers.specialization}</p>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
 
-                  {/* Pricing */}
-                  <div className="bg-gradient-to-r from-primary-50 to-accent-50 rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-500 line-through">{ad.offer.originalPrice}</p>
-                        <p className="text-2xl font-bold text-primary-600">{ad.offer.discountedPrice}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center space-x-1 text-red-500 mb-1">
-                          <Clock className="w-4 h-4" />
-                          <span className="text-sm font-medium">Limited Time</span>
+                                <span className="inline-block bg-sky-100 text-sky-700 px-3 py-1 rounded-full text-xs font-medium mb-3">
+                                  {deal.deal_type}
+                                </span>
+
+                                <h3 className="text-2xl font-bold text-gray-900 mb-3">{deal.title}</h3>
+                                <p className="text-gray-600 mb-6">{deal.description}</p>
+
+                                <div className="bg-gradient-to-r from-sky-50 to-blue-50 rounded-lg p-4 mb-6">
+                                  <div className="flex items-end justify-between">
+                                    <div>
+                                      <p className="text-sm text-gray-500 mb-1">Deal Price</p>
+                                      <p className="text-3xl font-bold text-sky-600">₹{deal.deal_price.toLocaleString()}</p>
+                                      <p className="text-sm text-gray-500 line-through mt-1">₹{deal.original_price.toLocaleString()}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="flex items-center gap-1 text-orange-600 mb-1">
+                                        <Clock className="w-4 h-4" />
+                                        <span className="text-sm font-medium">{daysRemaining} days left</span>
+                                      </div>
+                                      <p className="text-xs text-gray-500">
+                                        Until {new Date(deal.valid_until).toLocaleDateString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {deal.services_included && deal.services_included.length > 0 && (
+                                  <div className="mb-6">
+                                    <p className="text-sm font-medium text-gray-700 mb-2">Includes:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {deal.services_included.slice(0, 3).map((service, idx) => (
+                                        <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                          {service}
+                                        </span>
+                                      ))}
+                                      {deal.services_included.length > 3 && (
+                                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                          +{deal.services_included.length - 3} more
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                <button className="w-full bg-sky-600 hover:bg-sky-700 text-white py-3 px-6 rounded-lg font-medium transition-colors">
+                                  Claim This Deal
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-xs text-gray-500">Valid until {new Date(ad.offer.validUntil).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex space-x-3">
-                    <Link
-                      to={`/designers/${ad.id}`}
-                      className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-3 px-4 rounded-lg font-medium transition-colors text-center"
-                    >
-                      View Profile
-                    </Link>
-                    {user ? (
-                      <Link
-                        to={`/designers/${ad.id}`}
-                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center space-x-1"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        <span>Contact</span>
-                      </Link>
-                    ) : (
-                      <button
-                        onClick={() => handleContactDesigner(ad.id)}
-                        className="bg-secondary-500 hover:bg-secondary-600 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center space-x-1"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        <span>Contact</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Floating Discount Badge */}
-                <div className="absolute top-0 left-0 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-br-lg text-xs font-bold">
-                  <div className="flex items-center space-x-1">
-                    <Percent className="w-3 h-3" />
-                    <span>SAVE BIG</span>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/* Call to Action */}
-          <div className="text-center mt-12">
-            <div className="bg-white rounded-2xl shadow-lg p-8 max-w-2xl mx-auto">
-              <h3 className="text-2xl font-bold text-secondary-800 mb-4">
-                Want to Feature Your Offers?
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Join our platform as a designer and showcase your special offers to thousands of potential clients.
-              </p>
-              <button
-                onClick={handleDesignerRegistration}
-                className="btn-primary"
-              >
-                Become a Featured Designer
-              </button>
+              {deals.length > 1 && (
+                <div className="flex justify-center gap-2 mt-6">
+                  {deals.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentDealIndex(index)}
+                      className={`w-2 h-2 rounded-full transition-all ${
+                        index === currentDealIndex
+                          ? 'bg-sky-600 w-8'
+                          : 'bg-gray-300 hover:bg-gray-400'
+                      }`}
+                      aria-label={`Go to deal ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Video Modal */}
       <VideoModal 

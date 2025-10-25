@@ -25,7 +25,6 @@ import DesignerQuoteGenerator from './pages/DesignerQuoteGenerator';
 import CustomerQuotes from './pages/CustomerQuotes';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminDealsManagement from './pages/AdminDealsManagement';
-import ExclusiveDeals from './pages/ExclusiveDeals';
 import DebugPage from './pages/DebugPage';
 import DebugDesignerProfile from './pages/DebugDesignerProfile';
 import SharePhotoForm from './pages/SharePhotoForm';
@@ -78,7 +77,6 @@ function App() {
             <Route path="/generate-quote/:id" element={<DesignerQuoteGenerator />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/deals" element={<AdminDealsManagement />} />
-            <Route path="/exclusive-deals" element={<ExclusiveDeals />} />
             <Route path="/debug" element={<DebugPage />} />
             <Route path="/debug-profile" element={<DebugDesignerProfile />} />
             <Route path="/share-photo" element={<SharePhotoForm />} />
