@@ -5,12 +5,28 @@ import type { User } from '@supabase/supabase-js';
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // Get initial session
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
+
+      // Check if user is admin
+      if (session?.user) {
+        const { data: adminData } = await supabase
+          .from('admin_users')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        setIsAdmin(!!adminData);
+      } else {
+        setIsAdmin(false);
+      }
+
       setLoading(false);
     };
 
@@ -20,6 +36,21 @@ export const useAuth = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setUser(session?.user ?? null);
+
+        // Check if user is admin
+        if (session?.user) {
+          const { data: adminData } = await supabase
+            .from('admin_users')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .eq('is_active', true)
+            .maybeSingle();
+
+          setIsAdmin(!!adminData);
+        } else {
+          setIsAdmin(false);
+        }
+
         setLoading(false);
       }
     );
@@ -67,6 +98,7 @@ export const useAuth = () => {
   return {
     user,
     loading,
+    isAdmin,
     signOut
   };
 };

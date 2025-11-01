@@ -14,7 +14,7 @@ const Header = () => {
   const [editProfileLoading, setEditProfileLoading] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const { designer, isDesigner, loading: designerLoading } = useDesignerProfile();
   const { hasCustomerProject, loading: registrationLoading } = useUserRegistrationStatus();
 
@@ -216,6 +216,7 @@ const Header = () => {
                             </>
                           ) : (
                             <>
+                            {!isAdmin && (
                             <>
                               {/* Show "Register as Designer" only if user is not a customer */}
                               {!hasCustomerProject && (
@@ -227,7 +228,7 @@ const Header = () => {
                                   <span>Register as Designer</span>
                                 </button>
                               )}
-                              
+
                               {/* Show project-related options for customers */}
                               {hasCustomerProject ? (
                                 <>
@@ -256,6 +257,7 @@ const Header = () => {
                                 </button>
                               )}
                             </>
+                            )}
                             </>
                           )}
                           
@@ -388,66 +390,61 @@ const Header = () => {
                           </>
                         ) : (
                           <>
-                            {/* Show "Register as Designer" only if user is not a customer */}
-                            {!hasCustomerProject && (
-                              <button
-                                onClick={() => {
-                                  handleDesignerRegistration();
-                                  setIsMenuOpen(false);
-                                }}
-                                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
-                              >
-                                <Palette className="w-4 h-4" />
-                                <span>Register as Designer</span>
-                              </button>
-                            )}
-                            
-                            {/* Show project-related options for customers */}
-                            {hasCustomerProject ? (
-                              <>
+                            {!isAdmin && (
+                            <>
+                              {/* Show "Register as Designer" only if user is not a customer */}
+                              {!hasCustomerProject && (
                                 <button
                                   onClick={() => {
-                                    handleViewProjects();
+                                    handleDesignerRegistration();
                                     setIsMenuOpen(false);
                                   }}
                                   className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
                                 >
-                                  <FolderOpen className="w-4 h-4" />
-                                  <span>My Projects</span>
+                                  <Palette className="w-4 h-4" />
+                                  <span>Register as Designer</span>
                                 </button>
+                              )}
+
+                              {/* Show project-related options for customers */}
+                              {hasCustomerProject ? (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      handleViewProjects();
+                                      setIsMenuOpen(false);
+                                    }}
+                                    className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                                  >
+                                    <FolderOpen className="w-4 h-4" />
+                                    <span>My Projects</span>
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      handleViewQuotes();
+                                      setIsMenuOpen(false);
+                                    }}
+                                    className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
+                                  >
+                                    <FileText className="w-4 h-4" />
+                                    <span>My Quotes</span>
+                                  </button>
+                                </>
+                              ) : (
+                                <>
                                 <button
                                   onClick={() => {
-                                    handleViewQuotes();
+                                    handleCustomerRegistration();
                                     setIsMenuOpen(false);
                                   }}
                                   className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
                                 >
-                                  <FileText className="w-4 h-4" />
-                                  <span>My Quotes</span>
+                                  <UserPlus className="w-4 h-4" />
+                                  <span>Register Your Project</span>
                                 </button>
-                              </>
-                            ) : (
-                              <>
-                              <button
-                                onClick={() => {
-                                  handleCustomerRegistration();
-                                  setIsMenuOpen(false);
-                                }}
-                                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 flex items-center space-x-2"
-                              >
-                                <UserPlus className="w-4 h-4" />
-                                <span>Register Your Project</span>
-                              </button>
-                              </>
-                            )}
-                            {hasCustomerProject && (
-                              <button
-                                onClick={() => navigate('/customer-quotes')}
-                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-                              >
-                                <FileText className="w-4 h-4" />
-                                <span>View Quotes</span>
-                              </button>
+                                </>
+                              )}
+                            </>
                             )}
                           </>
                         )}
