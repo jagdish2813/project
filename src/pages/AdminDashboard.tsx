@@ -69,6 +69,7 @@ interface DesignerEarning {
   project_value: number;
   designer_earnings: number;
   platform_commission: number;
+  commission_percentage: number;
   payment_status: string;
   completed_at: string;
   designers?: { name: string };
@@ -642,9 +643,90 @@ const AdminDashboard = () => {
 
         {/* Projects Tab */}
         {activeTab === 'projects' && (
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-bold text-secondary-800 mb-4">Project Management</h3>
-            <p className="text-gray-600">Project management features would be implemented here.</p>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-gray-600">Total Projects</h3>
+                  <Briefcase className="w-5 h-5 text-blue-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalProjects}</p>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-gray-600">Active Projects</h3>
+                  <TrendingUp className="w-5 h-5 text-green-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">{stats.activeProjects}</p>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-gray-600">Completed Projects</h3>
+                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">{stats.completedProjects}</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-secondary-800">Recent Projects</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Customer</th>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Project</th>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Location</th>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Budget</th>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Status</th>
+                      <th className="text-left py-3 px-6 font-semibold text-secondary-800">Created</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customers.map((customer) => (
+                      <tr key={customer.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-4 px-6">
+                          <div>
+                            <p className="font-medium text-secondary-800">{customer.name}</p>
+                            <p className="text-sm text-gray-600">{customer.email}</p>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <p className="font-medium text-secondary-800">{customer.project_name}</p>
+                        </td>
+                        <td className="py-4 px-6 text-gray-600">{customer.location}</td>
+                        <td className="py-4 px-6 text-gray-600">{customer.budget_range}</td>
+                        <td className="py-4 px-6">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            customer.status === 'completed'
+                              ? 'bg-green-100 text-green-800'
+                              : customer.status === 'assigned'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {customer.status || 'Pending'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-gray-600">
+                          {new Date(customer.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                    {customers.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-gray-500">
+                          No projects available yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
