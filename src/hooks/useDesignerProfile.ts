@@ -4,7 +4,7 @@ import { useAuth } from './useAuth';
 import type { Designer } from '../lib/supabase';
 
 export const useDesignerProfile = () => {
-//  const { user } = useAuth();
+ const { user } = useAuth();
   const [designer, setDesigner] = useState<Designer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
