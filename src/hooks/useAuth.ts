@@ -34,24 +34,27 @@ export const useAuth = () => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setUser(session?.user ?? null);
 
-        // Check if user is admin
-        if (session?.user) {
-          const { data: adminData } = await supabase
-            .from('admin_users')
-            .select('id')
-            .eq('user_id', session.user.id)
-            .eq('is_active', true)
-            .maybeSingle();
+        // Use async block inside callback to avoid deadlock
+        (async () => {
+          // Check if user is admin
+          if (session?.user) {
+            const { data: adminData } = await supabase
+              .from('admin_users')
+              .select('id')
+              .eq('user_id', session.user.id)
+              .eq('is_active', true)
+              .maybeSingle();
 
-          setIsAdmin(!!adminData);
-        } else {
-          setIsAdmin(false);
-        }
+            setIsAdmin(!!adminData);
+          } else {
+            setIsAdmin(false);
+          }
 
-        setLoading(false);
+          setLoading(false);
+        })();
       }
     );
 
@@ -60,14 +63,16 @@ export const useAuth = () => {
 
   const signOut = async () => {
     try {
-      // Sign out from Supabase first
-      const { error } = await supabase.auth.signOut();
+      // Use a timeout to prevent hanging (3 seconds)
+      const signOutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise<void>((resolve) =>
+        setTimeout(resolve, 3000)
+      );
 
-      if (error) {
-        console.error('Supabase signOut error:', error);
-      }
+      // Wait for signOut or timeout, whichever comes first
+      await Promise.race([signOutPromise, timeoutPromise]);
 
-      // Clear Supabase-related items from storage, but not all localStorage
+      // Clear Supabase-related items from storage
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
