@@ -113,10 +113,16 @@ const Header = () => {
   const handleAuthSuccess = async () => {
     setShowAuthModal(false);
 
-    // Force a page refresh to ensure all hooks are properly initialized
-    // The DashboardRedirectHandler will check user type and redirect appropriately
+    // Wait a moment for auth state to settle, then navigate
     setTimeout(() => {
-      window.location.reload();
+      // If we're already on a dashboard page, just reload
+      const currentPath = window.location.pathname;
+      if (currentPath === '/designer-dashboard' || currentPath === '/admin') {
+        window.location.reload();
+      } else {
+        // Otherwise, let the redirect handler take care of it
+        window.location.href = '/';
+      }
     }, 500);
   };
 

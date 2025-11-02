@@ -442,15 +442,41 @@ const DesignerDashboard = () => {
   const [projectTypeData, setProjectTypeData] = useState<ProjectTypeData[]>([]);
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   const [analyticsType, setAnalyticsType] = useState<'projects' | 'active' | 'rating' | 'revenue'>('projects');
-  
+  const [loadTimeout, setLoadTimeout] = useState(false);
+
   // Colors for charts
   const COLORS = ['#E07A5F', '#3D5A80', '#F2CC8F', '#81B29A', '#F4A261'];
 
+  // Failsafe: If loading takes too long, show an error
   useEffect(() => {
+    const timer = setTimeout(() => {
+      if (designerLoading) {
+        console.error('DesignerDashboard: Loading timeout - designer profile taking too long');
+        setLoadTimeout(true);
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timer);
+  }, [designerLoading]);
+
+  useEffect(() => {
+    console.log('DesignerDashboard: State changed', {
+      user: !!user,
+      designer: !!designer,
+      isDesigner,
+      designerLoading,
+      loadTimeout
+    });
+
     if (!designerLoading && designer) {
+      console.log('DesignerDashboard: Fetching dashboard data');
       fetchDashboardData();
+    } else if (!designerLoading && !designer) {
+      // Designer profile not found, stop loading
+      console.log('DesignerDashboard: No designer profile found, stopping loading');
+      setLoading(false);
     }
-  }, [designer, designerLoading]);
+  }, [designer, designerLoading, loadTimeout]);
 
   const fetchDashboardData = async () => {
     if (!designer) return;
@@ -657,12 +683,45 @@ const DesignerDashboard = () => {
     setShowAnalyticsModal(true);
   };
 
+  if (loadTimeout) {
+    return (
+      <div className="bg-gray-50 py-12 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center py-20">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Loading Timeout</h2>
+            <p className="text-gray-600 mb-6">
+              The designer profile is taking too long to load. This might be a connection issue.
+            </p>
+            <div className="space-x-4">
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700"
+              >
+                Reload Page
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300"
+              >
+                Go Home
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!user || designerLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+      <div className="bg-gray-50 py-12 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading dashboard...</p>
+            <p className="text-gray-400 text-sm mt-2">If this takes too long, try refreshing the page</p>
+          </div>
         </div>
       </div>
     );
