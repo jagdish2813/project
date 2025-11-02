@@ -44,21 +44,35 @@ if (typeof window !== 'undefined') {
   console.log('%cwindow.debugAuthState() - Show current auth state', 'color: green;');
 }
 
-// Component to handle designer dashboard redirect
-const DesignerRedirectHandler = () => {
+// Component to handle dashboard redirects for designers and admins
+const DashboardRedirectHandler = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAdmin } = useAuth();
   const { isDesigner, loading: designerLoading } = useDesignerProfile();
 
   useEffect(() => {
-    // Only redirect if user is authenticated and we've finished loading designer profile
-    if (!authLoading && !designerLoading && user && isDesigner) {
-      // Check if we're on the home page and redirect to dashboard
-      if (window.location.pathname === '/') {
+    // Wait for auth to finish loading
+    if (authLoading || designerLoading) {
+      return;
+    }
+
+    // Only redirect from home page
+    if (window.location.pathname !== '/') {
+      return;
+    }
+
+    // If user is authenticated, redirect to appropriate dashboard
+    if (user) {
+      // Admin takes priority over designer
+      if (isAdmin) {
+        console.log('Admin user detected, redirecting to admin dashboard');
+        navigate('/admin');
+      } else if (isDesigner) {
+        console.log('Designer user detected, redirecting to designer dashboard');
         navigate('/designer-dashboard');
       }
     }
-  }, [user, isDesigner, authLoading, designerLoading, navigate]);
+  }, [user, isAdmin, isDesigner, authLoading, designerLoading, navigate]);
 
   return null;
 };
@@ -67,7 +81,7 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen flex flex-col">
-        <DesignerRedirectHandler />
+        <DashboardRedirectHandler />
         <Header />
         <main className="flex-grow">
           <Routes>

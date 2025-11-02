@@ -110,13 +110,12 @@ const Header = () => {
     setShowUserMenu(false);
   };
 
-  const handleAuthSuccess = () => {
+  const handleAuthSuccess = async () => {
     setShowAuthModal(false);
-    
-    // Check if user is a designer and redirect to dashboard
-    // We need to wait a moment for the designer profile to load
+
+    // Force a page refresh to ensure all hooks are properly initialized
+    // The DashboardRedirectHandler will check user type and redirect appropriately
     setTimeout(() => {
-      // Force a page refresh to ensure all hooks are properly initialized
       window.location.reload();
     }, 500);
   };
