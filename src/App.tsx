@@ -29,6 +29,7 @@ import AdminSignup from './pages/AdminSignup';
 import DebugPage from './pages/DebugPage';
 import DebugDesignerProfile from './pages/DebugDesignerProfile';
 import SharePhotoForm from './pages/SharePhotoForm';
+import ClearSession from './pages/ClearSession';
 import { forceLogoutAll } from './utils/clearAuth';
 
 // Expose force logout to window for emergency use
@@ -88,6 +89,7 @@ function App() {
             <Route path="/debug" element={<DebugPage />} />
             <Route path="/debug-profile" element={<DebugDesignerProfile />} />
             <Route path="/share-photo" element={<SharePhotoForm />} />
+            <Route path="/clear-session" element={<ClearSession />} />
           </Routes>
         </main>       
         <Footer />
