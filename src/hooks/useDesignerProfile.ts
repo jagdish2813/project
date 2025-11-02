@@ -133,7 +133,7 @@ export const useDesignerProfile = () => {
       const { data: existingDesigner } = await supabase
         .from('designers')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', 123 ) // user.id)
         .maybeSingle();
 
       if (existingDesigner) {
