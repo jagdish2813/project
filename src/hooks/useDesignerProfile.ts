@@ -159,7 +159,7 @@ export const useDesignerProfile = () => {
       console.log('Designer profile created successfully:', data);
       
       // Update local state with new data
-      setDesigner(data);
+     // setDesigner(data);
       return { error: null, data };
     } catch (error: any) {
       console.error('Error creating designer profile:', error);
