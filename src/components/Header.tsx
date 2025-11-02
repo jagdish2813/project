@@ -193,7 +193,7 @@ const Header = () => {
                       {designerLoading || registrationLoading ? (
                         <div className="px-4 py-2 text-sm text-gray-500 flex items-center space-x-2">
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Loading profile...</span>
+                          <span>Loading...</span>
                         </div>
                       ) : (
                         <>
@@ -302,7 +302,6 @@ const Header = () => {
                             )}
                             </>
                           )}
-                          
                         </>
                       )}
                       <hr className="my-2" />
@@ -378,7 +377,7 @@ const Header = () => {
                     {designerLoading || registrationLoading ? (
                       <div className="px-3 py-2 text-sm text-gray-500 flex items-center space-x-2">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Loading profile...</span>
+                        <span>Loading...</span>
                       </div>
                     ) : (
                       <>
