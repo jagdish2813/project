@@ -60,34 +60,29 @@ export const useAuth = () => {
 
   const signOut = async () => {
     try {
-      // Sign out from Supabase
-      await supabase.auth.signOut();
-      
-      // Clear any form data from localStorage/sessionStorage
-      localStorage.clear();
+      // Sign out from Supabase first
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        console.error('Supabase signOut error:', error);
+      }
+
+      // Clear Supabase-related items from storage, but not all localStorage
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sb-')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+
+      // Clear session storage
       sessionStorage.clear();
-      
-      // Clear any cached form data
-      const forms = document.querySelectorAll('form');
-      forms.forEach(form => {
-        if (form instanceof HTMLFormElement) {
-          form.reset();
-        }
-      });
-      
-      // Clear all input fields on the page
-      const inputs = document.querySelectorAll('input, textarea, select');
-      inputs.forEach(input => {
-        if (input instanceof HTMLInputElement || 
-            input instanceof HTMLTextAreaElement || 
-            input instanceof HTMLSelectElement) {
-          input.value = '';
-        }
-      });
-      
+
       // Force redirect to home page
       window.location.href = '/';
-      
+
     } catch (error) {
       console.error('Error signing out:', error);
       // Even if there's an error, still redirect to home
