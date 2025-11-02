@@ -18,7 +18,7 @@ export const useDesignerProfile = () => {
       return;
     }
 
-   /* try {
+    try {
       setLoading(true);
       setError(null);
       
@@ -37,7 +37,7 @@ export const useDesignerProfile = () => {
         setDesigner(null);
       } else {
         console.log('Designer profile data:', data);
-        setDesigner(data);
+      //  setDesigner(data);
         
         // Additional logging for debugging
         if (data) {
@@ -59,7 +59,7 @@ export const useDesignerProfile = () => {
     } finally {
       // Remove the artificial delay that might be causing issues
       setLoading(false);
-    } */
+    } 
   }, [user]);
 
   useEffect(() => {
