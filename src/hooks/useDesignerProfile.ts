@@ -18,7 +18,7 @@ export const useDesignerProfile = () => {
       return;
     }
 
-    try {
+   /* try {
       setLoading(true);
       setError(null);
       
@@ -59,7 +59,7 @@ export const useDesignerProfile = () => {
     } finally {
       // Remove the artificial delay that might be causing issues
       setLoading(false);
-    }
+    } */
   }, [user]);
 
   useEffect(() => {
