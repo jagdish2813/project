@@ -6,6 +6,7 @@ import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
 import AuthModal from './AuthModal';
 import { adminLogout, customerDesignerLogout } from '../utils/clearAuth';
+import { detectUserTypeAndRedirect } from '../utils/userTypeDetection';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -119,17 +120,26 @@ const Header = () => {
   const handleAuthSuccess = async () => {
     setShowAuthModal(false);
 
-    // Wait a moment for auth state to settle, then navigate
-    setTimeout(() => {
-      // If we're already on a dashboard page, just reload
-      const currentPath = window.location.pathname;
-      if (currentPath === '/designer-dashboard' || currentPath === '/admin') {
-        window.location.reload();
-      } else {
-        // Otherwise, let the redirect handler take care of it
+    console.log('=== Login Success - Starting Redirect ===');
+
+    // Wait for auth state to settle, then detect user type and redirect
+    setTimeout(async () => {
+      try {
+        const result = await detectUserTypeAndRedirect();
+
+        if (!result) {
+          console.error('handleAuthSuccess: Failed to detect user type');
+          window.location.href = '/';
+          return;
+        }
+
+        console.log(`handleAuthSuccess: Redirecting ${result.userType} to ${result.redirectPath}`);
+        window.location.href = result.redirectPath;
+      } catch (error) {
+        console.error('handleAuthSuccess: Error during redirect:', error);
         window.location.href = '/';
       }
-    }, 500);
+    }, 1500); // Increased delay to ensure auth state is fully set
   };
 
   return (

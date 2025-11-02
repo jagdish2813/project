@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { useDesignerProfile } from './hooks/useDesignerProfile';
+import { detectUserTypeAndRedirect } from './utils/userTypeDetection';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Chatbot from './components/Chatbot';
@@ -47,32 +48,45 @@ if (typeof window !== 'undefined') {
 // Component to handle dashboard redirects for designers and admins
 const DashboardRedirectHandler = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, isAdmin } = useAuth();
-  const { isDesigner, loading: designerLoading } = useDesignerProfile();
+  const { user, loading: authLoading } = useAuth();
+  const [redirecting, setRedirecting] = React.useState(false);
 
   useEffect(() => {
-    // Wait for auth to finish loading
-    if (authLoading || designerLoading) {
-      return;
-    }
-
-    // Only redirect from home page
-    if (window.location.pathname !== '/') {
-      return;
-    }
-
-    // If user is authenticated, redirect to appropriate dashboard
-    if (user) {
-      // Admin takes priority over designer
-      if (isAdmin) {
-        console.log('Admin user detected, redirecting to admin dashboard');
-        navigate('/admin');
-      } else if (isDesigner) {
-        console.log('Designer user detected, redirecting to designer dashboard');
-        navigate('/designer-dashboard');
+    const handleRedirect = async () => {
+      // Wait for auth to finish loading
+      if (authLoading || redirecting) {
+        return;
       }
-    }
-  }, [user, isAdmin, isDesigner, authLoading, designerLoading, navigate]);
+
+      // Only redirect from home page
+      if (window.location.pathname !== '/') {
+        return;
+      }
+
+      // If user is authenticated, detect type and redirect
+      if (user) {
+        console.log('DashboardRedirectHandler: User logged in, detecting type...');
+        setRedirecting(true);
+
+        try {
+          const result = await detectUserTypeAndRedirect();
+
+          if (result && result.redirectPath !== '/') {
+            console.log(`DashboardRedirectHandler: Redirecting ${result.userType} to ${result.redirectPath}`);
+            navigate(result.redirectPath);
+          } else {
+            console.log('DashboardRedirectHandler: User has no registration');
+          }
+        } catch (error) {
+          console.error('DashboardRedirectHandler: Error:', error);
+        } finally {
+          setRedirecting(false);
+        }
+      }
+    };
+
+    handleRedirect();
+  }, [user, authLoading, navigate, redirecting]);
 
   return null;
 };
