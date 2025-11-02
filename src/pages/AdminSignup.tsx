@@ -7,10 +7,10 @@ export default function AdminSignup() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  //const [formData, setFormData] = useState({
-   // email: 'admin@gmail.com',
-   // password: 'Welcome@123'
-  //});
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
