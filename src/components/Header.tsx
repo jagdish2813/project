@@ -190,14 +190,7 @@ const Header = () => {
 
                   {showUserMenu && (
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
-                      {designerLoading || registrationLoading ? (
-                        <div className="px-4 py-2 text-sm text-gray-500 flex items-center space-x-2">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Loading...</span>
-                        </div>
-                      ) : (
-                        <>
-                          {isAdmin ? (
+                      {isAdmin ? (
                             <>
                               <button
                                 onClick={() => {
@@ -302,8 +295,6 @@ const Header = () => {
                             )}
                             </>
                           )}
-                        </>
-                      )}
                       <hr className="my-2" />
                       <button
                         onClick={handleSignOut}
@@ -374,14 +365,7 @@ const Header = () => {
                     <div className="px-3 py-2 text-sm text-gray-500">
                       Signed in as {user.user_metadata?.name || user.email}
                     </div>
-                    {designerLoading || registrationLoading ? (
-                      <div className="px-3 py-2 text-sm text-gray-500 flex items-center space-x-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Loading...</span>
-                      </div>
-                    ) : (
-                      <>
-                        {isAdmin ? (
+                    {isAdmin ? (
                           <>
                             <button
                               onClick={() => {
@@ -512,8 +496,6 @@ const Header = () => {
                             )}
                           </>
                         )}
-                      </>
-                    )}
                     <button
                       onClick={handleSignOut}
                       className="w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-primary-50"
