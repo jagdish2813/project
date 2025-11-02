@@ -37,7 +37,7 @@ export const useDesignerProfile = () => {
         setDesigner(null);
       } else {
         console.log('Designer profile data:', data);
-      //  setDesigner(data);
+        setDesigner(data);
         
         // Additional logging for debugging
         if (data) {
@@ -82,7 +82,7 @@ export const useDesignerProfile = () => {
         .from('designers')
         .select('*')
         .eq('id', designer.id)
-        .eq('user_id', 123)
+        .eq('user_id', user.id)
         .single();
 
       if (checkError) {
@@ -133,7 +133,7 @@ export const useDesignerProfile = () => {
       const { data: existingDesigner } = await supabase
         .from('designers')
         .select('id')
-        .eq('user_id', 123 ) // user.id)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (existingDesigner) {
@@ -159,7 +159,7 @@ export const useDesignerProfile = () => {
       console.log('Designer profile created successfully:', data);
       
       // Update local state with new data
-     // setDesigner(data);
+      setDesigner(data);
       return { error: null, data };
     } catch (error: any) {
       console.error('Error creating designer profile:', error);
