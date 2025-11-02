@@ -82,7 +82,7 @@ export const useDesignerProfile = () => {
         .from('designers')
         .select('*')
         .eq('id', designer.id)
-        .eq('user_id', user.id)
+        .eq('user_id', 123)
         .single();
 
       if (checkError) {
