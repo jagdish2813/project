@@ -2,12 +2,35 @@ import { supabase } from '../lib/supabase';
 
 export const forceLogoutAll = async () => {
   try {
-    // Sign out from Supabase
-    await supabase.auth.signOut();
+    console.log('Starting force logout...');
 
-    // Clear all storage
+    // First, sign out from Supabase to invalidate the session on the server
+    const { error } = await supabase.auth.signOut({ scope: 'global' });
+
+    if (error) {
+      console.error('Supabase signOut error:', error);
+    }
+
+    // Get all localStorage keys before clearing
+    const allKeys = Object.keys(localStorage);
+    console.log('LocalStorage keys before clear:', allKeys);
+
+    // Clear all storage completely
     localStorage.clear();
     sessionStorage.clear();
+
+    // Double check - remove any Supabase-specific keys
+    const supabaseKeys = [
+      'supabase.auth.token',
+      'sb-auth-token',
+      'sb-access-token',
+      'sb-refresh-token'
+    ];
+
+    supabaseKeys.forEach(key => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
 
     // Clear all cookies
     document.cookie.split(";").forEach((c) => {
@@ -17,14 +40,15 @@ export const forceLogoutAll = async () => {
     });
 
     console.log('All users logged out successfully');
+    console.log('LocalStorage after clear:', Object.keys(localStorage));
 
-    // Reload the page to clear all state
-    window.location.href = '/';
+    // Use location.replace instead of href to prevent back button issues
+    window.location.replace('/');
   } catch (error) {
     console.error('Error during force logout:', error);
-    // Still clear everything
+    // Still clear everything even on error
     localStorage.clear();
     sessionStorage.clear();
-    window.location.href = '/';
+    window.location.replace('/');
   }
 };

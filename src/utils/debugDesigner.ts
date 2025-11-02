@@ -1,6 +1,43 @@
 // Debug utility to check designer profile status
 import { supabase } from '../lib/supabase';
 
+export const debugAuthState = () => {
+  console.log('=== DEBUG AUTH STATE ===');
+  console.log('LocalStorage keys:', Object.keys(localStorage));
+
+  // Check for Supabase auth keys
+  const authKeys = Object.keys(localStorage).filter(key =>
+    key.includes('supabase') || key.includes('sb-')
+  );
+
+  console.log('Supabase auth keys found:', authKeys);
+
+  authKeys.forEach(key => {
+    const value = localStorage.getItem(key);
+    try {
+      const parsed = JSON.parse(value || '{}');
+      console.log(`${key}:`, parsed);
+
+      // Check if there's user info
+      if (parsed.user) {
+        console.log('User found in storage:', {
+          id: parsed.user.id,
+          email: parsed.user.email
+        });
+      }
+    } catch (e) {
+      console.log(`${key}: (raw)`, value);
+    }
+  });
+
+  console.log('=======================');
+};
+
+// Add to window for easy debugging
+if (typeof window !== 'undefined') {
+  (window as any).debugAuthState = debugAuthState;
+}
+
 export const debugDesignerProfile = async (email?: string) => {
   try {
     // Get the currently authenticated user instead of using admin functions

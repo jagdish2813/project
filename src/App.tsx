@@ -31,10 +31,17 @@ import DebugDesignerProfile from './pages/DebugDesignerProfile';
 import SharePhotoForm from './pages/SharePhotoForm';
 import ClearSession from './pages/ClearSession';
 import { forceLogoutAll } from './utils/clearAuth';
+import { debugAuthState } from './utils/debugDesigner';
 
-// Expose force logout to window for emergency use
+// Expose utilities to window for emergency use and debugging
 if (typeof window !== 'undefined') {
   (window as any).forceLogoutAll = forceLogoutAll;
+  (window as any).debugAuthState = debugAuthState;
+
+  // Log a helpful message on load
+  console.log('%cDebug Commands Available:', 'color: blue; font-size: 14px; font-weight: bold;');
+  console.log('%cwindow.forceLogoutAll() - Force logout all users', 'color: green;');
+  console.log('%cwindow.debugAuthState() - Show current auth state', 'color: green;');
 }
 
 // Component to handle designer dashboard redirect
