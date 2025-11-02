@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
 import AuthModal from './AuthModal';
-import { forceLogoutAll } from '../utils/clearAuth';
+import { adminLogout, customerDesignerLogout } from '../utils/clearAuth';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -35,14 +35,20 @@ const Header = () => {
       setShowUserMenu(false);
       setIsMenuOpen(false);
 
-      // Use force logout to clear everything
-      await forceLogoutAll();
+      // Use appropriate logout based on user type
+      if (isAdmin) {
+        console.log('Admin logout selected');
+        await adminLogout();
+      } else {
+        console.log('Customer/Designer logout selected');
+        await customerDesignerLogout();
+      }
     } catch (error) {
       console.error('Error during sign out:', error);
-      // Force clear everything
+      // Force clear everything on error
       localStorage.clear();
       sessionStorage.clear();
-      window.location.href = '/';
+      window.location.replace('/');
     }
   };
 

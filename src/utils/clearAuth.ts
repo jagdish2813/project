@@ -1,36 +1,20 @@
 import { supabase } from '../lib/supabase';
 
-export const forceLogoutAll = async () => {
+// Admin logout - clears everything and redirects to home
+export const adminLogout = async () => {
   try {
-    console.log('Starting force logout...');
+    console.log('Admin logout initiated...');
 
-    // First, sign out from Supabase to invalidate the session on the server
+    // Sign out from Supabase with global scope
     const { error } = await supabase.auth.signOut({ scope: 'global' });
 
     if (error) {
       console.error('Supabase signOut error:', error);
     }
 
-    // Get all localStorage keys before clearing
-    const allKeys = Object.keys(localStorage);
-    console.log('LocalStorage keys before clear:', allKeys);
-
-    // Clear all storage completely
+    // Clear all storage completely for admin
     localStorage.clear();
     sessionStorage.clear();
-
-    // Double check - remove any Supabase-specific keys
-    const supabaseKeys = [
-      'supabase.auth.token',
-      'sb-auth-token',
-      'sb-access-token',
-      'sb-refresh-token'
-    ];
-
-    supabaseKeys.forEach(key => {
-      localStorage.removeItem(key);
-      sessionStorage.removeItem(key);
-    });
 
     // Clear all cookies
     document.cookie.split(";").forEach((c) => {
@@ -39,16 +23,62 @@ export const forceLogoutAll = async () => {
         .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
     });
 
-    console.log('All users logged out successfully');
-    console.log('LocalStorage after clear:', Object.keys(localStorage));
+    console.log('Admin logged out successfully');
 
-    // Use location.replace instead of href to prevent back button issues
+    // Redirect to home page
     window.location.replace('/');
   } catch (error) {
-    console.error('Error during force logout:', error);
-    // Still clear everything even on error
+    console.error('Error during admin logout:', error);
     localStorage.clear();
     sessionStorage.clear();
     window.location.replace('/');
   }
+};
+
+// Customer/Designer logout - selective clearing to preserve user preferences
+export const customerDesignerLogout = async () => {
+  try {
+    console.log('Customer/Designer logout initiated...');
+
+    // Sign out from Supabase
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error('Supabase signOut error:', error);
+    }
+
+    // Clear only Supabase auth-related items from localStorage
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('sb-')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    // Clear session storage
+    sessionStorage.clear();
+
+    console.log('Customer/Designer logged out successfully');
+
+    // Redirect to home page
+    window.location.replace('/');
+  } catch (error) {
+    console.error('Error during customer/designer logout:', error);
+    // Clear Supabase keys on error
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+    sessionStorage.clear();
+    window.location.replace('/');
+  }
+};
+
+// Legacy function for backward compatibility - now routes to appropriate logout
+export const forceLogoutAll = async () => {
+  console.log('forceLogoutAll called - using customer/designer logout');
+  await customerDesignerLogout();
 };
