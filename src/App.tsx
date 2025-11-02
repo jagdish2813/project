@@ -29,6 +29,12 @@ import AdminSignup from './pages/AdminSignup';
 import DebugPage from './pages/DebugPage';
 import DebugDesignerProfile from './pages/DebugDesignerProfile';
 import SharePhotoForm from './pages/SharePhotoForm';
+import { forceLogoutAll } from './utils/clearAuth';
+
+// Expose force logout to window for emergency use
+if (typeof window !== 'undefined') {
+  (window as any).forceLogoutAll = forceLogoutAll;
+}
 
 // Component to handle designer dashboard redirect
 const DesignerRedirectHandler = () => {

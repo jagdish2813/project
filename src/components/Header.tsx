@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useDesignerProfile } from '../hooks/useDesignerProfile';
 import { useUserRegistrationStatus } from '../hooks/useUserRegistrationStatus';
 import AuthModal from './AuthModal';
+import { forceLogoutAll } from '../utils/clearAuth';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -33,17 +34,14 @@ const Header = () => {
       // Close any open menus
       setShowUserMenu(false);
       setIsMenuOpen(false);
-      
-      // Clear any form states in the current component
-      setShowAuthModal(false);
-      setAuthMode('login');
-      setEditProfileLoading(false);
-      
-      // Call the enhanced signOut function that handles clearing and redirecting
-      await signOut();
+
+      // Use force logout to clear everything
+      await forceLogoutAll();
     } catch (error) {
       console.error('Error during sign out:', error);
-      // Force redirect even if there's an error
+      // Force clear everything
+      localStorage.clear();
+      sessionStorage.clear();
       window.location.href = '/';
     }
   };
